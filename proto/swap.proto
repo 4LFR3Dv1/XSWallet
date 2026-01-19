@@ -1,0 +1,257 @@
+// XS Wallet - Swap Service Protocol
+// Go Core é autoritativo; TS/RN são apenas clientes
+syntax = "proto3";
+
+package xswallet;
+
+option go_package = "github.com/xs-wallet/xscore/proto";
+
+import "google/protobuf/timestamp.proto";
+import "common.proto";
+
+// =============================================================================
+// SWAP SERVICE - Estado autoritativo do swap
+// =============================================================================
+
+service SwapService {
+  // Quote (antes de criar)
+  rpc QuoteSwap(QuoteSwapRequest) returns (SwapQuote);
+  
+  // Lifecycle
+  rpc CreateSwap(CreateSwapRequest) returns (SwapSnapshot);
+  rpc LockSwap(LockSwapRequest) returns (SwapSnapshot);
+  rpc CommitSwap(CommitSwapRequest) returns (SwapSnapshot);
+  rpc CancelSwap(CancelSwapRequest) returns (SwapSnapshot);
+  
+  // Queries
+  rpc GetSwap(GetSwapRequest) returns (SwapSnapshot);
+  rpc ListSwaps(ListSwapsRequest) returns (ListSwapsResponse);
+  rpc GetSwapEvents(GetSwapEventsRequest) returns (GetSwapEventsResponse);
+  
+  // Streaming - eventos em tempo real (resumable)
+  rpc WatchSwap(WatchSwapRequest) returns (stream SwapEvent);
+  rpc WatchAllSwaps(WatchAllSwapsRequest) returns (stream SwapEvent);
+}
+
+// =============================================================================
+// ENUMS
+// =============================================================================
+
+enum SwapKind {
+  SWAP_KIND_UNSPECIFIED = 0;
+  SWAP_KIND_SUBMARINE = 1;      // On-chain → Lightning
+  SWAP_KIND_REVERSE = 2;        // Lightning → On-chain
+  SWAP_KIND_CHAIN = 3;          // BTC ↔ Liquid
+}
+
+enum SwapState {
+  SWAP_STATE_UNSPECIFIED = 0;
+  SWAP_STATE_OPEN = 1;                      // Quote aceito, não bloqueado
+  SWAP_STATE_LOCKED = 2;                    // Parâmetros imutáveis
+  SWAP_STATE_COMMIT_STARTED = 3;            // Funding tx broadcast
+  SWAP_STATE_WAITING = 4;                   // Aguardando contraparte
+  SWAP_STATE_WAITING_CLAIM_DETAILS = 5;     // Aguardando detalhes de claim
+  SWAP_STATE_SIGNING_MUSIG2_PARTIAL = 6;    // Criando assinatura parcial
+  SWAP_STATE_SENT_PARTIAL_TO_PROVIDER = 7;  // Partial sig enviada
+  SWAP_STATE_WAITING_PROVIDER_BROADCAST = 8;// Aguardando broadcast
+  SWAP_STATE_REFUND_COOP_WAITING = 9;       // Tentando refund cooperativo
+  SWAP_STATE_FALLBACK_SCRIPT_READY = 10;    // Preparando script-path
+  SWAP_STATE_REFUNDING = 11;                // Refund tx broadcast
+  SWAP_STATE_COMPLETED = 12;                // Terminal: sucesso
+  SWAP_STATE_FAILED = 13;                   // Terminal: falha
+  SWAP_STATE_CANCELED = 14;                 // Terminal: cancelado
+}
+
+// =============================================================================
+// MESSAGES - Quote Flow
+// =============================================================================
+
+message QuoteSwapRequest {
+  SwapKind kind = 1;
+  Chain from_chain = 2;
+  Chain to_chain = 3;
+  uint64 amount_sat = 4;
+  
+  oneof params {
+    SubmarineQuoteParams submarine = 10;
+    ReverseQuoteParams reverse = 11;
+    ChainQuoteParams chain = 12;
+  }
+}
+
+message SubmarineQuoteParams {
+  string invoice = 1;              // Invoice LN do usuário
+}
+
+message ReverseQuoteParams {
+  string payout_address = 1;       // Endereço BTC/Liquid para receber
+}
+
+message ChainQuoteParams {
+  string payout_address = 1;       // Endereço na chain de destino
+}
+
+message SwapQuote {
+  string quote_id = 1;             // ID do quote (válido por X minutos)
+  SwapKind kind = 2;
+  Chain from_chain = 3;
+  Chain to_chain = 4;
+  uint64 amount_sat = 5;
+  
+  // Fees
+  uint64 provider_fee_sat = 10;
+  uint64 network_fee_sat = 11;
+  uint64 total_fee_sat = 12;
+  double fee_percentage = 13;
+  
+  // Provider data
+  string lockup_address = 20;
+  string claim_address = 21;
+  
+  // Timeouts
+  uint32 user_timeout_blocks = 30;
+  uint32 provider_timeout_blocks = 31;
+  
+  // Validade do quote
+  google.protobuf.Timestamp expires_at = 40;
+}
+
+// =============================================================================
+// MESSAGES - Requests
+// =============================================================================
+
+message CreateSwapRequest {
+  string quote_id = 1;             // Quote aceito
+  FeePolicy fee_policy = 2;
+}
+
+message LockSwapRequest {
+  string swap_id = 1;
+  uint64 expected_version = 2;     // CAS: versão esperada
+}
+
+message CommitSwapRequest {
+  string swap_id = 1;
+  uint64 expected_version = 2;
+}
+
+message CancelSwapRequest {
+  string swap_id = 1;
+  uint64 expected_version = 2;
+  string reason = 3;
+}
+
+message GetSwapRequest {
+  string swap_id = 1;
+}
+
+message ListSwapsRequest {
+  SwapState filter_state = 1;      // Opcional: filtrar por estado
+  int32 limit = 2;
+  int32 offset = 3;
+}
+
+message GetSwapEventsRequest {
+  string swap_id = 1;
+  uint64 after_seq = 2;            // Eventos após esta sequência
+}
+
+message WatchSwapRequest {
+  string swap_id = 1;
+  uint64 from_seq = 2;             // Resumable: começar desta sequência
+}
+
+message WatchAllSwapsRequest {
+  repeated SwapState filter_states = 1;
+  uint64 from_seq = 2;             // Resumable: começar desta sequência
+}
+
+// =============================================================================
+// MESSAGES - Core Data Types
+// =============================================================================
+
+message SwapSnapshot {
+  string id = 1;
+  SwapKind kind = 2;
+  SwapState state = 3;
+  uint64 version = 4;              // Para CAS
+  Network network = 5;
+  
+  // Intent (imutável após lock)
+  LockedIntent locked_intent = 10;
+  
+  // Chaves e scripts (APENAS PÚBLICAS)
+  uint32 swap_key_index = 20;
+  string preimage_hash_hex = 21;   // H = SHA256(R), R nunca exposto
+  string claim_pubkey_hex = 22;
+  string refund_pubkey_hex = 23;
+  
+  // MuSig2 session (APENAS DADOS PÚBLICOS)
+  string musig_session_id = 30;
+  bytes musig_pubnonce = 31;       // Public nonce (ok expor)
+  // CRÍTICO: musig_secnonce NUNCA atravessa fronteira
+  
+  // Transações
+  string lockup_txid = 40;
+  uint64 lockup_amount_sat = 41;
+  string claim_txid = 42;
+  string refund_txid = 43;
+  
+  // Timeouts
+  uint32 timeout_block_height = 50;
+  uint32 current_block_height = 51;
+  int32 blocks_remaining = 52;
+  
+  // Timestamps
+  google.protobuf.Timestamp created_at = 60;
+  google.protobuf.Timestamp updated_at = 61;
+  
+  // Erro (se failed)
+  string error_message = 70;
+}
+
+message LockedIntent {
+  SwapKind kind = 1;
+  Chain from_chain = 2;
+  Chain to_chain = 3;
+  uint64 amount_sat = 4;
+  string invoice = 5;
+  
+  // Fees snapshot
+  uint64 provider_fee_sat = 10;
+  uint64 network_fee_sat = 11;
+  uint64 total_fee_sat = 12;
+  double fee_percentage = 13;
+  
+  // Provider quote
+  string provider_quote_id = 20;
+  string lockup_address = 21;
+  string claim_address = 22;
+  
+  // Timeouts acordados
+  uint32 user_timeout = 30;
+  uint32 provider_timeout = 31;
+}
+
+message SwapEvent {
+  uint64 seq = 1;                  // Sequência global (autoincrement)
+  string swap_id = 2;
+  SwapState from_state = 3;
+  SwapState to_state = 4;
+  string trigger = 5;              // O que causou a transição
+  string details_json = 6;         // Payload adicional
+  google.protobuf.Timestamp timestamp = 7;
+}
+
+// =============================================================================
+// MESSAGES - Responses
+// =============================================================================
+
+message ListSwapsResponse {
+  repeated SwapSnapshot swaps = 1;
+  int32 total_count = 2;
+}
+
+message GetSwapEventsResponse {
+  repeated SwapEvent events = 1;
+}

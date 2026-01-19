@@ -1,0 +1,239 @@
+// XS Wallet - Wallet Service Protocol
+// Gerenciamento de carteira, balances, endereços
+syntax = "proto3";
+
+package xswallet;
+
+option go_package = "github.com/xs-wallet/xscore/proto";
+
+import "google/protobuf/timestamp.proto";
+import "common.proto";
+
+// =============================================================================
+// WALLET SERVICE
+// =============================================================================
+
+service WalletService {
+  // Vault (seed/keys)
+  rpc InitializeVault(InitializeVaultRequest) returns (InitializeVaultResponse);
+  rpc UnlockVault(UnlockVaultRequest) returns (UnlockVaultResponse);
+  rpc LockVault(LockVaultRequest) returns (LockVaultResponse);
+  rpc GetVaultStatus(GetVaultStatusRequest) returns (VaultStatus);
+  
+  // Backup
+  rpc GetBackupStatus(GetBackupStatusRequest) returns (BackupStatus);
+  rpc MarkBackupComplete(MarkBackupCompleteRequest) returns (BackupStatus);
+  
+  // Balances
+  rpc GetBalance(GetBalanceRequest) returns (BalanceResponse);
+  rpc GetAllBalances(GetAllBalancesRequest) returns (AllBalancesResponse);
+  
+  // Addresses
+  rpc GetNewAddress(GetNewAddressRequest) returns (AddressResponse);
+  rpc ListAddresses(ListAddressesRequest) returns (ListAddressesResponse);
+  
+  // UTXOs
+  rpc ListUtxos(ListUtxosRequest) returns (ListUtxosResponse);
+  
+  // Transactions
+  rpc ListTransactions(ListTransactionsRequest) returns (ListTransactionsResponse);
+  
+  // Streaming
+  rpc WatchBalances(WatchBalancesRequest) returns (stream BalanceUpdate);
+}
+
+// =============================================================================
+// VAULT - Gerenciamento de seed/keys
+// =============================================================================
+
+message InitializeVaultRequest {
+  oneof seed_source {
+    GenerateNewSeed generate = 1;
+    ImportExistingSeed import = 2;
+  }
+  string pin = 3;                  // PIN para criptografar vault
+}
+
+message GenerateNewSeed {
+  int32 word_count = 1;            // 12 ou 24
+}
+
+message ImportExistingSeed {
+  string mnemonic = 1;
+  string passphrase = 2;           // BIP39 passphrase (opcional)
+}
+
+message InitializeVaultResponse {
+  bool success = 1;
+  string mnemonic = 2;             // Só retornado em generate, NUNCA armazenar
+  string session_id = 3;           // Session ID para autenticação
+  string error_message = 4;
+}
+
+message UnlockVaultRequest {
+  string pin = 1;
+}
+
+message UnlockVaultResponse {
+  bool success = 1;
+  string session_id = 2;           // Session ID válido até lock
+  string error_message = 3;
+  int32 attempts_remaining = 4;    // Tentativas antes de lockout
+}
+
+message LockVaultRequest {
+  string session_id = 1;           // Invalidar sessão
+}
+
+message LockVaultResponse {
+  bool success = 1;
+}
+
+message GetVaultStatusRequest {}
+
+message VaultStatus {
+  enum State {
+    STATE_UNSPECIFIED = 0;
+    STATE_NOT_INITIALIZED = 1;     // Sem seed
+    STATE_LOCKED = 2;              // Seed existe mas vault trancado
+    STATE_UNLOCKED = 3;            // Pronto para operar
+    STATE_LOCKED_OUT = 4;          // Muitas tentativas erradas
+  }
+  State state = 1;
+  int32 failed_attempts = 2;
+  google.protobuf.Timestamp lockout_until = 3;
+}
+
+// =============================================================================
+// BACKUP STATUS
+// =============================================================================
+
+message GetBackupStatusRequest {}
+
+message BackupStatus {
+  bool has_pending_swaps_requiring_backup = 1;  // Swaps com preimage R no DB
+  int32 pending_swap_count = 2;
+  google.protobuf.Timestamp last_backup_at = 3;
+  bool backup_recommended = 4;
+  string warning_message = 5;      // "You have 2 pending swaps. Backup required!"
+}
+
+message MarkBackupCompleteRequest {
+  google.protobuf.Timestamp backup_timestamp = 1;
+}
+
+// =============================================================================
+// BALANCES
+// =============================================================================
+
+message GetBalanceRequest {
+  Chain chain = 1;
+}
+
+message BalanceResponse {
+  Chain chain = 1;
+  uint64 confirmed_sat = 2;
+  uint64 unconfirmed_sat = 3;
+  uint64 pending_swap_sat = 4;     // Em swaps ativos
+  uint64 total_sat = 5;
+}
+
+message GetAllBalancesRequest {}
+
+message AllBalancesResponse {
+  BalanceResponse btc = 1;
+  BalanceResponse liquid = 2;
+  BalanceResponse ln = 3;
+}
+
+message WatchBalancesRequest {}
+
+message BalanceUpdate {
+  Chain chain = 1;
+  BalanceResponse balance = 2;
+  string reason = 3;               // "new_tx", "confirmation", "swap_completed"
+  google.protobuf.Timestamp timestamp = 4;
+}
+
+// =============================================================================
+// ADDRESSES
+// =============================================================================
+
+message GetNewAddressRequest {
+  Chain chain = 1;
+  string label = 2;                // Label opcional
+}
+
+message AddressResponse {
+  string address = 1;
+  Chain chain = 2;
+  string derivation_path = 3;
+  string label = 4;
+}
+
+message ListAddressesRequest {
+  Chain chain = 1;
+  bool include_used = 2;
+}
+
+message ListAddressesResponse {
+  repeated AddressInfo addresses = 1;
+}
+
+message AddressInfo {
+  string address = 1;
+  Chain chain = 2;
+  string derivation_path = 3;
+  string label = 4;
+  bool used = 5;
+  uint64 balance_sat = 6;
+}
+
+// =============================================================================
+// UTXOS
+// =============================================================================
+
+message ListUtxosRequest {
+  Chain chain = 1;
+  bool include_reserved = 2;       // Inclui UTXOs reservados para swaps
+}
+
+message ListUtxosResponse {
+  repeated Utxo utxos = 1;
+}
+
+message Utxo {
+  string txid = 1;
+  uint32 vout = 2;
+  uint64 amount_sat = 3;
+  string address = 4;
+  int32 confirmations = 5;
+  bool reserved = 6;               // Reservado para swap
+  string reserved_for_swap_id = 7;
+}
+
+// =============================================================================
+// TRANSACTIONS
+// =============================================================================
+
+message ListTransactionsRequest {
+  Chain chain = 1;
+  int32 limit = 2;
+  int32 offset = 3;
+}
+
+message ListTransactionsResponse {
+  repeated Transaction transactions = 1;
+  int32 total_count = 2;
+}
+
+message Transaction {
+  string txid = 1;
+  Chain chain = 2;
+  int64 amount_sat = 3;            // Positivo = recebido, negativo = enviado
+  uint64 fee_sat = 4;
+  int32 confirmations = 5;
+  google.protobuf.Timestamp timestamp = 6;
+  string label = 7;
+  string swap_id = 8;              // Se relacionado a swap
+}

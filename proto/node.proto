@@ -1,0 +1,205 @@
+// XS Wallet - Node Service Protocol
+// Gerenciamento de nodes embarcados (bitcoind, elementsd, LND)
+syntax = "proto3";
+
+package xswallet;
+
+option go_package = "github.com/xs-wallet/xscore/proto";
+
+import "google/protobuf/timestamp.proto";
+import "common.proto";
+
+// =============================================================================
+// NODE SERVICE
+// =============================================================================
+
+service NodeService {
+  // Platform
+  rpc GetPlatformCapabilities(GetPlatformCapabilitiesRequest) returns (PlatformCapabilities);
+  
+  // Lifecycle (desktop only se can_spawn_nodes = true)
+  rpc StartNode(StartNodeRequest) returns (NodeStatus);
+  rpc StopNode(StopNodeRequest) returns (NodeStatus);
+  rpc RestartNode(RestartNodeRequest) returns (NodeStatus);
+  
+  // Status (funciona em desktop e mobile)
+  rpc GetNodeStatus(GetNodeStatusRequest) returns (NodeStatus);
+  rpc GetAllNodeStatuses(GetAllNodeStatusesRequest) returns (AllNodeStatusesResponse);
+  
+  // Sync
+  rpc GetSyncProgress(GetSyncProgressRequest) returns (SyncProgress);
+  
+  // Streaming
+  rpc WatchNodeStatus(WatchNodeStatusRequest) returns (stream NodeStatusUpdate);
+  rpc WatchLogs(WatchLogsRequest) returns (stream LogEntry);
+  
+  // Binary management (desktop only se can_download_binaries = true)
+  rpc CheckBinaryStatus(CheckBinaryStatusRequest) returns (BinaryStatus);
+  rpc DownloadBinary(DownloadBinaryRequest) returns (stream DownloadProgress);
+  rpc VerifyBinary(VerifyBinaryRequest) returns (VerifyBinaryResponse);
+}
+
+// =============================================================================
+// ENUMS
+// =============================================================================
+
+enum NodeType {
+  NODE_TYPE_UNSPECIFIED = 0;
+  NODE_TYPE_BITCOIND = 1;
+  NODE_TYPE_ELEMENTSD = 2;
+  NODE_TYPE_LND = 3;
+}
+
+enum NodeState {
+  NODE_STATE_UNSPECIFIED = 0;
+  NODE_STATE_NOT_INSTALLED = 1;    // Binário não existe (desktop)
+  NODE_STATE_STOPPED = 2;          // Instalado mas não rodando
+  NODE_STATE_STARTING = 3;         // Iniciando
+  NODE_STATE_SYNCING = 4;          // Rodando, sincronizando
+  NODE_STATE_RUNNING = 5;          // Rodando, sincronizado
+  NODE_STATE_STOPPING = 6;         // Parando
+  NODE_STATE_ERROR = 7;            // Erro
+}
+
+// =============================================================================
+// MESSAGES - Platform
+// =============================================================================
+
+message GetPlatformCapabilitiesRequest {}
+
+// =============================================================================
+// MESSAGES - Requests
+// =============================================================================
+
+message StartNodeRequest {
+  NodeType node_type = 1;
+  Network network = 2;
+}
+
+message StopNodeRequest {
+  NodeType node_type = 1;
+  bool graceful = 2;               // true = SIGTERM, false = SIGKILL
+}
+
+message RestartNodeRequest {
+  NodeType node_type = 1;
+}
+
+message GetNodeStatusRequest {
+  NodeType node_type = 1;
+}
+
+message GetAllNodeStatusesRequest {}
+
+message GetSyncProgressRequest {
+  NodeType node_type = 1;
+}
+
+message WatchNodeStatusRequest {
+  NodeType node_type = 1;          // Vazio = todos
+}
+
+message WatchLogsRequest {
+  NodeType node_type = 1;
+  int32 tail_lines = 2;            // Últimas N linhas
+  string log_level = 3;            // "debug", "info", "warn", "error"
+}
+
+message CheckBinaryStatusRequest {
+  NodeType node_type = 1;
+}
+
+message DownloadBinaryRequest {
+  NodeType node_type = 1;
+}
+
+message VerifyBinaryRequest {
+  NodeType node_type = 1;
+}
+
+// =============================================================================
+// MESSAGES - Status
+// =============================================================================
+
+message NodeStatus {
+  NodeType node_type = 1;
+  NodeState state = 2;
+  Network network = 3;
+  
+  // Versão
+  string version = 10;
+  
+  // Conexões
+  int32 peer_count = 20;
+  
+  // Recursos
+  int64 memory_mb = 30;
+  double cpu_percent = 31;
+  int64 disk_mb = 32;
+  
+  // Timestamps
+  google.protobuf.Timestamp started_at = 40;
+  int64 uptime_seconds = 41;
+  
+  // Erro (se state = ERROR)
+  string error_message = 50;
+}
+
+message AllNodeStatusesResponse {
+  NodeStatus bitcoind = 1;
+  NodeStatus elementsd = 2;
+  NodeStatus lnd = 3;
+}
+
+message SyncProgress {
+  NodeType node_type = 1;
+  bool synced = 2;
+  uint32 current_height = 3;
+  uint32 target_height = 4;
+  double progress_percent = 5;
+  string eta = 6;                  // Estimativa de conclusão
+}
+
+message NodeStatusUpdate {
+  NodeType node_type = 1;
+  NodeState previous_state = 2;
+  NodeState current_state = 3;
+  google.protobuf.Timestamp timestamp = 4;
+}
+
+message LogEntry {
+  NodeType node_type = 1;
+  string level = 2;
+  string message = 3;
+  google.protobuf.Timestamp timestamp = 4;
+}
+
+// =============================================================================
+// MESSAGES - Binary Management
+// =============================================================================
+
+message BinaryStatus {
+  NodeType node_type = 1;
+  bool installed = 2;
+  string installed_version = 3;
+  string latest_version = 4;
+  bool update_available = 5;
+  bool verified = 6;               // SHA256 verificado
+  string binary_path = 7;
+}
+
+message DownloadProgress {
+  NodeType node_type = 1;
+  uint64 bytes_downloaded = 2;
+  uint64 total_bytes = 3;
+  double progress_percent = 4;
+  string stage = 5;                // "downloading", "extracting", "verifying"
+}
+
+message VerifyBinaryResponse {
+  NodeType node_type = 1;
+  bool verified = 2;
+  string expected_hash = 3;
+  string actual_hash = 4;
+  string signature_status = 5;     // "valid", "invalid", "not_found"
+}

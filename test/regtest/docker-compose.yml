@@ -1,0 +1,45 @@
+services:
+  bitcoind:
+    image: btcpayserver/bitcoin:27.0
+    container_name: xs-bitcoind-regtest
+    command:
+      - -regtest
+      - -server
+      - -rpcuser=rpcuser
+      - -rpcpassword=rpcpass
+      - -rpcallowip=0.0.0.0/0
+      - -rpcbind=0.0.0.0
+      - -zmqpubrawblock=tcp://0.0.0.0:28332
+      - -zmqpubrawtx=tcp://0.0.0.0:28333
+      - -txindex=1
+      - -fallbackfee=0.00001
+    ports:
+      - "18443:18443" # RPC
+      - "18444:18444" # P2P
+      - "28332:28332" # ZMQ blocks
+      - "28333:28333" # ZMQ tx
+    volumes:
+      - bitcoin_data:/data
+    healthcheck:
+      test: [ "CMD", "bitcoin-cli", "-regtest", "-rpcuser=rpcuser", "-rpcpassword=rpcpass", "getblockchaininfo" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  bitcoin-init:
+    image: btcpayserver/bitcoin:27.0
+    container_name: xs-bitcoin-init
+    depends_on:
+      bitcoind:
+        condition: service_healthy
+    command: >
+      sh -c "
+        bitcoin-cli -regtest -rpcuser=rpcuser -rpcpassword=rpcpass -rpcconnect=bitcoind createwallet test_wallet &&
+        ADDR=$$(bitcoin-cli -regtest -rpcuser=rpcuser -rpcpassword=rpcpass -rpcconnect=bitcoind getnewaddress) &&
+        bitcoin-cli -regtest -rpcuser=rpcuser -rpcpassword=rpcpass -rpcconnect=bitcoind generatetoaddress 101 $$ADDR &&
+        echo 'Regtest initialized with 101 blocks'
+      "
+    restart: "no"
+
+volumes:
+  bitcoin_data:

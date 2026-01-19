@@ -1,0 +1,77 @@
+{
+  "name": "xs-wallet",
+  "version": "0.1.0",
+  "description": "HD Wallet + Atomic Swaps (BTC/Liquid/LN) via Boltz",
+  "main": "dist/main/index.js",
+  "author": "XS Wallet Team",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently \"npm run dev:main\" \"npm run dev:renderer\"",
+    "dev:main": "tsc -p tsconfig.main.json && electron dist/main/index.js",
+    "dev:renderer": "vite",
+    "build": "npm run build:main && npm run build:renderer",
+    "build:main": "tsc -p tsconfig.main.json",
+    "build:renderer": "vite build",
+    "package": "electron-builder",
+    "test": "vitest",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "lint": "eslint src --ext .ts,.tsx"
+  },
+  "dependencies": {
+    "better-sqlite3": "^9.2.2",
+    "bitcoinjs-lib": "^6.1.5",
+    "bip32": "^4.0.0",
+    "bip39": "^3.1.0",
+    "argon2": "^0.31.2",
+    "@grpc/grpc-js": "^1.9.14",
+    "bolt11": "^1.4.1"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.8",
+    "@types/node": "^20.10.6",
+    "@typescript-eslint/eslint-plugin": "^6.17.0",
+    "@typescript-eslint/parser": "^6.17.0",
+    "@vitejs/plugin-react": "^4.2.1",
+    "concurrently": "^8.2.2",
+    "electron": "^28.1.0",
+    "electron-builder": "^24.9.1",
+    "electron-updater": "^6.1.7",
+    "eslint": "^8.56.0",
+    "typescript": "^5.3.3",
+    "vite": "^5.0.10",
+    "vitest": "^1.1.0"
+  },
+  "build": {
+    "appId": "com.xswallet.app",
+    "productName": "XS Wallet",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "package.json"
+    ],
+    "mac": {
+      "category": "public.app-category.finance",
+      "target": ["dmg", "zip"],
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist"
+    },
+    "win": {
+      "target": ["nsis", "portable"],
+      "sign": "./build/sign.js"
+    },
+    "linux": {
+      "target": ["AppImage", "deb"],
+      "category": "Finance"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "xs-wallet",
+      "repo": "xs-wallet"
+    }
+  }
+}
