@@ -15,8 +15,10 @@ import (
 	"google.golang.org/grpc/reflection"
 
 	"github.com/xs-wallet/xscore/internal/adapters/bitcoin"
+	"github.com/xs-wallet/xscore/internal/boltz"
 	"github.com/xs-wallet/xscore/internal/config"
 	"github.com/xs-wallet/xscore/internal/db"
+	"github.com/xs-wallet/xscore/internal/provider"
 	"github.com/xs-wallet/xscore/internal/provider/mock"
 	"github.com/xs-wallet/xscore/internal/server"
 	"github.com/xs-wallet/xscore/internal/swap"
@@ -67,8 +69,40 @@ func main() {
 	btcRPCURL := fmt.Sprintf("http://%s:%d", cfg.Bitcoind.Host, cfg.Bitcoind.Port)
 	btcClient := bitcoin.NewClient(btcRPCURL, cfg.Bitcoind.User, cfg.Bitcoind.Password)
 
-	// Initialize provider (MockProvider for regtest)
-	provider := mock.NewMockProvider()
+	// Initialize provider (Boltz for mainnet/testnet, Mock for regtest fallback)
+	var provider provider.Provider
+
+	if cfg.Network == "regtest" && cfg.Boltz.APIURL == "http://127.0.0.1:9001" {
+		// Try Boltz first, fallback to mock if unavailable
+		boltzCfg := boltz.Config{
+			BaseURL: cfg.Boltz.APIURL,
+			WSURL:   cfg.Boltz.WSURL,
+			Network: cfg.Network,
+		}
+		boltzProvider, err := boltz.NewProvider(boltzCfg)
+		if err != nil {
+			log.Printf("Warning: Boltz provider unavailable, using mock: %v", err)
+			provider = mock.NewMockProvider()
+		} else {
+			log.Printf("Using Boltz provider at %s", cfg.Boltz.APIURL)
+			provider = boltzProvider
+			defer boltzProvider.Close()
+		}
+	} else {
+		// Mainnet/testnet: always use Boltz
+		boltzCfg := boltz.Config{
+			BaseURL: cfg.Boltz.APIURL,
+			WSURL:   cfg.Boltz.WSURL,
+			Network: cfg.Network,
+		}
+		boltzProvider, err := boltz.NewProvider(boltzCfg)
+		if err != nil {
+			log.Fatalf("Failed to create Boltz provider: %v", err)
+		}
+		log.Printf("Using Boltz provider at %s", cfg.Boltz.APIURL)
+		provider = boltzProvider
+		defer boltzProvider.Close()
+	}
 
 	// Initialize swap engine
 	swapEngine := swap.NewEngine(database)
