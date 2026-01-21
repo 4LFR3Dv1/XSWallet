@@ -1,75 +1,123 @@
-# XS Wallet Core
+# XS Wallet
 
-## 🚀 Visão Geral
-**XS Wallet** é uma engine de carteira **Atomic Swap** de alta performance e auto-custodial, escrita em Go.
-Atua como o backend autoritativo para clientes multiplataforma (Desktop Electron & Mobile React Native), garantindo lógica consistente, segurança e gestão de estado em todos os dispositivos.
+**Self-Custody Desktop Wallet** - Atomic Swaps entre BTC, Liquid e Lightning Network
 
-## 🏗 Arquitetura
-O projeto segue estritamente a **Clean Architecture**:
+[![Status](https://img.shields.io/badge/Status-Em%20Desenvolvimento-yellow)]()
+[![Spec](https://img.shields.io/badge/Spec-v0.2.0-blue)]()
+[![Go](https://img.shields.io/badge/Go-1.21+-00ADD8?logo=go)]()
 
-- **Go Core (`xscore`)**: O cérebro. Gerencia máquinas de estado, criptografia, transações de banco de dados e rede P2P. Executa como um processo *sidecar*.
-- **Agnóstico de Frontend**: Comunica-se com UIs via **gRPC**, permitindo frontends intercambiáveis.
-- **Integridade de Dados**: Utiliza **SQLite em modo WAL** com **Optimistic Locking (CAS)** para garantir consistência de estado mesmo durante falhas ou ações simultâneas de usuários.
-- **Segurança**: Chaves sensíveis são criptografadas em repouso usando **Argon2id** e **AES-256-GCM**.
+## 📋 Visão Geral
 
-## ⚡ Status Atual: MVP Fase 1 Concluído
-Implementamos com sucesso a integração do **Boltz Client v2** com padrões de confiabilidade de produção:
+XS Wallet é uma aplicação desktop self-custody que permite atomic swaps usando Taproot e boltz-backend (self-hosted). Projetada com princípios de **Zero Trust** e **Crash Recovery**.
 
-### ✅ Features de Produção Implementadas
-*   **Rede Resiliente**: Cliente HTTP com *exponential backoff*, tratamento de *rate limit* (`Retry-After`) e prevenção de vazamento de recursos.
-*   **Atualizações em Tempo Real**: Cliente WebSocket com padrão **Single-Writer** (tratamento seguro de concorrência) e **Gap Recovery** automático (busca estados perdidos via REST após reconexão).
-*   **Corretude**: Adesão estrita ao Ciclo de Vida do Boltz para swaps **Submarine**, **Reverse**, e **Chain**.
-*   **Tratamento Polimórfico**: Manipulação robusta de tipos complexos do Boltz (ex: `minerFees` e `timeouts` polimórficos).
+### Status Atual
 
-### 🔜 Próximos Passos (Em Progresso)
-1.  **Engine de Idempotência**: Implementação de padrões `INSERT OR IGNORE` para garantir retries seguros em operações de funding e claim.
-2.  **LND/Liquid Adapters**: Conexão da lógica de swap com as chains reais para execução.
-3.  **Testes End-to-End**: Validação do ciclo completo em ambiente Regtest.
+| Componente | Status |
+|------------|--------|
+| Go Core (xscore) | ✅ Implementado |
+| Boltz HTTP/WS Client | ✅ Production-Ready |
+| Status Normalization | ✅ Implementado |
+| Swap Engine (CAS) | ✅ Base Implementada |
+| Vault (Argon2id + AES-GCM) | ✅ Implementado |
+| Submarine Swap | ⚠️ Parcial (falta Auto-Lock) |
+| Reverse/Chain Swap | ⏳ Pendente |
+| MuSig2 | ⏳ Pendente |
+| LND/elementsd Adapters | ⏳ Pendente |
+| Electron/IPC | ⏳ Pendente |
 
-## 🛠 Tech Stack
-- **Linguagem**: Go 1.25+
-- **Comunicação**: gRPC (Protobuf)
-- **Banco de Dados**: SQLite3 (moderno, embarcado)
-- **Provedor de Swap**: Boltz API v2
-- **Testes**: Regtest baseado em Docker (Bitcoind + Elementsd)
+## 🏗️ Arquitetura
 
-## 🏃‍♂️ Como Executar
+```
+┌─────────────────────────────────────────────────┐
+│              XS Wallet Desktop                  │
+├──────────────────┬──────────────────────────────┤
+│  Electron (IPC)  │     Go Core (xscore)         │
+│  ├─ React UI     │     ├─ Swap Engine           │
+│  └─ Preload      │     ├─ SQLite WAL            │
+│                  │     ├─ Boltz Client          │
+│                  │     └─ gRPC Server           │
+├──────────────────┴──────────────────────────────┤
+│              RPC Adapters                        │
+│  ├─ LND (gRPC)   └─ elementsd (JSON-RPC)        │
+└─────────────────────────────────────────────────┘
+         │
+         ▼
+┌─────────────────────────┐
+│  boltz-backend          │
+│  (self-hosted)          │
+└─────────────────────────┘
+```
 
-### Pré-requisitos
-- Go 1.25+
-- Docker (para ambiente local Regtest)
-- Git
+## 📁 Estrutura do Projeto
 
-### Build do Core
+```
+XS WALLET/
+├── core/                  # Go Core (xscore)
+│   ├── cmd/xscore/        # Entry point
+│   ├── internal/
+│   │   ├── boltz/         # HTTP/WS client + status.go
+│   │   ├── swap/          # Engine, orchestrators
+│   │   ├── vault/         # Argon2id + AES-GCM
+│   │   └── db/            # SQLite WAL
+│   └── proto/             # Generated gRPC
+├── frontend/              # React + Vite
+├── api-bridge/            # HTTP bridge (dev/debug)
+├── boltz-backend/         # Swap orchestrator
+├── proto/                 # Proto definitions
+├── docs/                  # Especificação técnica
+└── test/                  # Regtest configs
+```
+
+## 🚀 Quick Start
+
+### 1. Go Core
 ```bash
 cd core
 go build ./cmd/xscore
+./xscore.exe --network=regtest --port=9735
 ```
 
-### Rodar Testes
-O projeto inclui uma suíte de testes abrangente (Unitários + E2E):
-
+### 2. API Bridge (dev only)
 ```bash
-cd core
-# Rodar Testes Unitários (incluindo novos testes do cliente Boltz)
-go test -v ./internal/boltz/...
-
-# Iniciar Ambiente Regtest
-docker compose -f test/regtest/docker-compose.yml up -d
-
-# Rodar Testes de Integração
-go test -v ./test/e2e/...
+cd api-bridge
+npm install && npm start
 ```
 
-## 📂 Estrutura do Projeto
+### 3. Frontend
+```bash
+cd frontend
+npm install && npm run dev
 ```
-core/
-├── cmd/xscore/       # Entrypoint do Daemon
-├── internal/
-│   ├── boltz/        # Cliente API Boltz (Pronto para Produção)
-│   ├── swap/         # Máquina de Estado & Engine de Swap
-│   ├── provider/     # Interfaces de Provider
-│   └── db/           # Camada de Banco de Dados
-├── proto/            # Definições gRPC
-└── test/             # Ferramentas E2E & Regtest
-```
+
+## 📅 Roadmap (10 semanas)
+
+| Fase | Semana | Entregas |
+|------|--------|----------|
+| 1. Core Fixes | 1-2 | QuoteSwap fix, schema unificado, preimage encrypted |
+| 2. Swap Protocol | 3-4 | Auto-Lock, Reverse, Chain, MuSig2 |
+| 3. Node Adapters | 5-6 | LND, elementsd, Node Manager |
+| 4. Electron | 7-8 | Main process, IPC, frontend migration |
+| 5. Tx Management | 9 | RBF/CPFP |
+| 6. Packaging | 10 | Installers, code signing, E2E |
+
+## 📚 Documentação
+
+- **Especificação Técnica**: [`docs/XS_Wallet_Especificacao_Tecnica_v2.html`](docs/XS_Wallet_Especificacao_Tecnica_v2.html)
+- **Status vs Spec**: [`docs/STATUS_ESPECIFICACAO_XS_WALLET.md`](docs/STATUS_ESPECIFICACAO_XS_WALLET.md)
+- **Plano de Implementação**: [`docs/PLANO_IMPLEMENTACAO_v0.2.md`](docs/PLANO_IMPLEMENTACAO_v0.2.md)
+
+## ⚠️ Notas Importantes
+
+> **Backup Obrigatório**: O mnemônico restaura apenas chaves. Swaps pendentes (reverse/chain) requerem backup do DB criptografado - a preimage R não é derivável do mnemônico.
+
+## 🔧 Tecnologias
+
+- **Backend**: Go 1.21+, gRPC, SQLite WAL
+- **Criptografia**: Argon2id (64MB/3iter), AES-256-GCM
+- **Frontend**: React, Vite, Electron (em migração)
+- **Swap Provider**: boltz-backend (self-hosted)
+
+---
+
+*XS Wallet v0.2.0 - Janeiro 2026*  
+*Self-Custody • Zero Trust • Don't Trust, Verify*

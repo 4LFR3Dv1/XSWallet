@@ -1,0 +1,1626 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>XS Wallet - Especificação Técnica</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+        :root {
+            --text: #1a1a1a;
+            --text-secondary: #4a4a4a;
+            --bg: #ffffff;
+            --border: #e5e5e5;
+            --accent: #2563eb;
+            --code-bg: #f5f5f5;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            font-size: 10pt;
+            line-height: 1.6;
+            color: var(--text);
+            background: var(--bg);
+            max-width: 210mm;
+            margin: 0 auto;
+            padding: 20mm;
+        }
+
+        h1 {
+            font-size: 20pt;
+            font-weight: 700;
+            margin: 24pt 0 12pt;
+            border-bottom: 2px solid var(--text);
+            padding-bottom: 6pt;
+        }
+
+        h2 {
+            font-size: 14pt;
+            font-weight: 600;
+            margin: 18pt 0 8pt;
+            color: var(--text);
+        }
+
+        h3 {
+            font-size: 11pt;
+            font-weight: 600;
+            margin: 12pt 0 6pt;
+        }
+
+        p {
+            margin-bottom: 8pt;
+            text-align: justify;
+        }
+
+        .cover {
+            text-align: center;
+            page-break-after: always;
+            padding-top: 100pt;
+        }
+
+        .cover h1 {
+            font-size: 32pt;
+            border: none;
+            margin-bottom: 8pt;
+        }
+
+        .cover .subtitle {
+            font-size: 14pt;
+            color: var(--text-secondary);
+            margin-bottom: 40pt;
+        }
+
+        .cover .meta {
+            margin-top: 60pt;
+        }
+
+        .cover .meta table {
+            margin: 0 auto;
+            text-align: left;
+        }
+
+        .toc {
+            page-break-after: always;
+        }
+
+        .toc ul {
+            list-style: none;
+        }
+
+        .toc li {
+            padding: 3pt 0;
+        }
+
+        .toc .l2 {
+            padding-left: 20pt;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 12pt 0;
+            font-size: 9pt;
+        }
+
+        th,
+        td {
+            border: 1px solid var(--border);
+            padding: 6pt 8pt;
+            text-align: left;
+            vertical-align: top;
+        }
+
+        th {
+            background: #f0f0f0;
+            font-weight: 600;
+        }
+
+        .caption {
+            font-size: 9pt;
+            font-style: italic;
+            color: var(--text-secondary);
+            text-align: center;
+            margin: 4pt 0 16pt;
+        }
+
+        code {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 8pt;
+            background: var(--code-bg);
+            padding: 2pt 4pt;
+            border-radius: 2pt;
+        }
+
+        pre {
+            background: var(--code-bg);
+            padding: 12pt;
+            border-radius: 4pt;
+            overflow-x: auto;
+            margin: 8pt 0;
+            font-size: 8pt;
+            line-height: 1.4;
+        }
+
+        pre code {
+            background: none;
+            padding: 0;
+        }
+
+        .note {
+            background: #fef3c7;
+            border-left: 3px solid #f59e0b;
+            padding: 8pt 12pt;
+            margin: 12pt 0;
+            font-size: 9pt;
+        }
+
+        .diagram {
+            background: #fafafa;
+            border: 1px solid var(--border);
+            border-radius: 4pt;
+            padding: 16pt;
+            margin: 12pt 0;
+            text-align: center;
+        }
+
+        .mermaid {
+            background: transparent !important;
+        }
+
+        .page-break {
+            page-break-before: always;
+        }
+
+        @media print {
+            body {
+                padding: 15mm;
+            }
+
+            .page-break {
+                page-break-before: always;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- CAPA -->
+    <div class="cover">
+        <h1>XS WALLET</h1>
+        <div class="subtitle">Especificação Técnica</div>
+        <p>Carteira HD + Atomic Swaps - Aplicação Desktop</p>
+
+        <div class="meta">
+            <table>
+                <tr>
+                    <th>Documento</th>
+                    <td>Especificação Técnica</td>
+                </tr>
+                <tr>
+                    <th>Versão</th>
+                    <td>0.2.0</td>
+                </tr>
+                <tr>
+                    <th>Status</th>
+                    <td>Fase 1 Completa - Boltz Client Production-Ready</td>
+                </tr>
+                <tr>
+                    <th>Data</th>
+                    <td>Janeiro 2026</td>
+                </tr>
+                <tr>
+                    <th>Público-Alvo</th>
+                    <td>Desenvolvedores, Arquitetos, Auditores</td>
+                </tr>
+                <tr>
+                    <th>Backend</th>
+                    <td>Go Core (xscore) com gRPC</td>
+                </tr>
+                <tr>
+                    <th>Swap Provider</th>
+                    <td>boltz-backend (self-hosted)</td>
+                </tr>
+            </table>
+        </div>
+    </div>
+
+    <!-- ÍNDICE -->
+    <div class="toc">
+        <h1>Índice</h1>
+        <ul>
+            <li>1. Sumário Executivo</li>
+            <li>2. Arquitetura do Sistema</li>
+            <li class="l2">2.1 Visão Geral dos Componentes</li>
+            <li class="l2">2.2 Modelo de Processos</li>
+            <li class="l2">2.3 Fluxo de Dados</li>
+            <li>3. Especificação do Banco de Dados</li>
+            <li class="l2">3.1 Design do Schema</li>
+            <li class="l2">3.2 Definições de Tabelas</li>
+            <li class="l2">3.3 Modelo de Concorrência</li>
+            <li>4. Protocolo de Atomic Swap</li>
+            <li class="l2">4.1 Submarine Swap</li>
+            <li class="l2">4.2 Reverse Swap</li>
+            <li class="l2">4.3 Chain Swap</li>
+            <li class="l2">4.4 Máquina de Estados</li>
+            <li>5. Especificações Criptográficas</li>
+            <li>6. Gerenciamento de Nodes</li>
+            <li>7. Modelo de Segurança</li>
+            <li>8. Especificações de API</li>
+            <li>9. Roadmap de Implementação</li>
+        </ul>
+    </div>
+
+    <!-- 1. SUMÁRIO EXECUTIVO -->
+    <div class="page-break">
+        <h1>1. Sumário Executivo</h1>
+
+        <p><strong>XS Wallet</strong> é uma aplicação desktop self-custody que permite atomic swaps entre Bitcoin (BTC),
+            Liquid (L-BTC) e Lightning Network (LN) usando Taproot e boltz-backend (self-hosted) como orquestrador de
+            swap
+            com nossa liquidez. O sistema mantém verdadeira auto-custódia enquanto fornece swaps cross-chain e
+            cross-layer
+            sem exigir que usuários operem sua própria infraestrutura de swap.</p>
+
+        <h2>1.1 Capacidades Core</h2>
+
+        <table>
+            <tr>
+                <th>Capacidade</th>
+                <th>Implementação</th>
+                <th>Status</th>
+            </tr>
+            <tr>
+                <td>Go Core (xscore)</td>
+                <td>Backend autoritativo em Go com gRPC</td>
+                <td>✓ Implementado</td>
+            </tr>
+            <tr>
+                <td>Boltz HTTP Client</td>
+                <td>Retry/backoff, Retry-After, erros tipados</td>
+                <td>✓ Production-Ready</td>
+            </tr>
+            <tr>
+                <td>Boltz WebSocket</td>
+                <td>Single-writer, gap-recovery, connCtx</td>
+                <td>✓ Production-Ready</td>
+            </tr>
+            <tr>
+                <td>Status Normalization</td>
+                <td>Table-driven por tipo (boltz/status.go)</td>
+                <td>✓ Implementado</td>
+            </tr>
+            <tr>
+                <td>Swap Engine</td>
+                <td>CAS, 14 estados, idempotência</td>
+                <td>✓ Base Implementada</td>
+            </tr>
+            <tr>
+                <td>Submarine Swap</td>
+                <td>Quote, Create, Lock, Commit</td>
+                <td>⚠ Parcial (falta Auto-Lock)</td>
+            </tr>
+            <tr>
+                <td>Reverse/Chain Swap</td>
+                <td>Orchestrators completos</td>
+                <td>⏳ Pendente</td>
+            </tr>
+            <tr>
+                <td>MuSig2</td>
+                <td>Assinatura parcial + script-path fallback</td>
+                <td>⏳ Pendente</td>
+            </tr>
+            <tr>
+                <td>HD Wallet</td>
+                <td>Derivação BIP39/32/84/85</td>
+                <td>✓ Implementado</td>
+            </tr>
+            <tr>
+                <td>Vault Criptografia</td>
+                <td>Argon2id + AES-256-GCM</td>
+                <td>✓ Implementado</td>
+            </tr>
+            <tr>
+                <td>Preimage Encrypted</td>
+                <td>R criptografada no vault</td>
+                <td>⏳ Pendente</td>
+            </tr>
+            <tr>
+                <td>LND Adapter</td>
+                <td>gRPC client</td>
+                <td>⏳ Pendente</td>
+            </tr>
+            <tr>
+                <td>elementsd Adapter</td>
+                <td>JSON-RPC client</td>
+                <td>⏳ Pendente</td>
+            </tr>
+            <tr>
+                <td>Electron/IPC</td>
+                <td>Main process + IPC bridge</td>
+                <td>⏳ Pendente</td>
+            </tr>
+        </table>
+        <div class="caption">Tabela 1.1: Matriz de Capacidades Core</div>
+
+        <h2>1.2 Princípios de Design</h2>
+
+        <p><strong>Auto-Custódia</strong>: Usuário controla todas as chaves privadas; nenhum servidor detém fundos ou
+            autoridade de assinatura.</p>
+        <p><strong>Zero Trust</strong>: Todos os dados externos (respostas Boltz, dados de nodes) são verificados
+            localmente antes do uso.</p>
+        <p><strong>Crash Recovery</strong>: Todos os estados de swap são persistidos com operações idempotentes; swaps
+            podem resumir após qualquer falha.</p>
+        <p><strong>Restauração</strong>: Chaves de assinatura são restauradas deterministicamente via mnemônico (BIP85).
+            <strong>Swaps pendentes requerem backup do DB criptografado</strong> (preimage R não é derivável).
+        </p>
+
+        <div class="note" style="background: #fef3c7; border-color: #f59e0b;">
+            <strong>⚠️ IMPORTANTE:</strong> O backup do banco de dados é <strong>obrigatório</strong> para recuperar
+            swaps pendentes em reverse/chain. Sem o backup, fundos podem ser perdidos se a preimage R for perdida
+            antes do claim.
+        </div>
+    </div>
+
+    <!-- 2. ARQUITETURA -->
+    <div class="page-break">
+        <h1>2. Arquitetura do Sistema</h1>
+
+        <h2>2.1 Visão Geral dos Componentes</h2>
+
+        <p>O sistema é estruturado com Go Core (xscore) como backend autoritativo comunicando via gRPC com o frontend
+            Electron. O swap orchestrator é o boltz-backend self-hosted com nossa liquidez. Esta arquitetura garante
+            isolamento de falhas e operações de swap podem continuar mesmo se a UI reiniciar.</p>
+
+        <div class="diagram">
+            <div class="mermaid">
+                graph TB
+                subgraph Desktop["Aplicação Desktop XS Wallet"]
+                subgraph Frontend["Frontend Electron"]
+                F1[React UI]
+                F2[IPC Bridge]
+                end
+
+                subgraph GoCore["Go Core xscore"]
+                G1[Swap Engine]
+                G2[Database SQLite WAL]
+                G3[Boltz Client HTTP/WS]
+                G4[gRPC Server]
+                end
+
+                subgraph Adapters["RPC Adapters"]
+                A1[LND Adapter gRPC]
+                A2[elementsd Adapter JSON-RPC]
+                end
+
+                subgraph Nodes["Nodes Locais"]
+                N1[LND]
+                N2[elementsd]
+                end
+                end
+
+                Frontend <-->|gRPC| GoCore
+                    GoCore --> Adapters
+                    A1 <-->|gRPC| N1
+                        A2 <-->|JSON-RPC| N2
+                            G3 <-->|HTTPS/WSS| Boltz[boltz-backend self-hosted]
+
+                                style Frontend fill:#00DACC,color:#000
+                                style GoCore fill:#F7931A,color:#fff
+                                style Adapters fill:#7B3FF2,color:#fff
+                                style Nodes fill:#00FF88,color:#000
+                                style Boltz fill:#2563eb,color:#fff
+            </div>
+        </div>
+        <div class="caption">Figura 2.1: Diagrama de Arquitetura do Sistema</div>
+
+        <h2>2.2 Modelo de Processos</h2>
+
+        <table>
+            <tr>
+                <th>Processo</th>
+                <th>Função</th>
+                <th>Benefício de Isolamento</th>
+            </tr>
+            <tr>
+                <td>Go Core (xscore)</td>
+                <td>Swap engine, database, adapters, Boltz client</td>
+                <td>Backend autoritativo isolado; crash-safe</td>
+            </tr>
+            <tr>
+                <td>Electron Frontend</td>
+                <td>React UI, comunicação gRPC com backend</td>
+                <td>UI isolada; pode reiniciar sem afetar swaps</td>
+            </tr>
+            <tr>
+                <td>boltz-backend</td>
+                <td>Orquestrador de swap self-hosted, nossa liquidez</td>
+                <td>Controle total; sem dependência de terceiros</td>
+            </tr>
+            <tr>
+                <td>LND</td>
+                <td>Lightning Network daemon (servidor gRPC)</td>
+                <td>Processo separado; autenticação macaroon</td>
+            </tr>
+            <tr>
+                <td>elementsd</td>
+                <td>Liquid/Elements node (servidor JSON-RPC)</td>
+                <td>Processo separado; datadir próprio</td>
+            </tr>
+        </table>
+        <div class="caption">Tabela 2.1: Modelo de Processos</div>
+
+        <h2>2.3 Fluxo de Dados</h2>
+
+        <p>Todas as operações iniciadas pelo usuário fluem através do gRPC para o Go Core. O backend
+            mantém estado autoritativo no SQLite e coordena com chain adapters e boltz-backend (self-hosted) via
+            REST/WS.
+            <strong>Invariante crítico: eventos WebSocket do boltz-backend são apenas triggers; estado on-chain/LND é
+                sempre verificado antes de agir.</strong>
+        </p>
+    </div>
+
+    <!-- 3. BANCO DE DADOS -->
+    <div class="page-break">
+        <h1>3. Especificação do Banco de Dados</h1>
+
+        <h2>3.1 Design do Schema</h2>
+
+        <p>O banco de dados usa SQLite com Write-Ahead Logging (WAL) para concorrência otimizada de leitura/escrita.
+            Todas as mutações de estado de swap usam Compare-And-Swap (CAS) com locking otimista baseado em versão para
+            prevenir race conditions sem bloquear queries.</p>
+
+        <h3>3.1.1 Pragmas Críticos</h3>
+
+        <table>
+            <tr>
+                <th>Pragma</th>
+                <th>Valor</th>
+                <th>Justificativa</th>
+            </tr>
+            <tr>
+                <td>journal_mode</td>
+                <td>WAL</td>
+                <td>Leituras concorrentes durante escritas; crash recovery</td>
+            </tr>
+            <tr>
+                <td>synchronous</td>
+                <td>NORMAL</td>
+                <td>Balanço durabilidade/performance (seguro com WAL)</td>
+            </tr>
+            <tr>
+                <td>busy_timeout</td>
+                <td>5000</td>
+                <td>Espera 5s por locks; previne "database is locked"</td>
+            </tr>
+            <tr>
+                <td>foreign_keys</td>
+                <td>ON</td>
+                <td>Força integridade referencial</td>
+            </tr>
+            <tr>
+                <td>temp_store</td>
+                <td>MEMORY</td>
+                <td>Tabelas temporárias em RAM para performance</td>
+            </tr>
+            <tr>
+                <td>cache_size</td>
+                <td>-20000</td>
+                <td>Cache de ~20MB de páginas</td>
+            </tr>
+        </table>
+        <div class="caption">Tabela 3.1: Pragmas SQLite</div>
+
+        <h2>3.2 Definições de Tabelas</h2>
+
+        <h3>3.2.1 swaps - Estado Autoritativo do Swap</h3>
+
+        <table>
+            <tr>
+                <th>Coluna</th>
+                <th>Tipo</th>
+                <th>Constraints</th>
+                <th>Descrição</th>
+            </tr>
+            <tr>
+                <td>id</td>
+                <td>TEXT</td>
+                <td>PRIMARY KEY</td>
+                <td>Identificador único do swap (UUID)</td>
+            </tr>
+            <tr>
+                <td>kind</td>
+                <td>TEXT</td>
+                <td>CHECK(IN submarine,reverse,chain)</td>
+                <td>Tipo de swap</td>
+            </tr>
+            <tr>
+                <td>version</td>
+                <td>INTEGER</td>
+                <td>NOT NULL DEFAULT 0</td>
+                <td>Versão CAS para locking otimista</td>
+            </tr>
+            <tr>
+                <td>state</td>
+                <td>TEXT</td>
+                <td>CHECK(IN open,locked,...)</td>
+                <td>Estado atual da máquina de estados</td>
+            </tr>
+            <tr>
+                <td>locked_intent</td>
+                <td>TEXT (JSON)</td>
+                <td>NOT NULL quando state != open</td>
+                <td>Snapshot imutável de quote/fees</td>
+            </tr>
+            <tr>
+                <td>swap_key_index</td>
+                <td>INTEGER</td>
+                <td>NOT NULL</td>
+                <td>Índice de derivação BIP85</td>
+            </tr>
+            <tr>
+                <td>preimage_hash_hex</td>
+                <td>TEXT</td>
+                <td>CHECK(length=64)</td>
+                <td>Hash SHA256 da preimage R</td>
+            </tr>
+            <tr>
+                <td>musig_session_id</td>
+                <td>TEXT</td>
+                <td></td>
+                <td>Identificador de sessão MuSig2</td>
+            </tr>
+        </table>
+        <div class="caption">Tabela 3.2: Tabela swaps (parcial - 40+ colunas total)</div>
+
+        <div class="note">
+            <strong>Invariante:</strong> Quando state não está em (open, failed, canceled), o campo locked_intent DEVE
+            ser não-nulo. Isso é enforçado via CHECK constraint e garante que todo swap ativo tenha um registro imutável
+            dos parâmetros acordados.
+        </div>
+
+        <h3>3.2.2 Tabelas de Suporte</h3>
+
+        <table>
+            <tr>
+                <th>Tabela</th>
+                <th>Chave Primária</th>
+                <th>Propósito</th>
+            </tr>
+            <tr>
+                <td>swap_events</td>
+                <td>seq (AUTOINCREMENT)</td>
+                <td>Log de auditoria imutável; permite replay/debug</td>
+            </tr>
+            <tr>
+                <td>swap_ops</td>
+                <td>(swap_id, op_key)</td>
+                <td>Ledger de operações idempotentes; previne broadcasts duplicados</td>
+            </tr>
+            <tr>
+                <td>utxo_reservations</td>
+                <td>(chain, txid, vout)</td>
+                <td>Previne double-spend de UTXO entre swaps</td>
+            </tr>
+            <tr>
+                <td>ln_reservations</td>
+                <td>payment_hash_hex</td>
+                <td>Previne pagamentos LN duplicados</td>
+            </tr>
+            <tr>
+                <td>app_config</td>
+                <td>key</td>
+                <td>Configuração do usuário; snapshot capturado em locked_intent</td>
+            </tr>
+        </table>
+        <div class="caption">Tabela 3.3: Tabelas de Suporte</div>
+
+        <h2>3.3 Modelo de Concorrência</h2>
+
+        <p>Todas as transições de estado usam Compare-And-Swap (CAS) com transações atômicas:</p>
+
+        <pre><code>-- Padrão de Update CAS
+UPDATE swaps
+SET state = 'locked',
+    version = version + 1,
+    updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now'),
+    locked_intent = ?
+WHERE id = ? AND version = ? AND state = 'open'
+RETURNING version, state;
+
+-- Se RETURNING está vazio: mismatch de versão (modificação concorrente)
+-- Aplicação deve recarregar e tentar novamente ou abortar</code></pre>
+        <div class="caption">Listagem 3.1: Padrão de Update CAS</div>
+    </div>
+
+    <!-- 4. PROTOCOLO DE SWAP -->
+    <div class="page-break">
+        <h1>4. Protocolo de Atomic Swap</h1>
+
+        <h2>4.1 Submarine Swap (On-chain → Lightning)</h2>
+
+        <p>Submarine swaps convertem fundos on-chain (BTC ou L-BTC) para capacidade Lightning. O usuário bloqueia fundos
+            em um HTLC P2TR; Boltz paga a invoice LN do usuário e clama o HTLC usando a preimage revelada.</p>
+
+        <div class="diagram">
+            <div class="mermaid">
+                sequenceDiagram
+                participant U as Usuário
+                participant B as Boltz
+                participant C as Chain
+
+                U->>B: 1. POST /v2/swap/submarine
+                Note over U,B: {invoice, refundPubkey}
+                B->>U: 2. {address, swapTree, claimPubkey, timeouts}
+
+                Note over U: 3. VERIFICAR: Rebuild P2TR<br />address do swapTree
+
+                U->>C: 4. Financiar HTLC
+                C->>B: 5. Detectar funding
+
+                B->>B: 6. Pagar invoice LN<br />(obtém preimage R)
+                B->>C: 7. Claim HTLC (revela R)
+
+                B->>U: 8. WS: swap.update {completed}
+            </div>
+        </div>
+        <div class="caption">Figura 4.1: Sequência de Submarine Swap</div>
+
+        <h2>4.2 Reverse Swap (Lightning → On-chain)</h2>
+
+        <p>Reverse swaps convertem saldo Lightning para fundos on-chain. O usuário gera preimage R e hash H=SHA256(R),
+            paga uma hold invoice Boltz, e clama o HTLC on-chain revelando R.</p>
+
+        <div class="diagram">
+            <div class="mermaid">
+                sequenceDiagram
+                participant U as Usuário
+                participant B as Boltz
+                participant C as Chain
+
+                Note over U: 1. Gerar R, H=SHA256(R)
+
+                U->>B: 2. POST /v2/swap/reverse
+                Note over U,B: {preimageHash, claimPubkey}
+                B->>U: 3. {invoice, lockupAddress, swapTree, timeouts}
+
+                Note over U: 4. VERIFICAR: invoice hash == H<br />VERIFICAR: endereço P2TR
+
+                U->>B: 5. Pagar hold invoice
+                B->>C: 6. Financiar on-chain HTLC
+
+                B->>U: 7. WS: lockup confirmado
+                U->>C: 8. Claim HTLC (revela R)
+                C->>B: 9. Liquidar invoice (usa R)
+            </div>
+        </div>
+        <div class="caption">Figura 4.2: Sequência de Reverse Swap</div>
+
+        <h2>4.3 Chain Swap (BTC ↔ Liquid)</h2>
+
+        <p>Chain swaps são swaps atômicos cross-chain entre mainchain Bitcoin e sidechain Liquid. Timeouts são
+            escalonados (T_liquid &lt; T_btc) para prevenir race conditions.</p>
+
+        <div class="diagram">
+            <div class="mermaid">
+                sequenceDiagram
+                participant U as Usuário
+                participant B as Boltz
+                participant BTC as Bitcoin
+                participant LQ as Liquid
+
+                Note over U: 1. Gerar R, H=SHA256(R)
+
+                U->>B: 2. POST /v2/swap/chain {BTC→Liquid}
+                B->>U: 3. {btcAddress, liquidAddress, timeouts}
+
+                Note over U: 4. VERIFICAR ambos HTLCs
+
+                U->>BTC: 5. Financiar HTLC BTC
+                B->>LQ: 6. Financiar HTLC Liquid
+
+                U->>LQ: 7. Claim Liquid (revela R)
+                B->>BTC: 8. Claim BTC (usa R)
+            </div>
+        </div>
+        <div class="caption">Figura 4.3: Sequência de Chain Swap</div>
+
+        <h2>4.4 Máquina de Estados</h2>
+
+        <div class="diagram">
+            <div class="mermaid">
+                stateDiagram-v2
+                [*] --> open
+                open --> locked: lock_quote
+                open --> canceled: cancel
+
+                locked --> commit_started: broadcast_funding
+                locked --> canceled: cancel_before_commit
+
+                commit_started --> waiting: funding_confirmed
+                commit_started --> failed: funding_failed
+
+                waiting --> waiting_claim_details: claim_ready
+                waiting --> refund_coop_waiting: timeout_approaching
+
+                waiting_claim_details --> signing_musig2_partial: start_signing
+                signing_musig2_partial --> sent_partial_to_provider: send_partial
+                sent_partial_to_provider --> waiting_provider_broadcast: await_broadcast
+
+                waiting_provider_broadcast --> completed: claim_confirmed
+                waiting_provider_broadcast --> fallback_script_ready: coop_failed
+
+                refund_coop_waiting --> completed: refund_confirmed
+                refund_coop_waiting --> fallback_script_ready: coop_failed
+
+                fallback_script_ready --> refunding: broadcast_refund
+                fallback_script_ready --> completed: claim_success
+
+                refunding --> completed: refund_confirmed
+                refunding --> failed: refund_failed
+
+                completed --> [*]
+                failed --> [*]
+                canceled --> [*]
+            </div>
+        </div>
+        <div class="caption">Figura 4.4: Máquina de Estados do Swap</div>
+
+        <table>
+            <tr>
+                <th>Estado</th>
+                <th>Descrição</th>
+                <th>Transições</th>
+            </tr>
+            <tr>
+                <td>open</td>
+                <td>Estado inicial; quote aceito mas não bloqueado</td>
+                <td>locked | canceled</td>
+            </tr>
+            <tr>
+                <td>locked</td>
+                <td>Parâmetros bloqueados; intent imutável</td>
+                <td>commit_started | canceled</td>
+            </tr>
+            <tr>
+                <td>commit_started</td>
+                <td>Transação de funding broadcast</td>
+                <td>waiting | failed</td>
+            </tr>
+            <tr>
+                <td>waiting</td>
+                <td>Aguardando ação da contraparte</td>
+                <td>waiting_claim_details | refund_coop_waiting</td>
+            </tr>
+            <tr>
+                <td>signing_musig2_partial</td>
+                <td>Criando assinatura parcial MuSig2</td>
+                <td>sent_partial_to_provider</td>
+            </tr>
+            <tr>
+                <td>fallback_script_ready</td>
+                <td>Preparando claim/refund via script-path</td>
+                <td>refunding | completed</td>
+            </tr>
+            <tr>
+                <td>completed</td>
+                <td>Estado terminal de sucesso</td>
+                <td>(terminal)</td>
+            </tr>
+            <tr>
+                <td>failed</td>
+                <td>Estado terminal de falha</td>
+                <td>(terminal)</td>
+            </tr>
+        </table>
+        <div class="caption">Tabela 4.1: Máquina de Estados do Swap</div>
+    </div>
+
+    <!-- 5. CRIPTOGRAFIA -->
+    <div class="page-break">
+        <h1>5. Especificações Criptográficas</h1>
+
+        <h2>5.1 Hierarquia de Derivação de Chaves</h2>
+
+        <div class="diagram">
+            <div class="mermaid">
+                graph TD
+                A[Master Seed BIP39 - 24 palavras] --> B[BIP32 Master Key m]
+                B --> C[BIP84 Native SegWit Wallet]
+                B --> D[BIP85 Child Seed Swap Subtree]
+
+                C --> C1["m/84'/0'/0'/..."]
+                C1 --> C2[Endereços regulares da carteira]
+
+                D --> D1["m/0/index"]
+                D1 --> D2[Swap Key Pairs]
+                D2 --> D3["R = random 32 bytes CSPRNG"]
+                D3 --> D4["H = SHA256 R armazenado"]
+
+                style A fill:#F7931A,color:#fff
+                style D fill:#7B3FF2,color:#fff
+                style D3 fill:#00FF88,color:#000
+            </div>
+        </div>
+        <div class="caption">Figura 5.1: Hierarquia de Derivação de Chaves</div>
+
+        <h3>5.1.1 Geração de Preimage (CRÍTICO)</h3>
+
+        <div class="note" style="background: #fee2e2; border-color: #ef4444;">
+            <strong>⚠️ REQUISITO DE SEGURANÇA:</strong> A preimage R <strong>NÃO DEVE</strong> ser derivada de chaves
+            privadas.
+            Derivar de privateKey cria acoplamento perigoso e risco de correlação se qualquer dado vazar.
+        </div>
+
+        <table>
+            <tr>
+                <th>Componente</th>
+                <th>Especificação</th>
+            </tr>
+            <tr>
+                <td>Geração de R</td>
+                <td><code>R = crypto.randomBytes(32)</code> - CSPRNG do OS</td>
+            </tr>
+            <tr>
+                <td>Hash</td>
+                <td><code>H = SHA256(R)</code> - enviado ao provider</td>
+            </tr>
+            <tr>
+                <td>Armazenamento</td>
+                <td>R criptografado no vault junto com swap state</td>
+            </tr>
+            <tr>
+                <td>Restauração</td>
+                <td>Via backup do banco de dados; R não é derivável do mnemônico</td>
+            </tr>
+            <tr>
+                <td>Ciclo de vida</td>
+                <td>R zerado da memória após claim confirmado</td>
+            </tr>
+        </table>
+        <div class="caption">Tabela 5.0: Especificação de Preimage</div>
+
+        <p><strong>Restauração de swaps pendentes:</strong> O mnemônico permite derivar chaves de assinatura; a preimage
+            R é restaurada do backup do banco de dados criptografado.</p>
+
+        <h2>5.2 Criptografia do Vault</h2>
+
+        <table>
+            <tr>
+                <th>Parâmetro</th>
+                <th>Valor</th>
+                <th>Justificativa</th>
+            </tr>
+            <tr>
+                <td>KDF</td>
+                <td>Argon2id</td>
+                <td>Memory-hard; resistente a ataques GPU/ASIC</td>
+            </tr>
+            <tr>
+                <td>Memória</td>
+                <td>64 MB</td>
+                <td>Balanço segurança/performance para desktop</td>
+            </tr>
+            <tr>
+                <td>Iterações</td>
+                <td>3</td>
+                <td>Recomendação padrão</td>
+            </tr>
+            <tr>
+                <td>Paralelismo</td>
+                <td>1</td>
+                <td>Derivação single-threaded</td>
+            </tr>
+            <tr>
+                <td>Salt Length</td>
+                <td>16 bytes</td>
+                <td>Random por carteira</td>
+            </tr>
+            <tr>
+                <td>Cipher</td>
+                <td>AES-256-GCM</td>
+                <td>Criptografia autenticada</td>
+            </tr>
+            <tr>
+                <td>IV Length</td>
+                <td>12 bytes</td>
+                <td>Padrão GCM</td>
+            </tr>
+            <tr>
+                <td>Tag Length</td>
+                <td>16 bytes</td>
+                <td>Tag de autenticação completa</td>
+            </tr>
+        </table>
+        <div class="caption">Tabela 5.1: Parâmetros de Criptografia do Vault</div>
+
+        <div class="note">
+            <strong>Mitigação de Ataque Offline:</strong> Rate limiting (backoff exponencial) protege runtime mas não
+            roubo offline do banco de dados. Para proteção aprimorada, derivar chave final de PIN + device secret
+            armazenado no keychain do OS (Keychain/DPAPI/SecretService). MVP usa apenas PIN; device secret é v1.1.
+        </div>
+
+        <h2>5.3 Taproot + MuSig2 (Especificação Detalhada)</h2>
+
+        <p>HTLCs de swap usam P2TR (Pay-to-Taproot) com protocolo MuSig2 para assinatura cooperativa eficiente:</p>
+
+        <h3>5.3.1 Versão do Protocolo</h3>
+        <table>
+            <tr>
+                <th>Parâmetro</th>
+                <th>Valor</th>
+            </tr>
+            <tr>
+                <td>Protocolo Base</td>
+                <td>MuSig2 (BIP327 draft) - versão Boltz v2</td>
+            </tr>
+            <tr>
+                <td>Curva</td>
+                <td>secp256k1</td>
+            </tr>
+            <tr>
+                <td>Assinatura</td>
+                <td>BIP340 Schnorr</td>
+            </tr>
+            <tr>
+                <td>Número de Participantes</td>
+                <td>2 (usuário + provider)</td>
+            </tr>
+        </table>
+        <div class="caption">Tabela 5.2a: Versão do Protocolo MuSig2</div>
+
+        <h3>5.3.2 Agregação de Chaves</h3>
+        <table>
+            <tr>
+                <th>Componente</th>
+                <th>Especificação</th>
+            </tr>
+            <tr>
+                <td>Ordem de Agregação</td>
+                <td>Lexicográfica: sort([providerPubkey, userPubkey])</td>
+            </tr>
+            <tr>
+                <td>Key Aggregation</td>
+                <td>KeyAgg(L) conforme BIP327 §4.3</td>
+            </tr>
+            <tr>
+                <td>Tweak</td>
+                <td>Taproot tweak aplicado após agregação</td>
+            </tr>
+        </table>
+        <div class="caption">Tabela 5.2b: Agregação de Chaves</div>
+
+        <h3>5.3.3 Segurança de Nonce (CRÍTICO)</h3>
+        <div class="note" style="background: #fee2e2; border-color: #ef4444;">
+            <strong>⚠️ REUSO DE NONCE = PERDA DE FUNDOS:</strong> Um nonce reutilizado permite extração da chave
+            privada.
+        </div>
+        <table>
+            <tr>
+                <th>Componente</th>
+                <th>Especificação</th>
+            </tr>
+            <tr>
+                <td>Geração de Nonce</td>
+                <td><code>nonce = NonceGen(rand, sk, pk, msg, extra_in)</code> conforme BIP327 §4.1</td>
+            </tr>
+            <tr>
+                <td>Aux Randomness</td>
+                <td><code>rand = crypto.randomBytes(32)</code> - OBRIGATÓRIO para cada sessão</td>
+            </tr>
+            <tr>
+                <td>Session Binding</td>
+                <td>Nonce vinculado a (swapId, sessionId, txHash) - impede reuso</td>
+            </tr>
+            <tr>
+                <td>Persistência</td>
+                <td>secnonce + pubnonce salvos em musig_* antes de enviar pubnonce</td>
+            </tr>
+            <tr>
+                <td>Verificação</td>
+                <td>Antes de assinar: verificar que secnonce corresponde ao pubnonce enviado</td>
+            </tr>
+            <tr>
+                <td>Cleanup</td>
+                <td>secnonce zerado após assinatura parcial gerada</td>
+            </tr>
+        </table>
+        <div class="caption">Tabela 5.2c: Segurança de Nonce</div>
+
+        <h3>5.3.4 Fluxo de Assinatura</h3>
+        <pre><code>1. KeyAgg: Q = KeyAgg([P_provider, P_user])  // ordem lexicográfica
+2. NonceGen: (secnonce, pubnonce) = NonceGen(rand, sk, Q, msg, session_id)
+3. NonceAgg: R = NonceAgg([pubnonce_provider, pubnonce_user])
+4. Sign: psig = Sign(secnonce, sk, R, Q, msg)
+5. Verify: PartialSigVerify(psig, pubnonce_user, P_user, R, Q, msg)
+6. Aggregate: sig = PartialSigAgg([psig_provider, psig_user])
+7. Verify: Verify(sig, Q, msg)  // antes de broadcast</code></pre>
+        <div class="caption">Listagem 5.1: Fluxo de Assinatura MuSig2</div>
+
+        <h3>5.3.5 Fallback Script-Path</h3>
+        <table>
+            <tr>
+                <th>Condição</th>
+                <th>Script-Path Ação</th>
+            </tr>
+            <tr>
+                <td>Provider não responde (claim)</td>
+                <td>Claim via script-path com preimage R</td>
+            </tr>
+            <tr>
+                <td>Provider não coopera (refund)</td>
+                <td>Refund via script-path após timeout</td>
+            </tr>
+            <tr>
+                <td>Nonce/sessão corrompida</td>
+                <td>Abortar MuSig2, usar script-path</td>
+            </tr>
+        </table>
+        <div class="caption">Tabela 5.2d: Fallback Script-Path</div>
+    </div>
+
+    <!-- 6. NODES -->
+    <div class="page-break">
+        <h1>6. Gerenciamento de Nodes</h1>
+
+        <h2>6.1 Gerenciamento de Ciclo de Vida</h2>
+
+        <p>O Node Manager lida com verificação de binários, spawning, monitoramento de health, e shutdown graceful de
+            nodes embarcados. Cada node tem diretórios de dados isolados por rede.</p>
+
+        <p><strong>Nota:</strong> A aplicação trata LND (gRPC) e elementsd (JSON-RPC) como RPCs primários; bitcoind,
+            quando presente, é uma dependência do runtime e não uma integração primária do app.</p>
+
+        <table>
+            <tr>
+                <th>Node</th>
+                <th>Versão</th>
+                <th>Diretório de Dados</th>
+                <th>Health Check</th>
+                <th>Papel</th>
+            </tr>
+            <tr>
+                <td>LND</td>
+                <td>0.17.3</td>
+                <td>%APPDATA%/xs-wallet/nodes/lnd/{network}/</td>
+                <td>getinfo (gRPC)</td>
+                <td>RPC primário (on-chain BTC + LN via LND)</td>
+            </tr>
+            <tr>
+                <td>elementsd</td>
+                <td>23.2.1</td>
+                <td>%APPDATA%/xs-wallet/nodes/liquid/{network}/</td>
+                <td>getblockchaininfo (JSON-RPC)</td>
+                <td>RPC primário (Liquid/Elements)</td>
+            </tr>
+            <tr>
+                <td>bitcoind (opcional)</td>
+                <td>26.0</td>
+                <td>%APPDATA%/xs-wallet/nodes/btc/{network}/</td>
+                <td>getblockchaininfo (RPC)</td>
+                <td>Dependência do runtime (quando necessário pelo stack; não é RPC primário do app)</td>
+            </tr>
+        </table>
+        <div class="caption">Tabela 6.1: Especificações de Nodes</div>
+
+        <h2>6.2 Verificação de Binários</h2>
+
+        <p>Binários são baixados no primeiro uso de sources oficiais (GitHub Releases, bitcoincore.org) e verificados
+            usando checksums SHA256 de um manifest assinado.</p>
+
+        <h3>6.2.1 Especificação de Supply Chain</h3>
+        <table>
+            <tr>
+                <th>Componente</th>
+                <th>Especificação</th>
+            </tr>
+            <tr>
+                <td>Algoritmo de Assinatura</td>
+                <td>Ed25519 (manifest.sig)</td>
+            </tr>
+            <tr>
+                <td>Chave Pública</td>
+                <td>Pinned no binário da aplicação (src/constants/MANIFEST_PUBKEY)</td>
+            </tr>
+            <tr>
+                <td>Rotação de Chave</td>
+                <td>Nova chave anunciada via release N-1; aceita ambas por 2 releases</td>
+            </tr>
+            <tr>
+                <td>Manifest URL</td>
+                <td>https://github.com/xs-wallet/releases/latest/nodes-manifest.json</td>
+            </tr>
+            <tr>
+                <td>Fallback URLs</td>
+                <td>Espelhos: IPFS (ipfs://...) + backup CDN</td>
+            </tr>
+            <tr>
+                <td>Hash Algorithm</td>
+                <td>SHA256 (hex) para cada binário</td>
+            </tr>
+            <tr>
+                <td>Verificação</td>
+                <td>1) Verificar sig do manifest → 2) Verificar hash do binário → 3) Extrair</td>
+            </tr>
+        </table>
+        <div class="caption">Tabela 6.2: Especificação de Supply Chain</div>
+
+        <div class="note">
+            <strong>Cadeia de Confiança:</strong> Sem servidor central de custódia ou execução de swaps. Apenas
+            endpoints
+            públicos de distribuição (GitHub Releases, IPFS). Usuário pode verificar assinatura manualmente via CLI.
+        </div>
+    </div>
+
+    <!-- 7. SEGURANÇA -->
+    <div class="page-break">
+        <h1>7. Modelo de Segurança</h1>
+
+        <h2>7.1 Modelo de Ameaças</h2>
+
+        <table>
+            <tr>
+                <th>Ameaça</th>
+                <th>No Escopo</th>
+                <th>Mitigação</th>
+            </tr>
+            <tr>
+                <td>Roubo de seed (offline)</td>
+                <td>Sim</td>
+                <td>Argon2id + device secret (v1.1)</td>
+            </tr>
+            <tr>
+                <td>Brute force de PIN (runtime)</td>
+                <td>Sim</td>
+                <td>Backoff exponencial; lockout após 10 tentativas</td>
+            </tr>
+            <tr>
+                <td>Manipulação de swap</td>
+                <td>Sim</td>
+                <td>Verificação local de scripts; nunca confiar no provider</td>
+            </tr>
+            <tr>
+                <td>Ataque supply chain</td>
+                <td>Sim</td>
+                <td>Manifest assinado; verificação SHA256</td>
+            </tr>
+            <tr>
+                <td>Acesso físico ao dispositivo</td>
+                <td>Não (futuro)</td>
+                <td>Considerar suporte a hardware wallet</td>
+            </tr>
+            <tr>
+                <td>Comprometimento do OS (root)</td>
+                <td>Não</td>
+                <td>Fora de escopo; assume OS confiável</td>
+            </tr>
+        </table>
+        <div class="caption">Tabela 7.1: Modelo de Ameaças</div>
+
+        <h2>7.2 Verificação Criptográfica</h2>
+
+        <table>
+            <tr>
+                <th>Verificação</th>
+                <th>Quando</th>
+                <th>Ação em Falha</th>
+            </tr>
+            <tr>
+                <td>Rebuild endereço P2TR</td>
+                <td>Antes de financiar HTLC</td>
+                <td>Abortar swap; logar erro</td>
+            </tr>
+            <tr>
+                <td>Hash da invoice == hash da preimage</td>
+                <td>Antes de pagar hold invoice</td>
+                <td>Abortar swap; logar erro</td>
+            </tr>
+            <tr>
+                <td>Sanidade de timeout (T_liquid &lt; T_btc)</td>
+                <td>Antes de bloquear</td>
+                <td>Abortar swap; logar erro</td>
+            </tr>
+            <tr>
+                <td>Assinatura parcial MuSig2</td>
+                <td>Antes de enviar ao provider</td>
+                <td>Abortar; tentar script-path</td>
+            </tr>
+            <tr>
+                <td>Confirmação on-chain</td>
+                <td>Após broadcast claim/refund</td>
+                <td>Retry com fee mais alta</td>
+            </tr>
+        </table>
+        <div class="caption">Tabela 7.2: Pontos de Verificação</div>
+
+        <h2>7.3 Modelo de Confiança do Provider (boltz-backend self-hosted)</h2>
+
+        <p>Embora o sistema seja "self-custody", o provider (boltz-backend self-hosted) é um componente do stack e
+            atua como orquestrador de swaps, não como custodiante. Esta seção define explicitamente o que o provider
+            <strong>pode</strong> e <strong>não pode</strong> fazer:
+        </p>
+
+        <h3>7.3.1 O que o Provider NÃO PODE fazer</h3>
+        <table>
+            <tr>
+                <th>Ação</th>
+                <th>Motivo</th>
+            </tr>
+            <tr>
+                <td>Roubar fundos do usuário</td>
+                <td>HTLC exige preimage R (apenas usuário conhece em reverse swap) ou signature (apenas usuário possui
+                    chave)</td>
+            </tr>
+            <tr>
+                <td>Claim sem pagar</td>
+                <td>Submarine: preimage R só é revelada quando pagamento LN é recebido</td>
+            </tr>
+            <tr>
+                <td>Forjar scripts</td>
+                <td>Rebuild local do P2TR address; mismatch = swap abortado</td>
+            </tr>
+            <tr>
+                <td>Modificar termos após lock</td>
+                <td>locked_intent imutável no banco local</td>
+            </tr>
+        </table>
+        <div class="caption">Tabela 7.3: Ações que o Provider NÃO PODE executar</div>
+
+        <h3>7.3.2 O que o Provider PODE fazer</h3>
+        <table>
+            <tr>
+                <th>Ação</th>
+                <th>Impacto</th>
+                <th>Mitigação</th>
+            </tr>
+            <tr>
+                <td>Censurar/recusar swaps</td>
+                <td>Denial of service</td>
+                <td>Liveness; usar outro provider</td>
+            </tr>
+            <tr>
+                <td>Atrasar resposta</td>
+                <td>Forçar fallback script-path</td>
+                <td>Timeout detectado; script-path claim/refund</td>
+            </tr>
+            <tr>
+                <td>Não cooperar no MuSig2</td>
+                <td>Key-path indisponível</td>
+                <td>Script-path fallback automático</td>
+            </tr>
+            <tr>
+                <td>Ver metadados do swap</td>
+                <td>Privacidade reduzida</td>
+                <td>Aceitável para MVP; Tor em v1.2</td>
+            </tr>
+            <tr>
+                <td>Cobrar fees altas</td>
+                <td>Custo elevado</td>
+                <td>Quote mostrado antes de lock; usuário decide</td>
+            </tr>
+        </table>
+        <div class="caption">Tabela 7.4: Ações que o Provider PODE executar e mitigações</div>
+
+        <div class="note">
+            <strong>Invariante de Segurança:</strong> Em nenhum cenário o provider consegue roubar fundos. O pior caso é
+            denial of service
+            (forçar refund via script-path após timeout), resultando em perda de fees de mineração, não de fundos.
+        </div>
+
+        <h2>7.4 Electron Security Hardening</h2>
+
+        <p>O processo Renderer (Chromium) é a superfície de ataque mais exposta. Medidas de hardening:</p>
+
+        <table>
+            <tr>
+                <th>Configuração</th>
+                <th>Valor</th>
+                <th>Justificativa</th>
+            </tr>
+            <tr>
+                <td>contextIsolation</td>
+                <td>true</td>
+                <td>Isola preload script do contexto da página</td>
+            </tr>
+            <tr>
+                <td>nodeIntegration</td>
+                <td>false</td>
+                <td>Renderer não tem acesso direto a Node.js APIs</td>
+            </tr>
+            <tr>
+                <td>sandbox</td>
+                <td>true</td>
+                <td>Processo renderer em sandbox do Chromium</td>
+            </tr>
+            <tr>
+                <td>webSecurity</td>
+                <td>true</td>
+                <td>Enforce same-origin policy</td>
+            </tr>
+            <tr>
+                <td>allowRunningInsecureContent</td>
+                <td>false</td>
+                <td>Block mixed content</td>
+            </tr>
+        </table>
+        <div class="caption">Tabela 7.5: Configurações de Hardening do Electron</div>
+
+        <h3>7.4.1 IPC Security</h3>
+        <table>
+            <tr>
+                <th>Medida</th>
+                <th>Implementação</th>
+            </tr>
+            <tr>
+                <td>Whitelist de Canais</td>
+                <td>Apenas canais definidos em ALLOWED_CHANNELS são roteados</td>
+            </tr>
+            <tr>
+                <td>Validação de Payload</td>
+                <td>Zod schema validation em todos os payloads IPC</td>
+            </tr>
+            <tr>
+                <td>Rate Limiting</td>
+                <td>Máximo 100 mensagens/segundo por canal</td>
+            </tr>
+            <tr>
+                <td>Sanitização</td>
+                <td>DOMPurify para qualquer HTML renderizado</td>
+            </tr>
+        </table>
+        <div class="caption">Tabela 7.6: Segurança IPC</div>
+
+        <h2>7.5 Estratégia de Fees (RBF/CPFP)</h2>
+
+        <p>Transações on-chain podem ficar stuck em mempool congestionado. Políticas de aceleração:</p>
+
+        <table>
+            <tr>
+                <th>Situação</th>
+                <th>Ação</th>
+                <th>Trigger</th>
+            </tr>
+            <tr>
+                <td>Funding tx não confirma</td>
+                <td>RBF com fee estimation atualizada</td>
+                <td>Após 3 blocos sem confirmação</td>
+            </tr>
+            <tr>
+                <td>Claim tx não confirma</td>
+                <td>CPFP se necessário; RBF se possível</td>
+                <td>Após 2 blocos ou timeout &lt; 12 blocos</td>
+            </tr>
+            <tr>
+                <td>timeout_approaching</td>
+                <td>Acelerar claim; preparar refund path</td>
+                <td>Timeout &lt; 6 blocos</td>
+            </tr>
+            <tr>
+                <td>Refund tx não confirma</td>
+                <td>RBF agressivo (dobrar fee cada 2 blocos)</td>
+                <td>Timeout &lt; 3 blocos</td>
+            </tr>
+        </table>
+        <div class="caption">Tabela 7.7: Estratégia de Fees</div>
+
+        <pre><code>// Fee estimation (RPC primários)
+const estimateFee = async (chain: 'btc' | 'liquid', priority: 'low'|'medium'|'high') => {
+  if (chain === 'btc') {
+    // BTC on-chain via LND WalletKit (gRPC) — fonte primária para txs do wallet
+    // Ex: EstimateFee / BumpFee (WalletKit) conforme políticas do daemon
+    return await lndWalletKit.estimateFee({ priority });
+  }
+
+  // Liquid via elementsd JSON-RPC
+  const feeRates = await elementsd.estimatesmartfee(priority === 'high' ? 1 : priority === 'medium' ? 3 : 6);
+  return Math.max(feeRates.feerate * 100000, MIN_RELAY_FEE);
+};
+
+// RBF/CPFP bump (alto nível)
+const bumpFee = async (chain: 'btc'|'liquid', txid: string, newFeeRate: number) => {
+  if (chain === 'btc') {
+    // Bump via LND WalletKit quando aplicável (RBF/CPFP conforme política do daemon)
+    return await lndWalletKit.bumpFee({ txid, newFeeRate });
+  }
+  // Liquid bump via elementsd (quando suportado pelo fluxo)
+  return await elementsd.bumpfee(txid, newFeeRate);
+};</code></pre>
+        <div class="caption">Listagem 7.1: Estratégia de Fee Estimation e Bumping</div>
+    </div>
+
+    <!-- 8. API -->
+    <div class="page-break">
+        <h1>8. Especificações de API</h1>
+
+        <h2>8.1 Swap Orchestrator API (boltz-backend self-hosted; compatível com Boltz v2)</h2>
+
+        <table>
+            <tr>
+                <th>Endpoint</th>
+                <th>Método</th>
+                <th>Propósito</th>
+            </tr>
+            <tr>
+                <td>/v2/swap/submarine</td>
+                <td>POST</td>
+                <td>Criar submarine swap (on-chain → LN)</td>
+            </tr>
+            <tr>
+                <td>/v2/swap/reverse</td>
+                <td>POST</td>
+                <td>Criar reverse swap (LN → on-chain)</td>
+            </tr>
+            <tr>
+                <td>/v2/swap/chain</td>
+                <td>POST</td>
+                <td>Criar chain swap (BTC ↔ Liquid)</td>
+            </tr>
+            <tr>
+                <td>/v2/swap/{id}</td>
+                <td>GET</td>
+                <td>Obter status do swap</td>
+            </tr>
+            <tr>
+                <td>/v2/swap/{id}/claim</td>
+                <td>POST</td>
+                <td>Submeter detalhes da transação de claim</td>
+            </tr>
+            <tr>
+                <td>/v2/swap/{id}/refund</td>
+                <td>POST</td>
+                <td>Submeter detalhes da transação de refund</td>
+            </tr>
+            <tr>
+                <td>/v2/ws</td>
+                <td>WebSocket</td>
+                <td>Atualizações de status em tempo real</td>
+            </tr>
+            <tr>
+                <td>/v2/nodes</td>
+                <td>GET</td>
+                <td>Obter routing hints para pagamentos LN</td>
+            </tr>
+        </table>
+        <div class="caption">Tabela 8.1: Endpoints do boltz-backend (compatível com Boltz v2)</div>
+
+        <h2>8.2 API IPC Interna</h2>
+
+        <table>
+            <tr>
+                <th>Canal</th>
+                <th>Direção</th>
+                <th>Payload</th>
+            </tr>
+            <tr>
+                <td>swap:create</td>
+                <td>Renderer → Backend</td>
+                <td>{kind, fromAsset, toAsset, amount}</td>
+            </tr>
+            <tr>
+                <td>swap:status</td>
+                <td>Backend → Renderer</td>
+                <td>{swapId, state, details}</td>
+            </tr>
+            <tr>
+                <td>wallet:balance</td>
+                <td>Renderer → Backend</td>
+                <td>{chain: btc|liquid|ln}</td>
+            </tr>
+            <tr>
+                <td>wallet:balance:response</td>
+                <td>Backend → Renderer</td>
+                <td>{confirmed, unconfirmed, pending}</td>
+            </tr>
+            <tr>
+                <td>node:status</td>
+                <td>Backend → Renderer</td>
+                <td>{elementsd: running|stopped|syncing, lnd: running|stopped|syncing}</td>
+            </tr>
+        </table>
+        <div class="caption">Tabela 8.2: Canais de API IPC</div>
+    </div>
+
+    <!-- 9. ROADMAP -->
+    <div class="page-break">
+        <h1>9. Roadmap de Implementação</h1>
+
+        <table>
+            <tr>
+                <th>Fase</th>
+                <th>Semana</th>
+                <th>Entregas</th>
+                <th>Status</th>
+            </tr>
+            <tr>
+                <td>1. Core Fixes</td>
+                <td>1-2</td>
+                <td>QuoteSwap fix, schema unificado, preimage encrypted, PIN lockout</td>
+                <td>⏳ Próximo</td>
+            </tr>
+            <tr>
+                <td>2. Swap Protocol</td>
+                <td>3-4</td>
+                <td>Auto-Lock, Reverse, Chain, MuSig2, Watcher+WS</td>
+                <td>Pendente</td>
+            </tr>
+            <tr>
+                <td>3. Node Adapters</td>
+                <td>5-6</td>
+                <td>LND gRPC, elementsd JSON-RPC, Node Manager + Infra</td>
+                <td>Pendente</td>
+            </tr>
+            <tr>
+                <td>4. Electron</td>
+                <td>7-8</td>
+                <td>Main process, IPC bridge, frontend migration</td>
+                <td>Pendente</td>
+            </tr>
+            <tr>
+                <td>5. Tx Management</td>
+                <td>9</td>
+                <td>RBF/CPFP, fee estimation</td>
+                <td>Pendente</td>
+            </tr>
+            <tr>
+                <td>6. Packaging</td>
+                <td>10</td>
+                <td>Installers, code signing, E2E tests</td>
+                <td>Pendente</td>
+            </tr>
+        </table>
+        <div class="caption">Tabela 9.1: Roadmap de Implementação (10 semanas)</div>
+
+        <h2>9.1 Roadmap Pós-MVP</h2>
+
+        <table>
+            <tr>
+                <th>Versão</th>
+                <th>Target</th>
+                <th>Features</th>
+            </tr>
+            <tr>
+                <td>v1.1</td>
+                <td>Q2 2026</td>
+                <td>Suporte a hardware wallet, SQLCipher, device secret</td>
+            </tr>
+            <tr>
+                <td>v1.2</td>
+                <td>Q3 2026</td>
+                <td>Integração Coinjoin, Payjoin, LNURL</td>
+            </tr>
+            <tr>
+                <td>v2.0</td>
+                <td>Q4 2026</td>
+                <td>Assets RGB, Taproot Assets, suporte DLC</td>
+            </tr>
+        </table>
+        <div class="caption">Tabela 9.2: Roadmap Pós-MVP</div>
+
+        <hr style="margin: 30pt 0;">
+
+        <p style="text-align: center; color: var(--text-secondary); font-size: 9pt;">
+            <strong>XS Wallet - Especificação Técnica v0.2.0</strong><br>
+            Janeiro 2026 • Plano de 10 Semanas Aprovado<br>
+            Self-Custody • Zero Trust • Don't Trust, Verify
+        </p>
+    </div>
+
+    <script>
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: 'neutral',
+            flowchart: { curve: 'basis' },
+            sequence: { actorMargin: 50 }
+        });
+    </script>
+</body>
+
+</html>
