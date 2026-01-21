@@ -170,6 +170,20 @@ CREATE TABLE IF NOT EXISTS vault (
 );
 
 -- =============================================================================
+-- QUOTES - Swap quotes temporários
+-- =============================================================================
+CREATE TABLE IF NOT EXISTS quotes (
+    quote_id TEXT PRIMARY KEY,
+    kind TEXT NOT NULL,
+    amount_sat INTEGER NOT NULL,
+    data TEXT NOT NULL,
+    expires_at TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_quotes_expires ON quotes(expires_at);
+
+-- =============================================================================
 -- APP_CONFIG - Configurações do usuário
 -- =============================================================================
 CREATE TABLE IF NOT EXISTS app_config (

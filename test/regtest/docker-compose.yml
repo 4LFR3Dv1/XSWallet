@@ -1,9 +1,21 @@
+# XS Wallet - Regtest/Testnet Environment
+#
+# Minimal setup with just bitcoind for local testing.
+# Boltz API is used remotely (testnet.boltz.exchange)
+#
+# Usage:
+#   docker compose up -d
+#   cd core && .\xscore.exe --network=testnet
+
 services:
+  # ============================================================================
+  # Bitcoin Core (Testnet)
+  # ============================================================================
   bitcoind:
-    image: btcpayserver/bitcoin:27.0
-    container_name: xs-bitcoind-regtest
+    image: lncm/bitcoind:v27.0
+    container_name: xs-bitcoind-testnet
     command:
-      - -regtest
+      - -testnet
       - -server
       - -rpcuser=rpcuser
       - -rpcpassword=rpcpass
@@ -12,34 +24,18 @@ services:
       - -zmqpubrawblock=tcp://0.0.0.0:28332
       - -zmqpubrawtx=tcp://0.0.0.0:28333
       - -txindex=1
-      - -fallbackfee=0.00001
     ports:
-      - "18443:18443" # RPC
-      - "18444:18444" # P2P
+      - "18332:18332" # RPC (testnet)
+      - "18333:18333" # P2P (testnet)
       - "28332:28332" # ZMQ blocks
       - "28333:28333" # ZMQ tx
     volumes:
-      - bitcoin_data:/data
+      - bitcoin_data:/home/bitcoin/.bitcoin
     healthcheck:
-      test: [ "CMD", "bitcoin-cli", "-regtest", "-rpcuser=rpcuser", "-rpcpassword=rpcpass", "getblockchaininfo" ]
-      interval: 10s
-      timeout: 5s
+      test: [ "CMD", "bitcoin-cli", "-testnet", "-rpcuser=rpcuser", "-rpcpassword=rpcpass", "getblockchaininfo" ]
+      interval: 30s
+      timeout: 10s
       retries: 5
-
-  bitcoin-init:
-    image: btcpayserver/bitcoin:27.0
-    container_name: xs-bitcoin-init
-    depends_on:
-      bitcoind:
-        condition: service_healthy
-    command: >
-      sh -c "
-        bitcoin-cli -regtest -rpcuser=rpcuser -rpcpassword=rpcpass -rpcconnect=bitcoind createwallet test_wallet &&
-        ADDR=$$(bitcoin-cli -regtest -rpcuser=rpcuser -rpcpassword=rpcpass -rpcconnect=bitcoind getnewaddress) &&
-        bitcoin-cli -regtest -rpcuser=rpcuser -rpcpassword=rpcpass -rpcconnect=bitcoind generatetoaddress 101 $$ADDR &&
-        echo 'Regtest initialized with 101 blocks'
-      "
-    restart: "no"
 
 volumes:
   bitcoin_data:

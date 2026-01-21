@@ -136,10 +136,50 @@ func (s *SwapService) CancelSwap(ctx context.Context, req *pb.CancelSwapRequest)
 
 // ListSwaps lists swaps
 func (s *SwapService) ListSwaps(ctx context.Context, req *pb.ListSwapsRequest) (*pb.ListSwapsResponse, error) {
-	// TODO: Implement query with filters
+	// Query all swaps from database
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT id, kind, env, version, state, swap_key_index,
+		       COALESCE(preimage_hex, ''), COALESCE(preimage_hash_hex, ''),
+		       COALESCE(lockup_txid, ''), COALESCE(lockup_address, ''),
+		       COALESCE(error_message, ''),
+		       created_at, updated_at
+		FROM swaps
+		ORDER BY created_at DESC
+		LIMIT 100
+	`)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to list swaps: %v", err)
+	}
+	defer rows.Close()
+
+	var swaps []*pb.SwapSnapshot
+	for rows.Next() {
+		var id, kind, env, state, preimageHex, preimageHashHex, lockupTxid, lockupAddress, errorMsg, createdAt, updatedAt string
+		var version, swapKeyIndex int64
+
+		err := rows.Scan(&id, &kind, &env, &version, &state, &swapKeyIndex,
+			&preimageHex, &preimageHashHex, &lockupTxid, &lockupAddress, &errorMsg,
+			&createdAt, &updatedAt)
+		if err != nil {
+			continue
+		}
+
+		swaps = append(swaps, &pb.SwapSnapshot{
+			Id:              id,
+			Kind:            kindStringToProto(kind),
+			State:           stateStringToProto(state),
+			Version:         uint64(version),
+			Network:         pb.Network_NETWORK_REGTEST,
+			SwapKeyIndex:    uint32(swapKeyIndex),
+			PreimageHashHex: preimageHashHex,
+			LockupTxid:      lockupTxid,
+			ErrorMessage:    errorMsg,
+		})
+	}
+
 	return &pb.ListSwapsResponse{
-		Swaps:      []*pb.SwapSnapshot{},
-		TotalCount: 0,
+		Swaps:      swaps,
+		TotalCount: int32(len(swaps)),
 	}, nil
 }
 
@@ -191,6 +231,19 @@ func kindToProto(k swap.Kind) pb.SwapKind {
 	}
 }
 
+func kindStringToProto(k string) pb.SwapKind {
+	switch k {
+	case "submarine":
+		return pb.SwapKind_SWAP_KIND_SUBMARINE
+	case "reverse":
+		return pb.SwapKind_SWAP_KIND_REVERSE
+	case "chain":
+		return pb.SwapKind_SWAP_KIND_CHAIN
+	default:
+		return pb.SwapKind_SWAP_KIND_UNSPECIFIED
+	}
+}
+
 func stateToProto(s swap.State) pb.SwapState {
 	switch s {
 	case swap.StateOpen:
@@ -206,6 +259,27 @@ func stateToProto(s swap.State) pb.SwapState {
 	case swap.StateFailed:
 		return pb.SwapState_SWAP_STATE_FAILED
 	case swap.StateCanceled:
+		return pb.SwapState_SWAP_STATE_CANCELED
+	default:
+		return pb.SwapState_SWAP_STATE_UNSPECIFIED
+	}
+}
+
+func stateStringToProto(s string) pb.SwapState {
+	switch s {
+	case "open":
+		return pb.SwapState_SWAP_STATE_OPEN
+	case "locked":
+		return pb.SwapState_SWAP_STATE_LOCKED
+	case "commit_started":
+		return pb.SwapState_SWAP_STATE_COMMIT_STARTED
+	case "waiting":
+		return pb.SwapState_SWAP_STATE_WAITING
+	case "completed":
+		return pb.SwapState_SWAP_STATE_COMPLETED
+	case "failed":
+		return pb.SwapState_SWAP_STATE_FAILED
+	case "canceled":
 		return pb.SwapState_SWAP_STATE_CANCELED
 	default:
 		return pb.SwapState_SWAP_STATE_UNSPECIFIED

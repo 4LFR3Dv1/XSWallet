@@ -1,0 +1,51 @@
+# Boltz Backend Configuration for Regtest
+# This file configures Boltz to work with our local regtest environment
+
+[server]
+host = "0.0.0.0"
+port = 9001
+
+[api]
+host = "0.0.0.0"
+port = 9002
+
+[postgres]
+host = "" # Use SQLite for regtest
+database = "/root/.boltz/boltz.db"
+
+[notification]
+# Disable notifications for regtest
+
+[pairs]
+# BTC/LN pair
+[pairs."BTC/BTC"]
+rate = 1
+fee = 0.5
+maxSwapAmount = 10000000
+minSwapAmount = 10000
+
+[currencies]
+# Bitcoin configuration
+[currencies.BTC]
+network = "regtest"
+minWalletBalance = 10000000
+minChannelBalance = 0
+maxSwapAmount = 10000000
+minSwapAmount = 10000
+maxZeroConfAmount = 100000
+
+[currencies.BTC.chain]
+host = "bitcoind"
+port = 18443
+rpcuser = "rpcuser"
+rpcpass = "rpcpass"
+zmqpubrawtx = "tcp://bitcoind:28333"
+zmqpubrawblock = "tcp://bitcoind:28332"
+
+[currencies.BTC.lnd]
+# Not using LND, using CLN
+
+[currencies.BTC.cln]
+host = "cln"
+port = 9736
+rootCertPath = ""

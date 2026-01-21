@@ -70,10 +70,12 @@ func Load(configPath, dataDir, network string) (*Config, error) {
 		DBPath:  filepath.Join(dataDir, "xs-wallet.db"),
 		Network: network,
 		Bitcoind: NodeConfig{
-			Enabled: true,
-			Host:    "127.0.0.1",
-			Port:    8332,
-			DataDir: filepath.Join(dataDir, "nodes", "btc", network),
+			Enabled:  true,
+			Host:     "127.0.0.1",
+			Port:     bitcoindPort(network),
+			User:     "rpcuser",
+			Password: "rpcpass",
+			DataDir:  filepath.Join(dataDir, "nodes", "btc", network),
 		},
 		Elementsd: NodeConfig{
 			Enabled: true,
@@ -132,7 +134,7 @@ func boltzAPIURL(network string) string {
 	case "mainnet":
 		return "https://api.boltz.exchange"
 	case "testnet":
-		return "https://testnet.boltz.exchange/api"
+		return "https://api.testnet.boltz.exchange"
 	default:
 		return "http://127.0.0.1:9001"
 	}
@@ -143,8 +145,19 @@ func boltzWSURL(network string) string {
 	case "mainnet":
 		return "wss://api.boltz.exchange/v2/ws"
 	case "testnet":
-		return "wss://testnet.boltz.exchange/api/v2/ws"
+		return "wss://api.testnet.boltz.exchange/v2/ws"
 	default:
 		return "ws://127.0.0.1:9001/v2/ws"
+	}
+}
+
+func bitcoindPort(network string) int {
+	switch network {
+	case "mainnet":
+		return 8332
+	case "testnet":
+		return 18332
+	default: // regtest
+		return 18443
 	}
 }
