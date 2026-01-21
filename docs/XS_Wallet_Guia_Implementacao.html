@@ -684,10 +684,10 @@ func (v *Vault) Unlock(pin string) (string, error) {
 
     <!-- 4. PHASE 2 -->
     <div class="page-break">
-        <h1>4. Phase 2: Swap Protocol (Semanas 3-4)</h1>
+        <h1>4. Phase 2: Adapters + Watchers (Semanas 3-4)</h1>
 
         <div class="note success">
-            <strong>✓ Objetivo:</strong> Implementar todos os tipos de swap (Submarine, Reverse, Chain) com MuSig2.
+            <strong>✓ Objetivo:</strong> Base funcional (adapters + watchers) para orchestrators consumirem dados reais.
         </div>
 
         <h2>4.1 Submarine Auto-Lock</h2>
@@ -1027,14 +1027,15 @@ func (w *Watcher) HandleWSUpdate(swapID, boltzStatus string, tx *boltz.TxInfo) {
     <div class="page-break">
         <h1>5. Phases 3-6: Resumo</h1>
 
-        <h2>5.1 Phase 3: Node Adapters (Semanas 5-6)</h2>
+        <h2>5.1 Phase 3: Swap Protocol (Semanas 5-6)</h2>
 
         <h3>Entregas</h3>
         <ul>
-            <li><strong>LND gRPC Adapter</strong> - <code>core/internal/adapters/lnd/client.go</code></li>
-            <li><strong>elementsd JSON-RPC</strong> - <code>core/internal/adapters/liquid/client.go</code></li>
-            <li><strong>Node Manager</strong> - <code>core/internal/nodemanager/manager.go</code></li>
-            <li><strong>GitHub Releases Infra</strong> - Manifest assinado (Ed25519)</li>
+            <li><strong>Submarine Auto-Lock + Claim/Refund</strong> - MuSig2 + script-path</li>
+            <li><strong>Reverse Swap</strong> - <code>core/internal/swap/reverse.go</code></li>
+            <li><strong>P2TR Verification</strong> - <code>core/internal/swap/taproot.go</code></li>
+            <li><strong>MuSig2</strong> - <code>core/internal/musig2/session.go</code></li>
+            <li><strong>Reconcile + Invariantes</strong> - Determinístico</li>
         </ul>
 
         <h2>5.2 Phase 4: Electron Migration (Semanas 7-8)</h2>
