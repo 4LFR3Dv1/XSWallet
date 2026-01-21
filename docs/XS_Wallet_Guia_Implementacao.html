@@ -1,0 +1,1273 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>XS Wallet - Guia de Implementação</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+        :root {
+            --text: #1a1a1a;
+            --text-secondary: #4a4a4a;
+            --bg: #ffffff;
+            --border: #e5e5e5;
+            --accent: #2563eb;
+            --code-bg: #f5f5f5;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            font-size: 10pt;
+            line-height: 1.6;
+            color: var(--text);
+            background: var(--bg);
+            max-width: 210mm;
+            margin: 0 auto;
+            padding: 20mm;
+        }
+
+        h1 {
+            font-size: 20pt;
+            font-weight: 700;
+            margin: 24pt 0 12pt;
+            border-bottom: 2px solid var(--text);
+            padding-bottom: 6pt;
+        }
+
+        h2 {
+            font-size: 14pt;
+            font-weight: 600;
+            margin: 18pt 0 8pt;
+            color: var(--text);
+        }
+
+        h3 {
+            font-size: 11pt;
+            font-weight: 600;
+            margin: 12pt 0 6pt;
+        }
+
+        p {
+            margin-bottom: 8pt;
+            text-align: justify;
+        }
+
+        .cover {
+            text-align: center;
+            page-break-after: always;
+            padding-top: 100pt;
+        }
+
+        .cover h1 {
+            font-size: 32pt;
+            border: none;
+            margin-bottom: 8pt;
+        }
+
+        .cover .subtitle {
+            font-size: 14pt;
+            color: var(--text-secondary);
+            margin-bottom: 40pt;
+        }
+
+        .cover .meta {
+            margin-top: 60pt;
+        }
+
+        .cover .meta table {
+            margin: 0 auto;
+            text-align: left;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 12pt 0;
+            font-size: 9pt;
+        }
+
+        th,
+        td {
+            border: 1px solid var(--border);
+            padding: 6pt 8pt;
+            text-align: left;
+            vertical-align: top;
+        }
+
+        th {
+            background: #f0f0f0;
+            font-weight: 600;
+        }
+
+        .caption {
+            font-size: 9pt;
+            font-style: italic;
+            color: var(--text-secondary);
+            text-align: center;
+            margin: 4pt 0 16pt;
+        }
+
+        code {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 8pt;
+            background: var(--code-bg);
+            padding: 2pt 4pt;
+            border-radius: 2pt;
+        }
+
+        pre {
+            background: var(--code-bg);
+            padding: 12pt;
+            border-radius: 4pt;
+            overflow-x: auto;
+            margin: 8pt 0;
+            font-size: 8pt;
+            line-height: 1.4;
+        }
+
+        pre code {
+            background: none;
+            padding: 0;
+        }
+
+        .note {
+            background: #fef3c7;
+            border-left: 3px solid #f59e0b;
+            padding: 8pt 12pt;
+            margin: 12pt 0;
+            font-size: 9pt;
+        }
+
+        .note.success {
+            background: #d1fae5;
+            border-color: var(--success);
+        }
+
+        .note.danger {
+            background: #fee2e2;
+            border-color: var(--danger);
+        }
+
+        .diagram {
+            background: #fafafa;
+            border: 1px solid var(--border);
+            border-radius: 4pt;
+            padding: 16pt;
+            margin: 12pt 0;
+            text-align: center;
+        }
+
+        .mermaid {
+            background: transparent !important;
+        }
+
+        .page-break {
+            page-break-before: always;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 2pt 6pt;
+            border-radius: 3pt;
+            font-size: 8pt;
+            font-weight: 600;
+        }
+
+        .badge.done {
+            background: #d1fae5;
+            color: var(--success);
+        }
+
+        .badge.wip {
+            background: #fef3c7;
+            color: var(--warning);
+        }
+
+        .badge.pending {
+            background: #e5e5e5;
+            color: var(--text-secondary);
+        }
+
+        @media print {
+            body {
+                padding: 15mm;
+            }
+
+            .page-break {
+                page-break-before: always;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- CAPA -->
+    <div class="cover">
+        <h1>XS WALLET</h1>
+        <div class="subtitle">Guia de Implementação para Desenvolvedores</div>
+        <p>Plano de 10 Semanas - 6 Fases</p>
+
+        <div class="meta">
+            <table>
+                <tr>
+                    <th>Documento</th>
+                    <td>Guia de Implementação</td>
+                </tr>
+                <tr>
+                    <th>Versão</th>
+                    <td>1.0.0</td>
+                </tr>
+                <tr>
+                    <th>Baseado em</th>
+                    <td>Especificação Técnica v0.2.0</td>
+                </tr>
+                <tr>
+                    <th>Data</th>
+                    <td>Janeiro 2026</td>
+                </tr>
+                <tr>
+                    <th>Público-Alvo</th>
+                    <td>Desenvolvedores, Implementadores</td>
+                </tr>
+                <tr>
+                    <th>Duração Estimada</th>
+                    <td>10 semanas</td>
+                </tr>
+            </table>
+        </div>
+    </div>
+
+    <!-- 1. VISÃO GERAL -->
+    <div class="page-break">
+        <h1>1. Visão Geral do Projeto</h1>
+
+        <h2>1.1 Objetivo</h2>
+        <p>Implementar uma carteira desktop self-custody com atomic swaps entre BTC, Liquid e Lightning Network,
+            seguindo os princípios de <strong>Zero Trust</strong> e <strong>Crash Recovery</strong>.</p>
+
+        <h2>1.2 Arquitetura Alvo</h2>
+
+        <div class="diagram">
+            <div class="mermaid">
+                graph TB
+                subgraph Desktop["Aplicação Desktop"]
+                subgraph Electron["Electron (IPC)"]
+                E1[React UI]
+                E2[Preload Bridge]
+                end
+
+                subgraph Core["Go Core xscore"]
+                C1[Swap Engine]
+                C2[SQLite WAL]
+                C3[Boltz Client]
+                C4[gRPC Server]
+                end
+
+                subgraph Adapters["RPC Adapters"]
+                A1[LND gRPC]
+                A2[elementsd JSON-RPC]
+                end
+                end
+
+                Electron <-->|IPC Seguro| Core
+                    Core --> Adapters
+                    Core <-->|HTTPS/WSS| Boltz[boltz-backend]
+
+                        style Electron fill:#00DACC,color:#000
+                        style Core fill:#F7931A,color:#fff
+                        style Adapters fill:#7B3FF2,color:#fff
+                        style Boltz fill:#2563eb,color:#fff
+            </div>
+        </div>
+        <div class="caption">Figura 1.1: Arquitetura Alvo</div>
+
+        <h2>1.3 Estado Atual vs Alvo</h2>
+
+        <table>
+            <tr>
+                <th>Componente</th>
+                <th>Estado Atual</th>
+                <th>Alvo</th>
+            </tr>
+            <tr>
+                <td>Frontend</td>
+                <td>React + Vite (HTTP via api-bridge)</td>
+                <td>Electron + IPC</td>
+            </tr>
+            <tr>
+                <td>Go Core</td>
+                <td>✓ Implementado (parcial)</td>
+                <td>Completo com todos orchestrators</td>
+            </tr>
+            <tr>
+                <td>Swaps</td>
+                <td>Submarine (parcial)</td>
+                <td>Submarine + Reverse + Chain</td>
+            </tr>
+            <tr>
+                <td>MuSig2</td>
+                <td>Não implementado</td>
+                <td>Claim/refund cooperativo</td>
+            </tr>
+            <tr>
+                <td>Adapters</td>
+                <td>Apenas bitcoind RPC</td>
+                <td>LND gRPC + elementsd JSON-RPC</td>
+            </tr>
+        </table>
+        <div class="caption">Tabela 1.1: Gap Analysis</div>
+    </div>
+
+    <!-- 2. ROADMAP -->
+    <div class="page-break">
+        <h1>2. Roadmap de Implementação</h1>
+
+        <h2>2.1 Visão Geral das Fases</h2>
+
+        <div class="diagram">
+            <div class="mermaid">
+                gantt
+                title Roadmap de 10 Semanas (Reorganizado)
+                dateFormat YYYY-MM-DD
+                section Phase 1
+                Core Fixes :p1, 2026-01-27, 14d
+                section Phase 2
+                Adapters + Watchers :p2, after p1, 14d
+                section Phase 3
+                Swap Protocol :p3, after p2, 14d
+                section Phase 4
+                Electron :p4, after p3, 14d
+                section Phase 5
+                Tx Management :p5, after p4, 7d
+                section Phase 6
+                Packaging :p6, after p5, 7d
+            </div>
+        </div>
+        <div class="caption">Figura 2.1: Timeline do Projeto (Reorganizado)</div>
+
+        <h2>2.2 Dependency Graph (Corrigido)</h2>
+
+        <div class="diagram">
+            <div class="mermaid">
+                graph LR
+                P1[Phase 1<br />Core Fixes] --> P2[Phase 2<br />Adapters + Watchers]
+                P2 --> P3[Phase 3<br />Swap Protocol]
+                P3 --> P5[Phase 5<br />Tx Management]
+                P1 --> P4[Phase 4<br />Electron]
+                P4 --> P6[Phase 6<br />Packaging]
+                P5 --> P6
+
+                style P1 fill:#10b981,color:#fff
+                style P2 fill:#f59e0b,color:#fff
+                style P3 fill:#f59e0b,color:#fff
+                style P4 fill:#ef4444,color:#fff
+                style P5 fill:#ef4444,color:#fff
+                style P6 fill:#ef4444,color:#fff
+            </div>
+        </div>
+        <div class="caption">Figura 2.2: Dependências entre Fases</div>
+    </div>
+
+    <!-- 3. PHASE 1 -->
+    <div class="page-break">
+        <h1>3. Phase 1: Core Fixes (Semanas 1-2)</h1>
+
+        <div class="note success">
+            <strong>✓ Objetivo:</strong> Consolidar a base de dados e corrigir bugs críticos antes de adicionar
+            funcionalidades.
+        </div>
+
+        <h2>3.1 QuoteSwap Kind/Chain Mapping</h2>
+
+        <h3>Problema</h3>
+        <p>Arquivo <code>core/internal/server/swap_service.go</code> (linhas 42-45) hardcoda <code>BTC→LN</code> e usa
+            <code>req.Kind.String()</code> que não casa com <code>provider.SwapKind</code>.
+        </p>
+
+        <h3>Solução</h3>
+        <pre><code>// Criar helpers de conversão
+func protoKindToProvider(k pb.SwapKind) provider.SwapKind {
+    switch k {
+    case pb.SwapKind_SWAP_KIND_SUBMARINE:
+        return provider.SwapKindSubmarine
+    case pb.SwapKind_SWAP_KIND_REVERSE:
+        return provider.SwapKindReverse
+    case pb.SwapKind_SWAP_KIND_CHAIN:
+        return provider.SwapKindChain
+    default:
+        return ""
+    }
+}
+
+func protoChainToProvider(from, to pb.Chain) (provider.Chain, provider.Chain) {
+    // Mapear pb.Chain_CHAIN_BTC -> provider.ChainBTC, etc
+}</code></pre>
+
+        <h3>Arquivos Afetados</h3>
+        <ul>
+            <li><code>core/internal/server/swap_service.go</code> - adicionar helpers</li>
+            <li><code>core/internal/server/swap_service.go</code> - atualizar <code>QuoteSwap()</code></li>
+        </ul>
+
+        <h2>3.2 Schema Unificado</h2>
+
+        <h3>Problema</h3>
+        <p>Existem dois schemas divergentes:</p>
+        <ul>
+            <li><code>core/internal/db/db.go</code> (~35 colunas)</li>
+            <li><code>database/schema.sqlite.sql</code> (40+ colunas)</li>
+        </ul>
+
+        <h3>Solução</h3>
+        <p><strong>Consolidar em <code>core/internal/db/db.go</code></strong> adicionando colunas faltantes:</p>
+
+        <pre><code>-- Adicionar ao schema em db.go
+provider TEXT NOT NULL DEFAULT 'boltz',
+provider_url TEXT NOT NULL,
+from_asset TEXT NOT NULL,
+to_asset TEXT NOT NULL,
+boltz_status TEXT,
+boltz_raw TEXT,
+swap_tree_hex TEXT,
+tap_tweak32_hex TEXT,
+encrypted_preimage BLOB,  -- NOVO: substituir preimage_hex
+lockup_seen_mempool_at TEXT,
+lockup_confirmed_height INTEGER,
+claim_chain TEXT,
+claim_seen_mempool_at TEXT,
+claim_confirmed_height INTEGER,
+refund_chain TEXT,
+refund_seen_mempool_at TEXT,
+refund_confirmed_height INTEGER</code></pre>
+
+        <h3>Migração</h3>
+        <pre><code>-- migrations/001_add_spec_columns.sql
+ALTER TABLE swaps ADD COLUMN encrypted_preimage BLOB;
+ALTER TABLE swaps ADD COLUMN from_asset TEXT;
+ALTER TABLE swaps ADD COLUMN to_asset TEXT;
+-- ... etc
+
+-- Criar tabela vault_lockout
+CREATE TABLE vault_lockout (
+    id INTEGER PRIMARY KEY CHECK(id = 1),
+    attempts INTEGER DEFAULT 0,
+    last_attempt_at TEXT,
+    locked_until TEXT
+);</code></pre>
+
+        <h3>Arquivos Afetados</h3>
+        <ul>
+            <li><code>core/internal/db/db.go</code> - atualizar schema</li>
+            <li><code>database/schema.sqlite.sql</code> - REMOVER</li>
+            <li><code>migrations/001_add_spec_columns.sql</code> - CRIAR</li>
+        </ul>
+
+        <h2>3.3 Preimage Criptografada</h2>
+
+        <div class="note danger">
+            <strong>⚠️ CRÍTICO:</strong> A preimage R atualmente é salva em plaintext no DB. Isso viola o spec de
+            segurança.
+        </div>
+
+        <h3>Implementação</h3>
+
+        <p><strong>Arquivo:</strong> <code>core/internal/vault/vault.go</code></p>
+        <pre><code>// Adicionar métodos ao Vault
+func (v *Vault) EncryptPreimage(preimage []byte) ([]byte, error) {
+    v.mu.RLock()
+    defer v.mu.RUnlock()
+    
+    if !v.unlocked || v.seed == nil {
+        return nil, ErrVaultLocked
+    }
+    
+    // Derivar chave de criptografia do seed
+    key := derivePreimageKey(v.seed)
+    
+    // Criptografar com AES-256-GCM
+    nonce, ciphertext, err := encrypt(preimage, key[:])
+    if err != nil {
+        return nil, err
+    }
+    
+    // Retornar nonce || ciphertext
+    return append(nonce, ciphertext...), nil
+}
+
+func (v *Vault) DecryptPreimage(encrypted []byte) ([]byte, error) {
+    v.mu.RLock()
+    defer v.mu.RUnlock()
+    
+    if !v.unlocked || v.seed == nil {
+        return nil, ErrVaultLocked
+    }
+    
+    // Separar nonce e ciphertext
+    nonce := encrypted[:nonceLength]
+    ciphertext := encrypted[nonceLength:]
+    
+    key := derivePreimageKey(v.seed)
+    return decrypt(ciphertext, nonce, key[:])
+}</code></pre>
+
+        <p><strong>Arquivo:</strong> <code>core/internal/swap/engine.go</code></p>
+        <pre><code>// Alterar Create() para usar encrypted_preimage
+func (e *Engine) Create(...) (*Swap, error) {
+    // ... existing code ...
+    
+    // Criptografar preimage
+    encryptedPreimage, err := vault.EncryptPreimage(preimage)
+    if err != nil {
+        return nil, err
+    }
+    
+    // Salvar encrypted_preimage em vez de preimage_hex
+    _, err = e.db.ExecContext(ctx, `
+        INSERT INTO swaps (id, ..., encrypted_preimage, preimage_hash_hex, ...)
+        VALUES (?, ..., ?, ?, ...)
+    `, id, ..., encryptedPreimage, hex.EncodeToString(hash), ...)
+}</code></pre>
+
+        <h3>Arquivos Afetados</h3>
+        <ul>
+            <li><code>core/internal/vault/vault.go</code> - adicionar EncryptPreimage/DecryptPreimage</li>
+            <li><code>core/internal/swap/engine.go</code> - usar encrypted_preimage</li>
+            <li><code>core/internal/db/db.go</code> - schema com encrypted_preimage</li>
+        </ul>
+
+        <h2>3.4 PIN Lockout Persistente</h2>
+
+        <h3>Implementação</h3>
+
+        <p><strong>Arquivo:</strong> <code>core/internal/vault/lockout.go</code></p>
+        <pre><code>package vault
+
+import (
+    "database/sql"
+    "time"
+    "github.com/xs-wallet/xscore/internal/db"
+)
+
+type LockoutManager struct {
+    db          *db.DB
+    maxAttempts int           // 10
+    lockoutTime time.Duration // 30 min
+}
+
+func NewLockoutManager(database *db.DB) *LockoutManager {
+    return &LockoutManager{
+        db:          database,
+        maxAttempts: 10,
+        lockoutTime: 30 * time.Minute,
+    }
+}
+
+func (l *LockoutManager) RecordAttempt(success bool) error {
+    if success {
+        // Reset attempts
+        _, err := l.db.Exec(`
+            UPDATE vault_lockout SET attempts = 0, locked_until = NULL
+            WHERE id = 1
+        `)
+        return err
+    }
+    
+    // Increment attempts
+    _, err := l.db.Exec(`
+        INSERT INTO vault_lockout (id, attempts, last_attempt_at)
+        VALUES (1, 1, datetime('now'))
+        ON CONFLICT(id) DO UPDATE SET
+            attempts = attempts + 1,
+            last_attempt_at = datetime('now'),
+            locked_until = CASE
+                WHEN attempts + 1 >= ? THEN datetime('now', '+30 minutes')
+                ELSE locked_until
+            END
+    `, l.maxAttempts)
+    return err
+}
+
+func (l *LockoutManager) CanAttempt() (bool, time.Duration, error) {
+    var attempts int
+    var lockedUntil sql.NullString
+    
+    err := l.db.QueryRow(`
+        SELECT attempts, locked_until FROM vault_lockout WHERE id = 1
+    `).Scan(&attempts, &lockedUntil)
+    
+    if err == sql.ErrNoRows {
+        return true, 0, nil
+    }
+    if err != nil {
+        return false, 0, err
+    }
+    
+    if lockedUntil.Valid {
+        until, _ := time.Parse("2006-01-02 15:04:05", lockedUntil.String)
+        if time.Now().Before(until) {
+            return false, time.Until(until), nil
+        }
+    }
+    
+    return true, 0, nil
+}</code></pre>
+
+        <p><strong>Integração no Vault:</strong></p>
+        <pre><code>// Em vault.go
+func (v *Vault) Unlock(pin string) (string, error) {
+    // Verificar lockout
+    canAttempt, waitTime, err := v.lockout.CanAttempt()
+    if err != nil {
+        return "", err
+    }
+    if !canAttempt {
+        return "", fmt.Errorf("locked out for %v", waitTime)
+    }
+    
+    // ... existing unlock logic ...
+    
+    // Registrar resultado
+    v.lockout.RecordAttempt(err == nil)
+    
+    return sessionID, err
+}</code></pre>
+
+        <h3>Arquivos Afetados</h3>
+        <ul>
+            <li><code>core/internal/vault/lockout.go</code> - CRIAR</li>
+            <li><code>core/internal/vault/vault.go</code> - integrar LockoutManager</li>
+            <li><code>core/internal/db/db.go</code> - adicionar tabela vault_lockout</li>
+        </ul>
+
+        <h2>3.5 Checklist Phase 1</h2>
+
+        <table>
+            <tr>
+                <th>Tarefa</th>
+                <th>Arquivos</th>
+                <th>Status</th>
+            </tr>
+            <tr>
+                <td>QuoteSwap fix</td>
+                <td>swap_service.go</td>
+                <td><span class="badge pending">Pendente</span></td>
+            </tr>
+            <tr>
+                <td>Schema unificado</td>
+                <td>db.go, migrations/</td>
+                <td><span class="badge pending">Pendente</span></td>
+            </tr>
+            <tr>
+                <td>Preimage encrypted</td>
+                <td>vault.go, engine.go</td>
+                <td><span class="badge pending">Pendente</span></td>
+            </tr>
+            <tr>
+                <td>PIN lockout</td>
+                <td>lockout.go, vault.go</td>
+                <td><span class="badge pending">Pendente</span></td>
+            </tr>
+        </table>
+    </div>
+
+    <!-- 4. PHASE 2 -->
+    <div class="page-break">
+        <h1>4. Phase 2: Swap Protocol (Semanas 3-4)</h1>
+
+        <div class="note success">
+            <strong>✓ Objetivo:</strong> Implementar todos os tipos de swap (Submarine, Reverse, Chain) com MuSig2.
+        </div>
+
+        <h2>4.1 Submarine Auto-Lock</h2>
+
+        <h3>Problema</h3>
+        <p>Atualmente <code>CreateFromQuote()</code> deixa o swap em estado <code>open</code> sem
+            <code>lockup_address</code>. O usuário precisa chamar <code>Lock()</code> manualmente.
+        </p>
+
+        <h3>Solução</h3>
+        <pre><code>// core/internal/swap/submarine.go
+func (so *SubmarineOrchestrator) CreateFromQuote(ctx, quoteID) (*Swap, error) {
+    // Validar quote
+    quote, err := so.quotes.GetQuote(ctx, quoteID)
+    if err != nil {
+        return nil, err
+    }
+    
+    // Criar swap
+    swap, err := so.engine.Create(ctx, KindSubmarine, "regtest", 0)
+    if err != nil {
+        return nil, err
+    }
+    
+    // AUTO-LOCK imediato
+    swap, err = so.Lock(ctx, swap.ID, quoteID)
+    if err != nil {
+        return nil, err
+    }
+    
+    return swap, nil
+}</code></pre>
+
+        <h2>4.2 Reverse Swap Orchestrator</h2>
+
+        <p><strong>Arquivo:</strong> <code>core/internal/swap/reverse.go</code></p>
+        <pre><code>package swap
+
+type ReverseOrchestrator struct {
+    engine   *Engine
+    db       *db.DB
+    provider provider.Provider
+    vault    *vault.Vault
+}
+
+func NewReverseOrchestrator(engine *Engine, database *db.DB, prov provider.Provider, v *vault.Vault) *ReverseOrchestrator {
+    return &ReverseOrchestrator{
+        engine:   engine,
+        db:       database,
+        provider: prov,
+        vault:    v,
+    }
+}
+
+func (ro *ReverseOrchestrator) CreateFromQuote(ctx, quoteID) (*Swap, error) {
+    // 1. Gerar preimage R
+    preimage := make([]byte, 32)
+    rand.Read(preimage)
+    hash := sha256.Sum256(preimage)
+    
+    // 2. Criar swap
+    swap, err := ro.engine.Create(ctx, KindReverse, "regtest", 0)
+    if err != nil {
+        return nil, err
+    }
+    
+    // 3. Criptografar e salvar preimage
+    encPreimage, err := ro.vault.EncryptPreimage(preimage)
+    if err != nil {
+        return nil, err
+    }
+    
+    // 4. Atualizar DB
+    _, err = ro.db.ExecContext(ctx, `
+        UPDATE swaps SET encrypted_preimage = ?, preimage_hash_hex = ?
+        WHERE id = ?
+    `, encPreimage, hex.EncodeToString(hash[:]), swap.ID)
+    
+    // 5. Lock com provider
+    return ro.Lock(ctx, swap.ID, quoteID)
+}
+
+func (ro *ReverseOrchestrator) PayInvoice(ctx, swapID) (*Swap, error) {
+    // Pagar hold invoice do provider
+    // Transição: locked -> waiting
+}
+
+func (ro *ReverseOrchestrator) Claim(ctx, swapID) (*Swap, error) {
+    // Tentar MuSig2 key-path claim
+    // Fallback: script-path claim
+}</code></pre>
+
+        <h2>4.3 Chain Swap Orchestrator</h2>
+
+        <p><strong>Arquivo:</strong> <code>core/internal/swap/chain.go</code></p>
+        <pre><code>package swap
+
+type ChainOrchestrator struct {
+    engine   *Engine
+    db       *db.DB
+    provider provider.Provider
+}
+
+func (co *ChainOrchestrator) CreateFromQuote(ctx, quoteID) (*Swap, error) {
+    // Similar ao reverse: gerar R, criar swap, lock
+}
+
+func (co *ChainOrchestrator) FundBTC(ctx, swapID) (*Swap, error) {
+    // Broadcast funding tx BTC
+}
+
+func (co *ChainOrchestrator) ClaimLiquid(ctx, swapID) (*Swap, error) {
+    // Claim HTLC Liquid (revela R)
+}</code></pre>
+
+        <h2>4.4 P2TR Verification</h2>
+
+        <p><strong>Arquivo:</strong> <code>core/internal/swap/taproot.go</code></p>
+        <pre><code>package swap
+
+import (
+    "github.com/btcsuite/btcd/txscript"
+    "github.com/btcsuite/btcd/btcec/v2"
+)
+
+// VerifyP2TRAddress rebuilds o endereço P2TR localmente e compara
+func VerifyP2TRAddress(
+    claimPubkey, refundPubkey []byte,
+    preimageHash []byte,
+    timeoutBlocks int64,
+    expectedAddress string,
+) error {
+    // 1. Construir swap tree
+    tree, err := BuildSwapTree(KindSubmarine, SwapTreeParams{
+        ClaimPubkey:   claimPubkey,
+        RefundPubkey:  refundPubkey,
+        PreimageHash:  preimageHash,
+        TimeoutBlocks: timeoutBlocks,
+    })
+    if err != nil {
+        return err
+    }
+    
+    // 2. Gerar endereço P2TR
+    address, err := tree.ToAddress(&chaincfg.RegressionNetParams)
+    if err != nil {
+        return err
+    }
+    
+    // 3. Comparar
+    if address != expectedAddress {
+        return fmt.Errorf("address mismatch: got %s, want %s", address, expectedAddress)
+    }
+    
+    return nil
+}
+
+type SwapTree struct {
+    InternalKey *btcec.PublicKey
+    Scripts     [][]byte
+}
+
+func BuildSwapTree(kind Kind, params SwapTreeParams) (*SwapTree, error) {
+    // Construir scripts conforme Boltz v2 spec
+    // - Claim path: OP_SIZE 32 OP_EQUAL OP_IF OP_HASH256 <hash> OP_EQUALVERIFY <claimPubkey> OP_ELSE <timeout> OP_CHECKLOCKTIMEVERIFY OP_DROP <refundPubkey> OP_ENDIF OP_CHECKSIG
+}</code></pre>
+
+        <h2>4.5 MuSig2 Implementation</h2>
+
+        <p><strong>Arquivo:</strong> <code>core/internal/musig2/session.go</code></p>
+        <pre><code>package musig2
+
+import (
+    "github.com/btcsuite/btcd/btcec/v2"
+    "github.com/btcsuite/btcd/btcec/v2/schnorr/musig2"
+)
+
+type Session struct {
+    ID           string
+    SwapID       string
+    UserKey      *btcec.PublicKey
+    ProviderKey  *btcec.PublicKey
+    AggKey       *musig2.AggregateKey
+    SecNonce     [musig2.SecNonceSize]byte  // CRÍTICO: nunca expor
+    PubNonce     [musig2.PubNonceSize]byte
+    AggNonce     *musig2.Nonces
+    PartialSig   *musig2.PartialSignature
+}
+
+func NewSession(swapID string, userPriv *btcec.PrivateKey, providerPub *btcec.PublicKey) (*Session, error) {
+    // Agregar chaves (ordem lexicográfica)
+    keys := []*btcec.PublicKey{userPriv.PubKey(), providerPub}
+    sort.Slice(keys, func(i, j int) bool {
+        return bytes.Compare(keys[i].SerializeCompressed(), keys[j].SerializeCompressed()) < 0
+    })
+    
+    aggKey, err := musig2.AggregateKeys(keys, false)
+    if err != nil {
+        return nil, err
+    }
+    
+    return &Session{
+        ID:          uuid.New().String(),
+        SwapID:      swapID,
+        UserKey:     userPriv.PubKey(),
+        ProviderKey: providerPub,
+        AggKey:      aggKey,
+    }, nil
+}
+
+func (s *Session) GenerateNonce() (pubNonce []byte, err error) {
+    // Gerar nonce com aux randomness
+    var auxRand [32]byte
+    rand.Read(auxRand[:])
+    
+    secNonce, pubNonce, err := musig2.GenNonces(
+        musig2.WithCustomRand(bytes.NewReader(auxRand[:])),
+    )
+    if err != nil {
+        return nil, err
+    }
+    
+    s.SecNonce = *secNonce
+    copy(s.PubNonce[:], pubNonce[:])
+    
+    return s.PubNonce[:], nil
+}
+
+func (s *Session) AggregateNonces(providerNonce []byte) error {
+    nonces := [][musig2.PubNonceSize]byte{s.PubNonce}
+    var provNonce [musig2.PubNonceSize]byte
+    copy(provNonce[:], providerNonce)
+    nonces = append(nonces, provNonce)
+    
+    aggNonce, err := musig2.AggregateNonces(nonces)
+    if err != nil {
+        return err
+    }
+    
+    s.AggNonce = aggNonce
+    return nil
+}
+
+func (s *Session) Sign(txHash []byte, userPriv *btcec.PrivateKey) (partialSig []byte, err error) {
+    var msg [32]byte
+    copy(msg[:], txHash)
+    
+    partialSig, err = musig2.Sign(
+        &s.SecNonce,
+        userPriv,
+        s.AggNonce,
+        s.AggKey.FinalKey,
+        msg,
+    )
+    if err != nil {
+        return nil, err
+    }
+    
+    // Cleanup secnonce
+    for i := range s.SecNonce {
+        s.SecNonce[i] = 0
+    }
+    
+    return partialSig, nil
+}
+
+func (s *Session) Cleanup() {
+    // Zero sensitive data
+    for i := range s.SecNonce {
+        s.SecNonce[i] = 0
+    }
+}</code></pre>
+
+        <h2>4.6 Watcher + WebSocket Integration</h2>
+
+        <p><strong>Arquivo:</strong> <code>core/internal/watcher/watcher.go</code></p>
+        <pre><code>// Adicionar handler para WS updates
+func (w *Watcher) HandleWSUpdate(swapID, boltzStatus string, tx *boltz.TxInfo) {
+    // 1. Buscar swap
+    swap, err := w.engine.Get(context.Background(), swapID)
+    if err != nil {
+        log.Printf("Failed to get swap %s: %v", swapID, err)
+        return
+    }
+    
+    // 2. Normalizar status usando boltz.Normalize existente
+    mapping := boltz.Normalize(boltzStatus, swap.Kind)
+    
+    // 3. Se requer ação, reconciliar
+    if mapping.Action != boltz.ActionNone {
+        go w.reconcileSwap(context.Background(), swap)
+    }
+}</code></pre>
+
+        <h2>4.7 Checklist Phase 2</h2>
+
+        <table>
+            <tr>
+                <th>Tarefa</th>
+                <th>Arquivos</th>
+                <th>Status</th>
+            </tr>
+            <tr>
+                <td>Auto-Lock</td>
+                <td>submarine.go</td>
+                <td><span class="badge pending">Pendente</span></td>
+            </tr>
+            <tr>
+                <td>Reverse Swap</td>
+                <td>reverse.go</td>
+                <td><span class="badge pending">Pendente</span></td>
+            </tr>
+            <tr>
+                <td>Chain Swap</td>
+                <td>chain.go</td>
+                <td><span class="badge pending">Pendente</span></td>
+            </tr>
+            <tr>
+                <td>P2TR Verification</td>
+                <td>taproot.go</td>
+                <td><span class="badge pending">Pendente</span></td>
+            </tr>
+            <tr>
+                <td>MuSig2</td>
+                <td>musig2/session.go</td>
+                <td><span class="badge pending">Pendente</span></td>
+            </tr>
+            <tr>
+                <td>Watcher+WS</td>
+                <td>watcher.go</td>
+                <td><span class="badge pending">Pendente</span></td>
+            </tr>
+        </table>
+    </div>
+
+    <!-- 5. PHASES 3-6 RESUMIDAS -->
+    <div class="page-break">
+        <h1>5. Phases 3-6: Resumo</h1>
+
+        <h2>5.1 Phase 3: Node Adapters (Semanas 5-6)</h2>
+
+        <h3>Entregas</h3>
+        <ul>
+            <li><strong>LND gRPC Adapter</strong> - <code>core/internal/adapters/lnd/client.go</code></li>
+            <li><strong>elementsd JSON-RPC</strong> - <code>core/internal/adapters/liquid/client.go</code></li>
+            <li><strong>Node Manager</strong> - <code>core/internal/nodemanager/manager.go</code></li>
+            <li><strong>GitHub Releases Infra</strong> - Manifest assinado (Ed25519)</li>
+        </ul>
+
+        <h2>5.2 Phase 4: Electron Migration (Semanas 7-8)</h2>
+
+        <h3>Entregas</h3>
+        <ul>
+            <li><strong>Electron Main</strong> - <code>electron/main.ts</code> com hardening</li>
+            <li><strong>IPC Bridge</strong> - <code>electron/preload.ts</code> com whitelist + Zod</li>
+            <li><strong>Frontend Migration</strong> - Alterar <code>api.ts</code> para IPC</li>
+            <li><strong>Deprecar api-bridge</strong> - Manter apenas para debug</li>
+        </ul>
+
+        <h2>5.3 Phase 5: Tx Management (Semana 9)</h2>
+
+        <h3>Entregas</h3>
+        <ul>
+            <li><strong>RBF/CPFP</strong> - <code>core/internal/tx/bumper.go</code></li>
+            <li>Integração com LND WalletKit + elementsd</li>
+        </ul>
+
+        <h2>5.4 Phase 6: Packaging (Semana 10)</h2>
+
+        <h3>Entregas</h3>
+        <ul>
+            <li><strong>Windows Installer</strong> - Inno Setup</li>
+            <li><strong>macOS DMG</strong> - Notarização Apple</li>
+            <li><strong>Code Signing</strong> - Authenticode + Developer ID</li>
+            <li><strong>E2E Tests</strong> - Submarine, Reverse, Chain, Crash Recovery</li>
+        </ul>
+    </div>
+
+    <!-- 6. GUIA DE DESENVOLVIMENTO -->
+    <div class="page-break">
+        <h1>6. Guia de Desenvolvimento</h1>
+
+        <h2>6.1 Setup do Ambiente</h2>
+
+        <h3>Pré-requisitos</h3>
+        <pre><code># Go 1.21+
+go version
+
+# Node.js 18+
+node --version
+
+# Docker (para regtest)
+docker --version</code></pre>
+
+        <h3>Clone e Build</h3>
+        <pre><code># Clone
+git clone https://github.com/4LFR3Dv1/XSWallet.git
+cd XSWallet
+
+# Build Go Core
+cd core
+go build ./cmd/xscore
+./xscore.exe --network=regtest --port=9735
+
+# Frontend (dev)
+cd ../frontend
+npm install
+npm run dev
+
+# API Bridge (temporário)
+cd ../api-bridge
+npm install
+npm start</code></pre>
+
+        <h2>6.2 Regtest Environment</h2>
+
+        <pre><code># Subir regtest
+docker compose -f test/regtest/docker-compose.yml up -d
+
+# Verificar
+docker compose -f test/regtest/docker-compose.yml ps</code></pre>
+
+        <h2>6.3 Workflow de Desenvolvimento</h2>
+
+        <div class="diagram">
+            <div class="mermaid">
+                graph LR
+                A[Escolher Task] --> B[Criar Branch]
+                B --> C[Implementar]
+                C --> D[Testar Localmente]
+                D --> E{Tests Pass?}
+                E -->|Não| C
+                E -->|Sim| F[Commit]
+                F --> G[Push + PR]
+                G --> H[Code Review]
+                H --> I[Merge]
+
+                style A fill:#10b981,color:#fff
+                style E fill:#f59e0b,color:#fff
+                style I fill:#2563eb,color:#fff
+            </div>
+        </div>
+
+        <h2>6.4 Convenções de Código</h2>
+
+        <h3>Go</h3>
+        <ul>
+            <li>Seguir <code>gofmt</code></li>
+            <li>Comentários em português ou inglês (consistente por arquivo)</li>
+            <li>Testes em <code>*_test.go</code></li>
+        </ul>
+
+        <h3>TypeScript/React</h3>
+        <ul>
+            <li>ESLint + Prettier</li>
+            <li>Componentes funcionais com hooks</li>
+            <li>Types explícitos (evitar <code>any</code>)</li>
+        </ul>
+
+        <h2>6.5 Testes</h2>
+
+        <h3>Unit Tests</h3>
+        <pre><code># Go
+cd core
+go test ./...
+
+# Frontend
+cd frontend
+npm test</code></pre>
+
+        <h3>Integration Tests</h3>
+        <pre><code># Regtest
+cd test/e2e
+go test -tags=integration ./...</code></pre>
+    </div>
+
+    <!-- 7. REFERÊNCIAS -->
+    <div class="page-break">
+        <h1>7. Referências</h1>
+
+        <h2>7.1 Documentação</h2>
+
+        <table>
+            <tr>
+                <th>Documento</th>
+                <th>Caminho</th>
+                <th>Descrição</th>
+            </tr>
+            <tr>
+                <td>Especificação Técnica</td>
+                <td><code>docs/XS_Wallet_Especificacao_Tecnica_v2.html</code></td>
+                <td>Fonte de verdade (humano)</td>
+            </tr>
+            <tr>
+                <td>Status vs Spec</td>
+                <td><code>docs/STATUS_ESPECIFICACAO_XS_WALLET.md</code></td>
+                <td>Gap analysis</td>
+            </tr>
+            <tr>
+                <td>Plano de Implementação</td>
+                <td><code>docs/PLANO_IMPLEMENTACAO_v0.2.md</code></td>
+                <td>Roadmap detalhado</td>
+            </tr>
+            <tr>
+                <td>Agent Guide</td>
+                <td><code>docs/AGENTS.md</code></td>
+                <td>Guia para agentes</td>
+            </tr>
+        </table>
+
+        <h2>7.2 Arquitetura</h2>
+
+        <table>
+            <tr>
+                <th>Componente</th>
+                <th>Caminho</th>
+            </tr>
+            <tr>
+                <td>Go Core</td>
+                <td><code>core/</code></td>
+            </tr>
+            <tr>
+                <td>Swap Engine</td>
+                <td><code>core/internal/swap/</code></td>
+            </tr>
+            <tr>
+                <td>Vault</td>
+                <td><code>core/internal/vault/</code></td>
+            </tr>
+            <tr>
+                <td>Boltz Client</td>
+                <td><code>core/internal/boltz/</code></td>
+            </tr>
+            <tr>
+                <td>Database</td>
+                <td><code>core/internal/db/</code></td>
+            </tr>
+            <tr>
+                <td>Frontend</td>
+                <td><code>frontend/</code></td>
+            </tr>
+            <tr>
+                <td>Protos</td>
+                <td><code>proto/</code></td>
+            </tr>
+        </table>
+
+        <h2>7.3 Recursos Externos</h2>
+
+        <ul>
+            <li><strong>Boltz API v2</strong>: <a href="https://api.docs.boltz.exchange">api.docs.boltz.exchange</a>
+            </li>
+            <li><strong>BIP327 (MuSig2)</strong>: <a
+                    href="https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki">github.com/bitcoin/bips</a>
+            </li>
+            <li><strong>LND gRPC</strong>: <a
+                    href="https://lightning.engineering/api-docs">lightning.engineering/api-docs</a></li>
+            <li><strong>Elements RPC</strong>: <a
+                    href="https://elementsproject.org/en/doc">elementsproject.org/en/doc</a></li>
+        </ul>
+    </div>
+
+    <!-- FOOTER -->
+    <hr style="margin: 30pt 0;">
+
+    <p style="text-align: center; color: var(--text-secondary); font-size: 9pt;">
+        <strong>XS Wallet - Guia de Implementação v1.0.0</strong><br>
+        Janeiro 2026 • Baseado em Especificação Técnica v0.2.0<br>
+        Self-Custody • Zero Trust • Don't Trust, Verify
+    </p>
+
+    <script>
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: 'neutral',
+            flowchart: { curve: 'basis' },
+            sequence: { actorMargin: 50 },
+            gantt: { fontSize: 10 }
+        });
+    </script>
+</body>
+
+</html>
