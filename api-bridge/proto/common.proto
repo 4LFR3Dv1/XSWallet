@@ -1,0 +1,54 @@
+// XS Wallet - Common Types
+// Tipos compartilhados entre todos os serviços
+syntax = "proto3";
+
+package xswallet;
+
+option go_package = "github.com/xs-wallet/xscore/proto";
+
+import "google/protobuf/timestamp.proto";
+
+// =============================================================================
+// ENUMS COMPARTILHADOS
+// =============================================================================
+
+enum Chain {
+  CHAIN_UNSPECIFIED = 0;
+  CHAIN_BTC = 1;
+  CHAIN_LIQUID = 2;
+  CHAIN_LN = 3;
+}
+
+enum Network {
+  NETWORK_UNSPECIFIED = 0;
+  NETWORK_MAINNET = 1;
+  NETWORK_TESTNET = 2;
+  NETWORK_REGTEST = 3;
+}
+
+// =============================================================================
+// FEE POLICY
+// =============================================================================
+
+message FeePolicy {
+  enum Priority {
+    PRIORITY_UNSPECIFIED = 0;
+    PRIORITY_LOW = 1;              // ~6 blocos
+    PRIORITY_MEDIUM = 2;           // ~3 blocos
+    PRIORITY_HIGH = 3;             // próximo bloco
+  }
+  Priority priority = 1;
+  uint64 max_fee_sat = 2;          // Limite máximo de fee
+  bool allow_rbf = 3;              // Permitir RBF
+}
+
+// =============================================================================
+// PLATFORM CAPABILITIES
+// =============================================================================
+
+message PlatformCapabilities {
+  bool can_spawn_nodes = 1;        // Desktop: true, Mobile: false
+  bool can_download_binaries = 2;  // Desktop: true, Mobile: false
+  bool has_embedded_neutrino = 3;  // Mobile: true, Desktop: false
+  string platform = 4;             // "desktop", "ios", "android"
+}

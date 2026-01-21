@@ -1,0 +1,37 @@
+@import "./tailwind.css";
+@import "./theme.css";
+@import "./fonts.css";
+
+:root {
+    --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+html,
+body,
+#root {
+    height: 100%;
+    width: 100%;
+}
+
+body {
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* Ensure dark mode is applied by default */
+html {
+    color-scheme: dark;
+}
+
+/* Force dark class on root for Tailwind */
+:root {
+    color-scheme: dark;
+}

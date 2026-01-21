@@ -1,0 +1,49 @@
+# Binaries
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Databases
+*.sqlite
+*.sqlite3
+*.db
+
+# Node modules
+node_modules/
+
+# Build outputs
+dist/
+build/
+out/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Go
+*.test
+coverage.out
+
+# Electron
+*.asar
+
+# Temporary
+tmp/
+temp/
+*.tmp

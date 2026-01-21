@@ -1,0 +1,23 @@
+{
+    "name": "xs-wallet-api-bridge",
+    "version": "1.0.0",
+    "description": "HTTP to gRPC bridge for XS Wallet",
+    "main": "server.js",
+    "scripts": {
+        "start": "node server.js",
+        "dev": "nodemon server.js"
+    },
+    "dependencies": {
+        "express": "^4.18.2",
+        "@grpc/grpc-js": "^1.9.0",
+        "@grpc/proto-loader": "^0.7.10",
+        "uuid": "^9.0.0",
+        "axios": "^1.6.0"
+    },
+    "devDependencies": {
+        "nodemon": "^3.0.1"
+    },
+    "engines": {
+        "node": ">=18.0.0"
+    }
+}
