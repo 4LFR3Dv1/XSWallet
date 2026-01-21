@@ -339,25 +339,25 @@
         <div class="diagram">
             <div class="mermaid">
                 gantt
-                title Roadmap de 10 Semanas (Reorganizado)
+                title Roadmap de 10 Semanas
                 dateFormat YYYY-MM-DD
                 section Phase 1
                 Core Fixes :p1, 2026-01-27, 14d
                 section Phase 2
-                Adapters + Watchers :p2, after p1, 14d
+                Adapters :p2, after p1, 14d
                 section Phase 3
-                Swap Protocol :p3, after p2, 14d
+                Swaps :p3, after p2, 14d
                 section Phase 4
                 Electron :p4, after p3, 14d
                 section Phase 5
-                Tx Management :p5, after p4, 7d
+                Tx Mgmt :p5, after p4, 7d
                 section Phase 6
-                Packaging :p6, after p5, 7d
+                Package :p6, after p5, 7d
             </div>
         </div>
-        <div class="caption">Figura 2.1: Timeline do Projeto (Reorganizado)</div>
+        <div class="caption">Figura 2.1: Timeline do Projeto</div>
 
-        <h2>2.2 Dependency Graph (Corrigido)</h2>
+        <h2>2.2 Dependency Graph</h2>
 
         <div class="diagram">
             <div class="mermaid">
@@ -682,12 +682,12 @@ func (v *Vault) Unlock(pin string) (string, error) {
         </table>
     </div>
 
-    <!-- 4. PHASE 2 -->
+    <!-- 4. PHASE 3 -->
     <div class="page-break">
-        <h1>4. Phase 2: Adapters + Watchers (Semanas 3-4)</h1>
+        <h1>4. Phase 3: Swap Protocol (Semanas 5-6)</h1>
 
         <div class="note success">
-            <strong>✓ Objetivo:</strong> Base funcional (adapters + watchers) para orchestrators consumirem dados reais.
+            <strong>✓ Objetivo:</strong> Implementar todos os tipos de swap (Submarine, Reverse, Chain) com MuSig2.
         </div>
 
         <h2>4.1 Submarine Auto-Lock</h2>
@@ -1023,11 +1023,22 @@ func (w *Watcher) HandleWSUpdate(swapID, boltzStatus string, tx *boltz.TxInfo) {
         </table>
     </div>
 
-    <!-- 5. PHASES 3-6 RESUMIDAS -->
+    <!-- 5. PHASES 2-6 RESUMIDAS -->
     <div class="page-break">
-        <h1>5. Phases 3-6: Resumo</h1>
+        <h1>5. Phases 2-6: Resumo</h1>
 
-        <h2>5.1 Phase 3: Swap Protocol (Semanas 5-6)</h2>
+        <h2>5.1 Phase 2: Adapters + Watchers (Semanas 3-4)</h2>
+
+        <h3>Entregas</h3>
+        <ul>
+            <li><strong>LND gRPC Adapter</strong> - <code>core/internal/adapters/lnd/client.go</code></li>
+            <li><strong>elementsd JSON-RPC</strong> - <code>core/internal/adapters/liquid/client.go</code></li>
+            <li><strong>Node Manager</strong> - <code>core/internal/nodemanager/manager.go</code></li>
+            <li><strong>Watcher base + WS integration</strong> - <code>core/internal/watcher/watcher.go</code></li>
+            <li><strong>GitHub Releases Infra</strong> - Manifest assinado (Ed25519)</li>
+        </ul>
+
+        <h2>5.2 Phase 3: Swap Protocol (Semanas 5-6)</h2>
 
         <h3>Entregas</h3>
         <ul>
@@ -1038,7 +1049,7 @@ func (w *Watcher) HandleWSUpdate(swapID, boltzStatus string, tx *boltz.TxInfo) {
             <li><strong>Reconcile + Invariantes</strong> - Determinístico</li>
         </ul>
 
-        <h2>5.2 Phase 4: Electron Migration (Semanas 7-8)</h2>
+        <h2>5.3 Phase 4: Electron Migration (Semanas 7-8)</h2>
 
         <h3>Entregas</h3>
         <ul>
@@ -1048,7 +1059,7 @@ func (w *Watcher) HandleWSUpdate(swapID, boltzStatus string, tx *boltz.TxInfo) {
             <li><strong>Deprecar api-bridge</strong> - Manter apenas para debug</li>
         </ul>
 
-        <h2>5.3 Phase 5: Tx Management (Semana 9)</h2>
+        <h2>5.4 Phase 5: Tx Management (Semana 9)</h2>
 
         <h3>Entregas</h3>
         <ul>
@@ -1056,7 +1067,7 @@ func (w *Watcher) HandleWSUpdate(swapID, boltzStatus string, tx *boltz.TxInfo) {
             <li>Integração com LND WalletKit + elementsd</li>
         </ul>
 
-        <h2>5.4 Phase 6: Packaging (Semana 10)</h2>
+        <h2>5.5 Phase 6: Packaging (Semana 10)</h2>
 
         <h3>Entregas</h3>
         <ul>

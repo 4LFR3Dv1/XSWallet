@@ -359,15 +359,15 @@
             localmente antes do uso.</p>
         <p><strong>Crash Recovery</strong>: Todos os estados de swap são persistidos com operações idempotentes; swaps
             podem resumir após qualquer falha.</p>
-        <p><strong>Restauração</strong>: Chaves de assinatura são restauradas deterministicamente via mnemônico (BIP85).
-            <strong>Swaps pendentes requerem backup do DB criptografado</strong> (preimage R não é derivável).
-        </p>
-
-        <div class="note" style="background: #fef3c7; border-color: #f59e0b;">
-            <strong>⚠️ IMPORTANTE:</strong> O backup do banco de dados é <strong>obrigatório</strong> para recuperar
-            swaps pendentes em reverse/chain. Sem o backup, fundos podem ser perdidos se a preimage R for perdida
-            antes do claim.
-        </div>
+        <p><strong>Restauração</strong>:</p>
+        <ul style="margin-left: 20pt;">
+            <li>Endereços e chaves podem ser rederivados deterministicamente do mnemônico (BIP39/BIP32/BIP84;
+                opcionalmente BIP85 para child seeds).</li>
+            <li>Swaps pendentes <strong>NÃO são restauráveis apenas do mnemônico</strong>: exigem backup do banco de
+                dados (criptografado) para recuperar estado e segredos efêmeros (ex: preimage R criptografada,
+                locked_intent, etc.).</li>
+            <li>Sem esse backup, a recuperação pode se limitar a ações de refund quando aplicável (após timelock).</li>
+        </ul>
     </div>
 
     <!-- 2. ARQUITETURA -->
@@ -1548,13 +1548,13 @@ const bumpFee = async (chain: 'btc'|'liquid', txid: string, newFeeRate: number) 
             <tr>
                 <td>2. Adapters + Watchers</td>
                 <td>3-4</td>
-                <td>LND adapter, BTC/Liquid adapters, Chain/LN watchers</td>
+                <td>LND gRPC, elementsd JSON-RPC, Node Manager + Infra, Watcher base + WS ingestion</td>
                 <td>Pendente</td>
             </tr>
             <tr>
                 <td>3. Swap Protocol</td>
                 <td>5-6</td>
-                <td>Auto-Lock, Reverse, MuSig2, P2TR, Reconcile</td>
+                <td>Auto-Lock, Reverse, Chain, MuSig2, P2TR verification, Watcher+WS (reconcile end-to-end)</td>
                 <td>Pendente</td>
             </tr>
             <tr>
