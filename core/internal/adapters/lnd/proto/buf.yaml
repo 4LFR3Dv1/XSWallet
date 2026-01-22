@@ -1,0 +1,9 @@
+# Buf module configuration
+version: v1
+name: buf.build/xs-wallet/lnd-proto
+breaking:
+  use:
+    - FILE
+lint:
+  use:
+    - DEFAULT

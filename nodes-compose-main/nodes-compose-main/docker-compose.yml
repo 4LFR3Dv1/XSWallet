@@ -1,0 +1,246 @@
+#Use https://github.com/vilm3r/docker-peerswap and https://github.com/tiero/peerswap-box/tree/master as reference for Peerswap
+# 
+#TODO configure elements for Liquid sidechain
+
+services:
+
+  TorI2PRelay:
+    image: divax/i2p:current-i2p-tor
+    container_name: TorI2PRelay
+    restart: unless-stopped
+    environment:
+      - PORT_TOR=9050              # Tor SOCKS proxy port
+      - PORT_HTTP_PROXY=4444       # I2P HTTP proxy port
+      - ENABLE_HTTPPROXY=1         # Enable I2P HTTP proxy
+      - ENABLE_SOCKSPROXY=1        # Enable I2P SOCKS proxy (port 4445)
+      - ENABLE_SAM=1               # Enable I2P SAM bridge (port 7656)
+      - PORT_SAM=7656              # I2P SAM bridge port
+      - LOGLEVEL=info              # Logging level
+      - BANDWIDTH=X                # Bandwidth: L=32KB/s, O=256KB/s, P=2048KB/s, X=unlimited
+    #ports: Do not expose ports to host for privacy/security reasons
+    #  - "7070:7070"  # I2P web console
+    #  - "4444:4444"  # I2P HTTP proxy
+    #  - "4445:4445"  # I2P SOCKS proxy
+    #  - "7656:7656"  # I2P SAM bridge
+    #  - "9050:9050"  # Tor SOCKS proxy
+    #  - "8080:8080"  # Proxy auto-config
+    volumes:
+      - tor-i2p-data:/home/i2pd
+    networks:
+      - nodes
+
+  bitcoind:
+    image: ruimarinho/bitcoin-core:alpine
+    container_name: bitcoind
+    restart: unless-stopped
+    depends_on:
+      - TorI2PRelay
+    command:
+      - -server=1
+      - -txindex=${BITCOIN_TXINDEX}
+      - -par=${BITCOIN_PARALLEL_CORE}
+      - -dbcache=${BITCOIN_DBCACHE_RAM_MB}
+      - -maxconnections=${BITCOIN_MAX_CONNECTIONS}
+      - -prune=${BITCOIN_PRUNE} # Enable pruning to limit disk usage (optional)
+      - -rpcbind=0.0.0.0
+      - -rpcallowip=0.0.0.0/0
+      - -rpcuser=${BITCOIN_RPC_USER}
+      - -rpcpassword=${BITCOIN_RPC_PASSWORD}
+      - -zmqpubrawblock=tcp://0.0.0.0:${BITCOIN_ZMQ_BLOCK_PORT}
+      - -zmqpubrawtx=tcp://0.0.0.0:${BITCOIN_ZMQ_TX_PORT}
+      # Tor configuration
+      - -proxy=TorI2PRelay:9050
+      - -listenonion=1
+      - -bind=0.0.0.0
+      # I2P configuration
+      - -i2psam=TorI2PRelay:7656
+      - -i2pacceptincoming=1
+
+    #ports:
+    #  - "${BITCOIN_RPC_PORT}:8332"   # RPC
+    #  - "${BITCOIN_P2P_PORT}:8333"   # P2P
+    #  - "${BITCOIN_ZMQ_BLOCK_PORT}:28332" # ZMQ blocks
+    #  - "${BITCOIN_ZMQ_TX_PORT}:28333" # ZMQ tx
+    volumes:
+      - bitcoind-data:/bitcoin
+
+    networks:
+      - nodes
+
+  lnd:
+    image: lightninglabs/lnd:v0.17.5-beta
+    container_name: lnd
+    depends_on:
+      - bitcoind
+      - TorI2PRelay
+    restart: unless-stopped
+    entrypoint: ["/entrypoint.sh"]
+    command:
+      - --bitcoin.active
+      - --bitcoin.${BITCOIN_NETWORK}
+      - --bitcoin.node=bitcoind
+      - --bitcoind.rpchost=bitcoind
+      - --bitcoind.rpcuser=${BITCOIN_RPC_USER}
+      - --bitcoind.rpcpass=${BITCOIN_RPC_PASSWORD}
+      - --bitcoind.zmqpubrawblock=tcp://bitcoind:${BITCOIN_ZMQ_BLOCK_PORT}
+      - --bitcoind.zmqpubrawtx=tcp://bitcoind:${BITCOIN_ZMQ_TX_PORT}
+      - --rpclisten=0.0.0.0:${LND_GRPC_PORT}
+      - --restlisten=0.0.0.0:${LND_REST_PORT}
+      - --listen=0.0.0.0:${LND_P2P_PORT}
+      - --alias=${LND_ALIAS}
+      - --color=${LND_COLOR}
+      - --tlsextradomain=lnd
+      # Tor configuration
+      - --tor.active
+      - --tor.v3
+      - --tor.socks=TorI2PRelay:9050
+      - --tor.streamisolation
+      - --tor.skip-proxy-for-clearnet-targets
+    environment:
+      - BITCOIN_NETWORK=${BITCOIN_NETWORK}
+      - LND_WALLET_PASSWORD=${LND_WALLET_PASSWORD}
+    #ports:
+    #  - "${LND_P2P_PORT}:9735"   # Lightning P2P
+    #  - "${LND_GRPC_PORT}:10009" # gRPC
+    #  - "${LND_REST_PORT}:8080"   # REST
+    volumes:
+      - lnd-data:/root/.lnd
+      - ./lnd-entrypoint.sh:/entrypoint.sh:ro
+    networks:
+      - nodes
+
+  LNBits:
+    image: lnbits/lnbits:v1.4.1-rc2
+    container_name: LNBits
+    restart: unless-stopped
+    depends_on:
+      - lnd
+    environment:
+      - HOST=0.0.0.0
+      - PORT=5000
+      - LNBITS_SITE_TITLE=${LNBITS_SITE_TITLE}
+      - LNBITS_SITE_TAGLINE=${LNBITS_SITE_TAGLINE}
+      - LNBITS_SITE_DESCRIPTION=${LNBITS_SITE_DESCRIPTION}
+
+      # LND Configuration
+      - LND_GRPC_ENDPOINT=lnd # use 'lnd' as hostname to connect within the docker network
+      - LND_GRPC_PORT=${LND_GRPC_PORT}
+      - LND_GRPC_CERT=/lnd/tls.cert
+      - LND_GRPC_MACAROON=/lnd/data/chain/bitcoin/${BITCOIN_NETWORK}/admin.macaroon
+
+    volumes:
+      - lnbits_data:/app/data
+      - lnd-data:/lnd:ro
+    networks:
+      - nodes
+
+  elements-liquid:
+    image: ghcr.io/vulpemventures/elements:latest
+    restart: unless-stopped
+    container_name: elements-liquid
+    depends_on:
+      - bitcoind
+      - TorI2PRelay
+    command:
+      # Mainchain connection
+      - -mainchainrpcuser=${BITCOIN_RPC_USER}
+      - -mainchainrpcpassword=${BITCOIN_RPC_PASSWORD}
+      - -mainchainrpcport=${BITCOIN_RPC_PORT}
+      - -mainchainrpchost=bitcoind
+      # Elements configuration
+      - -chain=${ELEMENTS_NETWORK}
+      - -listen=1
+      - -port=${ELEMENTS_P2P_PORT}
+      - -rpcbind=0.0.0.0
+      - -rpcallowip=0.0.0.0/0
+      - -rpcport=${ELEMENTS_RPC_PORT}
+      - -rpcuser=${ELEMENTS_RPC_USER}
+      - -rpcpassword=${ELEMENTS_RPC_PASSWORD}
+      - -txindex=${ELEMENTS_TXINDEX}
+      - -prune=${ELEMENTS_PRUNE}
+      #- -validatepegin=0
+      # Tor configuration
+      - -proxy=TorI2PRelay:9050
+      - -listenonion=1
+      - -bind=0.0.0.0
+      # I2P configuration
+      - -i2psam=TorI2PRelay:7656
+      - -i2pacceptincoming=1
+    volumes:
+      - elements-data:/root/.elements
+    networks:
+      - nodes
+    #ports:
+    #  - 18884:18884
+    #  - 18886:18886
+    #  # ZMQ
+    #  - 38332:38332
+    #  - 38333:38333
+    #volumes:
+    #  - elements-config:/config
+
+  #Peerswap:
+  #  image: peerswap:v1.0 
+  #  build:
+  #    context: peerswap_image
+  #    dockerfile: Dockerfile
+  #  restart: unless-stopped
+  #  depends_on:
+  #    - lnd
+  #    - bitcoind
+  #  networks:
+  #    - nodes
+
+  #BalanceofSatoshis:
+  #  image:
+  #  restart: unless-stopped
+  #networks:
+  #    - nodes
+
+  #ThunderHub:
+  #  image: apotdevin/thunderhub:base-v0.14.6
+  #  container_name: ThunderHub
+  #  restart: unless-stopped
+
+  #  environment:
+  #    - PUBLIC_URL=${THUNDERHUB_PUBLIC_URL}
+  #    - SSL_PORT=${THUNDERHUB_PORT}
+  #    - SSL_SAVE=true
+  #    - LOG_LEVEL=${THUNDERHUB_LOG_LEVEL}
+  #    - COOKIE_PATH=/path/to/cookie/file/.cookie 
+  #    - SSO_SERVER_URL=lnd:10009
+  #    - SSO_CERT_PATH=/lnd/tls.cert
+  #    - SSO_MACAROON_PATH=/lnd/data/chain/bitcoin/${BITCOIN_NETWORK}
+  #    - LOGOUT_URL=${THUNDERHUB_LOGOUT_URL}
+  #    - THUNDERHUB_BASE_PATH=${THUNDERHUB_BASE_PATH}
+      #- TOR_PROXY_SERVER=
+  #  volumes:
+  #    - lnd-data:/lnd:ro
+  #  networks:
+  #    - nodes
+    
+
+  #PeerswapWeb:
+  #  image:
+  #  restart: unless-stopped
+
+
+  #BalanceMonitor:
+  #  image:
+  #  restart: unless-stopped
+
+networks:
+    nodes:
+        driver: bridge
+        driver_opts:
+            com.docker.network.bridge.name: br-nodes
+        enable_ipv6: false
+        ipam:
+            driver: default
+
+volumes:
+  bitcoind-data:
+  lnd-data:
+  lnbits_data:
+  tor-i2p-data:
+  elements-data:

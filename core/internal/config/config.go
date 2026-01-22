@@ -36,6 +36,9 @@ type NodeConfig struct {
 	User     string `json:"user"`
 	Password string `json:"password"`
 	DataDir  string `json:"data_dir"`
+	// LND-specific fields
+	TLSCert  string `json:"tls_cert,omitempty"` // Path to tls.cert
+	Macaroon string `json:"macaroon,omitempty"` // Path to admin.macaroon
 }
 
 // BoltzConfig configuração do Boltz
@@ -84,10 +87,12 @@ func Load(configPath, dataDir, network string) (*Config, error) {
 			DataDir: filepath.Join(dataDir, "nodes", "liquid", network),
 		},
 		LND: NodeConfig{
-			Enabled: true,
-			Host:    "127.0.0.1",
-			Port:    10009,
-			DataDir: filepath.Join(dataDir, "nodes", "lnd", network),
+			Enabled:  true,
+			Host:     "127.0.0.1",
+			Port:     10009,
+			DataDir:  filepath.Join(dataDir, "nodes", "lnd", network),
+			TLSCert:  lndTLSCertPath(dataDir, network),
+			Macaroon: lndMacaroonPath(dataDir, network),
 		},
 		Boltz: BoltzConfig{
 			APIURL: boltzAPIURL(network),
@@ -160,4 +165,16 @@ func bitcoindPort(network string) int {
 	default: // regtest
 		return 18443
 	}
+}
+
+// lndTLSCertPath returns the default path to LND's TLS certificate
+func lndTLSCertPath(dataDir, network string) string {
+	// Default: look in LND data directory
+	return filepath.Join(dataDir, "nodes", "lnd", network, "tls.cert")
+}
+
+// lndMacaroonPath returns the default path to LND's admin macaroon
+func lndMacaroonPath(dataDir, network string) string {
+	// Default: look in LND data directory
+	return filepath.Join(dataDir, "nodes", "lnd", network, "data", "chain", "bitcoin", network, "admin.macaroon")
 }

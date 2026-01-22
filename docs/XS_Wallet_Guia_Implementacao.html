@@ -378,6 +378,101 @@
             </div>
         </div>
         <div class="caption">Figura 2.2: Dependências entre Fases</div>
+
+        <h2>2.3 Milestones e Artefatos de Demo</h2>
+
+        <table>
+            <tr>
+                <th>Phase</th>
+                <th>Semana</th>
+                <th>Milestone</th>
+                <th>Artefato de Demo</th>
+            </tr>
+            <tr>
+                <td>1</td>
+                <td>2</td>
+                <td>Core Stable</td>
+                <td>DB schema migrado + vault unlock funcional com lockout</td>
+            </tr>
+            <tr>
+                <td>2</td>
+                <td>4</td>
+                <td>Adapters Ready</td>
+                <td>Watchers recebendo eventos reais (regtest) com retry logs</td>
+            </tr>
+            <tr>
+                <td>3</td>
+                <td>6</td>
+                <td>Swap E2E</td>
+                <td><strong>1 swap Submarine completo com crash-recovery demonstrável</strong></td>
+            </tr>
+            <tr>
+                <td>4</td>
+                <td>8</td>
+                <td>Desktop Ready</td>
+                <td>App Electron funcionando via IPC (sem api-bridge)</td>
+            </tr>
+            <tr>
+                <td>5</td>
+                <td>9</td>
+                <td>Tx Complete</td>
+                <td>RBF bump em swap travado + fee estimation UI</td>
+            </tr>
+            <tr>
+                <td>6</td>
+                <td>10</td>
+                <td>Release Candidate</td>
+                <td>Installer assinado + E2E tests passando</td>
+            </tr>
+            <tr style="background: #fef3c7;">
+                <td><strong>Buffer</strong></td>
+                <td><strong>11</strong></td>
+                <td><strong>Hardening Week</strong></td>
+                <td><strong>Bug fixes, polish, security review final</strong></td>
+            </tr>
+        </table>
+        <div class="caption">Tabela 2.1: Milestones com Artefatos Demonstráveis</div>
+
+        <h2>2.4 Gestão de Riscos e Buffers</h2>
+
+        <div class="note">
+            <strong>⚠️ Nota:</strong> 10 semanas para uma wallet crypto self-custody é um timeline agressivo.
+            Incluímos 10-15% de buffer (Semana 11) para mitigar riscos.
+        </div>
+
+        <table>
+            <tr>
+                <th>Risco</th>
+                <th>Probabilidade</th>
+                <th>Impacto</th>
+                <th>Mitigação</th>
+            </tr>
+            <tr>
+                <td>MuSig2 implementação complexa</td>
+                <td>Média</td>
+                <td>Alto</td>
+                <td>Fallback para script-path claim; usar <code>btcd/btcec</code></td>
+            </tr>
+            <tr>
+                <td>Boltz API downtime/changes</td>
+                <td>Baixa</td>
+                <td>Alto</td>
+                <td>Self-hosted boltz-backend em regtest; mocks para CI</td>
+            </tr>
+            <tr>
+                <td>Electron security issues</td>
+                <td>Média</td>
+                <td>Crítico</td>
+                <td>Security Gate obrigatório antes de Phase 4</td>
+            </tr>
+            <tr>
+                <td>Integração LND/Elements</td>
+                <td>Média</td>
+                <td>Médio</td>
+                <td>Polar/Nigiri para ambiente controlado</td>
+            </tr>
+        </table>
+        <div class="caption">Tabela 2.2: Matriz de Riscos</div>
     </div>
 
     <!-- 3. PHASE 1 -->
@@ -680,17 +775,480 @@ func (v *Vault) Unlock(pin string) (string, error) {
                 <td><span class="badge pending">Pendente</span></td>
             </tr>
         </table>
+
+        <h2>3.6 Definition of Done - Phase 1</h2>
+
+        <div class="note success">
+            <strong>✓ Phase 1 está DONE quando:</strong>
+        </div>
+        <ul>
+            <li>✅ Schema SQLite unificado criado via migrations (não mais divergência)</li>
+            <li>✅ <code>QuoteSwap()</code> aceita todos os pares: BTC↔LN, LN↔BTC, BTC↔Liquid</li>
+            <li>✅ Preimages criptografadas no DB (verificável via hex dump)</li>
+            <li>✅ PIN lockout funcional: 10 tentativas → 30min lock (testável)</li>
+            <li>✅ Todos os unit tests passando: <code>go test ./...</code></li>
+        </ul>
     </div>
 
-    <!-- 4. PHASE 3 -->
+    <!-- 4. PHASE 2 -->
     <div class="page-break">
-        <h1>4. Phase 3: Swap Protocol (Semanas 5-6)</h1>
+        <h1>4. Phase 2: Adapters + Watchers (Semanas 3-4)</h1>
+
+        <div class="note success">
+            <strong>✓ Objetivo:</strong> Base funcional (adapters + watchers) para orchestrators consumirem dados reais.
+        </div>
+
+        <h2>4.1 LND Adapter Mínimo</h2>
+
+        <p><strong>Arquivo:</strong> <code>core/internal/adapters/lnd/client.go</code></p>
+        <pre><code>package lnd
+
+import (
+    "context"
+    "google.golang.org/grpc"
+    "github.com/lightningnetwork/lnd/lnrpc"
+)
+
+type Client struct {
+    conn      *grpc.ClientConn
+    lightning lnrpc.LightningClient
+}
+
+func NewClient(address string, tlsCert, macaroon []byte) (*Client, error) {
+    // Setup TLS + macaroon credentials
+    creds := credentials.NewTLS(&tls.Config{
+        Certificates: []tls.Certificate{cert},
+    })
+    
+    conn, err := grpc.Dial(address, grpc.WithTransportCredentials(creds))
+    if err != nil {
+        return nil, err
+    }
+    
+    return &Client{
+        conn:      conn,
+        lightning: lnrpc.NewLightningClient(conn),
+    }, nil
+}
+
+// Mínimo viável
+func (c *Client) GetInfo(ctx context.Context) (*lnrpc.GetInfoResponse, error) {
+    return c.lightning.GetInfo(ctx, &lnrpc.GetInfoRequest{})
+}
+
+func (c *Client) PayInvoice(ctx context.Context, bolt11 string) (*lnrpc.SendResponse, error) {
+    return c.lightning.SendPaymentSync(ctx, &lnrpc.SendRequest{
+        PaymentRequest: bolt11,
+    })
+}
+
+func (c *Client) AddInvoice(ctx context.Context, amount int64, memo string) (*lnrpc.AddInvoiceResponse, error) {
+    return c.lightning.AddInvoice(ctx, &lnrpc.Invoice{
+        Value: amount,
+        Memo:  memo,
+    })
+}
+
+// Stream de invoices
+func (c *Client) SubscribeInvoices(ctx context.Context) (<-chan *lnrpc.Invoice, error) {
+    stream, err := c.lightning.SubscribeInvoices(ctx, &lnrpc.InvoiceSubscription{})
+    if err != nil {
+        return nil, err
+    }
+    
+    invoices := make(chan *lnrpc.Invoice)
+    go func() {
+        defer close(invoices)
+        for {
+            inv, err := stream.Recv()
+            if err != nil {
+                return
+            }
+            invoices <- inv
+        }
+    }()
+    
+    return invoices, nil
+}
+
+func (c *Client) LookupInvoice(ctx context.Context, paymentHash string) (*lnrpc.Invoice, error) {
+    hash, _ := hex.DecodeString(paymentHash)
+    return c.lightning.LookupInvoice(ctx, &lnrpc.PaymentHash{
+        RHash: hash,
+    })
+}</code></pre>
+
+        <h2>4.2 BTC/Liquid Adapter Mínimo</h2>
+
+        <p><strong>Arquivo:</strong> <code>core/internal/adapters/bitcoin/client.go</code></p>
+        <pre><code>package bitcoin
+
+import (
+    "bytes"
+    "encoding/json"
+    "net/http"
+)
+
+type Client struct {
+    rpcURL   string
+    user     string
+    password string
+    client   *http.Client
+}
+
+func NewClient(rpcURL, user, password string) *Client {
+    return &Client{
+        rpcURL:   rpcURL,
+        user:     user,
+        password: password,
+        client:   &http.Client{Timeout: 30 * time.Second},
+    }
+}
+
+type RPCRequest struct {
+    JSONRPC string        `json:"jsonrpc"`
+    Method  string        `json:"method"`
+    Params  []interface{} `json:"params"`
+    ID      int           `json:"id"`
+}
+
+func (c *Client) call(method string, params ...interface{}) (json.RawMessage, error) {
+    req := RPCRequest{
+        JSONRPC: "1.0",
+        Method:  method,
+        Params:  params,
+        ID:      1,
+    }
+    
+    body, _ := json.Marshal(req)
+    httpReq, _ := http.NewRequest("POST", c.rpcURL, bytes.NewReader(body))
+    httpReq.SetBasicAuth(c.user, c.password)
+    httpReq.Header.Set("Content-Type", "application/json")
+    
+    resp, err := c.client.Do(httpReq)
+    if err != nil {
+        return nil, err
+    }
+    defer resp.Body.Close()
+    
+    var rpcResp struct {
+        Result json.RawMessage `json:"result"`
+        Error  *struct {
+            Message string `json:"message"`
+        } `json:"error"`
+    }
+    
+    json.NewDecoder(resp.Body).Decode(&rpcResp)
+    if rpcResp.Error != nil {
+        return nil, fmt.Errorf("RPC error: %s", rpcResp.Error.Message)
+    }
+    
+    return rpcResp.Result, nil
+}
+
+// Mínimo viável
+func (c *Client) GetBlockHeight(ctx context.Context) (int64, error) {
+    result, err := c.call("getblockcount")
+    if err != nil {
+        return 0, err
+    }
+    
+    var height int64
+    json.Unmarshal(result, &height)
+    return height, nil
+}
+
+func (c *Client) GetTransaction(ctx context.Context, txid string) (*Transaction, error) {
+    result, err := c.call("getrawtransaction", txid, true)
+    if err != nil {
+        return nil, err
+    }
+    
+    var tx Transaction
+    json.Unmarshal(result, &tx)
+    return &tx, nil
+}
+
+func (c *Client) BroadcastTransaction(ctx context.Context, hex string) (string, error) {
+    result, err := c.call("sendrawtransaction", hex)
+    if err != nil {
+        return "", err
+    }
+    
+    var txid string
+    json.Unmarshal(result, &txid)
+    return txid, nil
+}
+
+func (c *Client) GetConfirmations(ctx context.Context, txid string) (int, error) {
+    tx, err := c.GetTransaction(ctx, txid)
+    if err != nil {
+        return 0, err
+    }
+    return tx.Confirmations, nil
+}</code></pre>
+
+        <p><strong>Arquivo:</strong> <code>core/internal/adapters/liquid/client.go</code> (mesmo interface)</p>
+
+        <h2>4.3 Chain Watcher</h2>
+
+        <p><strong>Arquivo:</strong> <code>core/internal/watcher/chain_watcher.go</code></p>
+        <pre><code>package watcher
+
+import (
+    "context"
+    "time"
+    "github.com/xs-wallet/xscore/internal/adapters/bitcoin"
+    "github.com/xs-wallet/xscore/internal/adapters/liquid"
+    "github.com/xs-wallet/xscore/internal/swap"
+)
+
+type ChainWatcher struct {
+    btc    *bitcoin.Client
+    liquid *liquid.Client
+    engine *swap.Engine
+}
+
+func NewChainWatcher(btc *bitcoin.Client, liquid *liquid.Client, engine *swap.Engine) *ChainWatcher {
+    return &ChainWatcher{
+        btc:    btc,
+        liquid: liquid,
+        engine: engine,
+    }
+}
+
+func (w *ChainWatcher) WatchTransaction(ctx context.Context, chain, txid string) error {
+    ticker := time.NewTicker(30 * time.Second)
+    defer ticker.Stop()
+    
+    for {
+        select {
+        case <-ctx.Done():
+            return ctx.Err()
+        case <-ticker.C:
+            var confirmations int
+            var err error
+            
+            if chain == "BTC" {
+                confirmations, err = w.btc.GetConfirmations(ctx, txid)
+            } else {
+                confirmations, err = w.liquid.GetConfirmations(ctx, txid)
+            }
+            
+            if err != nil {
+                continue
+            }
+            
+            if confirmations >= 1 {
+                // Trigger reconcile
+                go w.reconcileByTxid(ctx, txid)
+                return nil
+            }
+        }
+    }
+}
+
+func (w *ChainWatcher) GetBlockHeight(ctx context.Context, chain string) (int64, error) {
+    if chain == "BTC" {
+        return w.btc.GetBlockHeight(ctx)
+    }
+    return w.liquid.GetBlockHeight(ctx)
+}</code></pre>
+
+        <h2>4.4 LN Watcher</h2>
+
+        <p><strong>Arquivo:</strong> <code>core/internal/watcher/ln_watcher.go</code></p>
+        <pre><code>package watcher
+
+import (
+    "context"
+    "github.com/xs-wallet/xscore/internal/adapters/lnd"
+    "github.com/xs-wallet/xscore/internal/swap"
+)
+
+type LNWatcher struct {
+    lnd    *lnd.Client
+    engine *swap.Engine
+}
+
+func NewLNWatcher(lnd *lnd.Client, engine *swap.Engine) *LNWatcher {
+    return &LNWatcher{
+        lnd:    lnd,
+        engine: engine,
+    }
+}
+
+func (w *LNWatcher) SubscribeInvoices(ctx context.Context) error {
+    invoices, err := w.lnd.SubscribeInvoices(ctx)
+    if err != nil {
+        return err
+    }
+    
+    for {
+        select {
+        case <-ctx.Done():
+            return ctx.Err()
+        case inv := <-invoices:
+            if inv.State == lnrpc.Invoice_SETTLED {
+                // Trigger reconcile
+                go w.reconcileByPaymentHash(ctx, hex.EncodeToString(inv.RHash))
+            }
+        }
+    }
+}</code></pre>
+
+        <h2>4.5 Watcher + WS Integration</h2>
+
+        <p><strong>Arquivo:</strong> <code>core/internal/watcher/watcher.go</code></p>
+        <pre><code>package watcher
+
+import (
+    "context"
+    "github.com/xs-wallet/xscore/internal/boltz"
+    "github.com/xs-wallet/xscore/internal/swap"
+)
+
+type Watcher struct {
+    engine      *swap.Engine
+    chainWatch  *ChainWatcher
+    lnWatch     *LNWatcher
+}
+
+func NewWatcher(engine *swap.Engine, chain *ChainWatcher, ln *LNWatcher) *Watcher {
+    return &Watcher{
+        engine:     engine,
+        chainWatch: chain,
+        lnWatch:    ln,
+    }
+}
+
+// Handler para WS updates do Boltz
+func (w *Watcher) HandleWSUpdate(swapID, boltzStatus string) {
+    // 1. Buscar swap
+    swap, err := w.engine.Get(context.Background(), swapID)
+    if err != nil {
+        log.Printf("Failed to get swap %s: %v", swapID, err)
+        return
+    }
+    
+    // 2. Normalizar status usando boltz.Normalize existente
+    mapping := boltz.Normalize(boltzStatus, swap.Kind)
+    
+    // 3. Se requer ação, reconciliar
+    if mapping.Action != boltz.ActionNone {
+        go w.reconcileSwap(context.Background(), swap)
+    }
+}
+
+func (w *Watcher) reconcileSwap(ctx context.Context, swap *swap.Swap) {
+    // Lógica de reconciliação baseada em estado
+    // Será expandida na Phase 3
+}</code></pre>
+
+        <h2>4.6 Node Manager Mínimo</h2>
+
+        <p>O Node Manager é pré-requisito para Phase 4 (Electron) e Phase 6 (Packaging).
+            Implementação mínima necessária nesta fase:</p>
+
+        <p><strong>Arquivo:</strong> <code>core/internal/nodemanager/manager.go</code></p>
+        <pre><code>package nodemanager
+
+// Start inicia um node após verificar binário
+func (nm *NodeManager) Start(ctx context.Context, name string) error {
+    // 1. Verificar hash do binário contra manifest
+    if err := nm.verifyBinary(name); err != nil {
+        nm.nodes[name].Status = StatusError
+        return fmt.Errorf("binary verification failed: %w", err)
+    }
+    
+    // 2. Spawn processo
+    // 3. Aguardar health check
+    return nil
+}
+
+// Stop encerra gracefully via RPC, então SIGTERM
+func (nm *NodeManager) Stop(name string) error { ... }
+
+// HealthCheck verifica status via RPC (getinfo/getblockchaininfo)
+func (nm *NodeManager) HealthCheck(name string) (bool, error) { ... }</code></pre>
+
+        <h3>Funcionalidades Mínimas</h3>
+        <ul>
+            <li><strong>start()</strong> - Spawn com verificação de binário</li>
+            <li><strong>stop()</strong> - Graceful shutdown via RPC → SIGTERM</li>
+            <li><strong>healthCheck()</strong> - Polling via gRPC/JSON-RPC</li>
+            <li><strong>verifyBinary()</strong> - SHA256 hash check contra manifest assinado</li>
+        </ul>
+
+        <h2>4.7 Checklist Phase 2</h2>
+
+        <table>
+            <tr>
+                <th>Tarefa</th>
+                <th>Arquivos</th>
+                <th>Status</th>
+            </tr>
+            <tr>
+                <td>LND Adapter</td>
+                <td>lnd/client.go</td>
+                <td><span class="badge pending">Pendente</span></td>
+            </tr>
+            <tr>
+                <td>BTC Adapter</td>
+                <td>bitcoin/client.go</td>
+                <td><span class="badge pending">Pendente</span></td>
+            </tr>
+            <tr>
+                <td>Liquid Adapter</td>
+                <td>liquid/client.go</td>
+                <td><span class="badge pending">Pendente</span></td>
+            </tr>
+            <tr>
+                <td>Chain Watcher</td>
+                <td>chain_watcher.go</td>
+                <td><span class="badge pending">Pendente</span></td>
+            </tr>
+            <tr>
+                <td>LN Watcher</td>
+                <td>ln_watcher.go</td>
+                <td><span class="badge pending">Pendente</span></td>
+            </tr>
+            <tr>
+                <td>Watcher+WS</td>
+                <td>watcher.go</td>
+                <td><span class="badge pending">Pendente</span></td>
+            </tr>
+            <tr>
+                <td><strong>Node Manager Mínimo</strong></td>
+                <td>nodemanager/manager.go, verify.go</td>
+                <td><span class="badge pending">Pendente</span></td>
+            </tr>
+        </table>
+
+        <h2>4.8 Definition of Done - Phase 2</h2>
+
+        <div class="note success">
+            <strong>✓ Phase 2 está DONE quando:</strong>
+        </div>
+        <ul>
+            <li>✅ LND adapter conecta e executa <code>GetInfo()</code> em regtest</li>
+            <li>✅ Watchers recebendo eventos reais com retry (exponential backoff)</li>
+            <li>✅ WebSocket Boltz recebendo status updates e disparando reconcile</li>
+            <li>✅ Logs estruturados com <code>slog</code> para todas as operações de adapter</li>
+            <li>✅ <strong>Node Manager mínimo</strong>: start/stop/health + binary verify funcionando</li>
+            <li>✅ Integration tests passando contra Polar/Nigiri</li>
+        </ul>
+    </div>
+
+    <!-- 5. PHASE 3 -->
+    <div class="page-break">
+        <h1>5. Phase 3: Swap Protocol (Semanas 5-6)</h1>
 
         <div class="note success">
             <strong>✓ Objetivo:</strong> Implementar todos os tipos de swap (Submarine, Reverse, Chain) com MuSig2.
         </div>
 
-        <h2>4.1 Submarine Auto-Lock</h2>
+        <h2>5.1 Submarine Auto-Lock</h2>
 
         <h3>Problema</h3>
         <p>Atualmente <code>CreateFromQuote()</code> deixa o swap em estado <code>open</code> sem
@@ -721,7 +1279,7 @@ func (so *SubmarineOrchestrator) CreateFromQuote(ctx, quoteID) (*Swap, error) {
     return swap, nil
 }</code></pre>
 
-        <h2>4.2 Reverse Swap Orchestrator</h2>
+        <h2>5.2 Reverse Swap Orchestrator</h2>
 
         <p><strong>Arquivo:</strong> <code>core/internal/swap/reverse.go</code></p>
         <pre><code>package swap
@@ -780,7 +1338,7 @@ func (ro *ReverseOrchestrator) Claim(ctx, swapID) (*Swap, error) {
     // Fallback: script-path claim
 }</code></pre>
 
-        <h2>4.3 Chain Swap Orchestrator</h2>
+        <h2>5.3 Chain Swap Orchestrator</h2>
 
         <p><strong>Arquivo:</strong> <code>core/internal/swap/chain.go</code></p>
         <pre><code>package swap
@@ -803,7 +1361,7 @@ func (co *ChainOrchestrator) ClaimLiquid(ctx, swapID) (*Swap, error) {
     // Claim HTLC Liquid (revela R)
 }</code></pre>
 
-        <h2>4.4 P2TR Verification</h2>
+        <h2>5.4 P2TR Verification</h2>
 
         <p><strong>Arquivo:</strong> <code>core/internal/swap/taproot.go</code></p>
         <pre><code>package swap
@@ -855,7 +1413,7 @@ func BuildSwapTree(kind Kind, params SwapTreeParams) (*SwapTree, error) {
     // - Claim path: OP_SIZE 32 OP_EQUAL OP_IF OP_HASH256 <hash> OP_EQUALVERIFY <claimPubkey> OP_ELSE <timeout> OP_CHECKLOCKTIMEVERIFY OP_DROP <refundPubkey> OP_ENDIF OP_CHECKSIG
 }</code></pre>
 
-        <h2>4.5 MuSig2 Implementation</h2>
+        <h2>5.5 MuSig2 Implementation</h2>
 
         <p><strong>Arquivo:</strong> <code>core/internal/musig2/session.go</code></p>
         <pre><code>package musig2
@@ -961,7 +1519,7 @@ func (s *Session) Cleanup() {
     }
 }</code></pre>
 
-        <h2>4.6 Watcher + WebSocket Integration</h2>
+        <h2>5.6 Watcher + WebSocket Integration</h2>
 
         <p><strong>Arquivo:</strong> <code>core/internal/watcher/watcher.go</code></p>
         <pre><code>// Adicionar handler para WS updates
@@ -982,7 +1540,7 @@ func (w *Watcher) HandleWSUpdate(swapID, boltzStatus string, tx *boltz.TxInfo) {
     }
 }</code></pre>
 
-        <h2>4.7 Checklist Phase 2</h2>
+        <h2>5.7 Checklist Phase 3</h2>
 
         <table>
             <tr>
@@ -1021,68 +1579,316 @@ func (w *Watcher) HandleWSUpdate(swapID, boltzStatus string, tx *boltz.TxInfo) {
                 <td><span class="badge pending">Pendente</span></td>
             </tr>
         </table>
+
+        <h2>5.8 Definition of Done - Phase 3</h2>
+
+        <div class="note success">
+            <strong>✓ Phase 3 está DONE quando:</strong>
+        </div>
+        <ul>
+            <li>✅ 1 Submarine Swap E2E completo em regtest (fund → claim → complete)</li>
+            <li>✅ 1 Reverse Swap E2E completo em regtest (invoice → payment → claim)</li>
+            <li>✅ Crash-recovery demonstrável: kill -9 mid-swap → restart → swap continua</li>
+            <li>✅ MuSig2 key-path claim funcionando OU fallback script-path testado</li>
+            <li>✅ P2TR address verification passando (rebuild local = endereço Boltz)</li>
+        </ul>
+
+        <h2>5.9 Security Gate</h2>
+
+        <div class="note danger">
+            <strong>🔒 GATE OBRIGATÓRIO:</strong> Antes de iniciar Phase 4 (Electron), os seguintes itens devem ser
+            revisados:
+        </div>
+
+        <table>
+            <tr>
+                <th>Item</th>
+                <th>Responsável</th>
+                <th>Critério de Aprovação</th>
+            </tr>
+            <tr>
+                <td>Threat Model Review</td>
+                <td>Security Lead</td>
+                <td>Documento atualizado com vetores de ataque Electron</td>
+            </tr>
+            <tr>
+                <td>Preimage Security Audit</td>
+                <td>Dev Lead</td>
+                <td>Verificar criptografia AES-256-GCM + key derivation</td>
+            </tr>
+            <tr>
+                <td>IPC Whitelist Design</td>
+                <td>Security Lead</td>
+                <td>Lista de métodos permitidos no preload bridge aprovada</td>
+            </tr>
+            <tr>
+                <td>Dependencies Audit</td>
+                <td>DevOps</td>
+                <td><code>npm audit</code> + <code>go mod verify</code> sem críticos</td>
+            </tr>
+        </table>
+        <div class="caption">Tabela 5.1: Security Gate Checklist</div>
     </div>
 
-    <!-- 5. PHASES 2-6 RESUMIDAS -->
+    <!-- 6. GERENCIAMENTO DE NODES -->
     <div class="page-break">
-        <h1>5. Phases 2-6: Resumo</h1>
+        <h1>6. Gerenciamento de Nodes</h1>
 
-        <h2>5.1 Phase 2: Adapters + Watchers (Semanas 3-4)</h2>
+        <h2>6.1 Gerenciamento de Ciclo de Vida</h2>
+
+        <p>O <strong>Node Manager</strong> lida com verificação de binários, spawning, monitoramento de health, e
+            shutdown graceful de nodes embarcados. Cada node tem diretórios de dados isolados por rede.</p>
+
+        <div class="note">
+            <strong>Nota:</strong> A aplicação trata <strong>LND (gRPC)</strong> e <strong>elementsd (JSON-RPC)</strong>
+            como RPCs primários; bitcoind, quando presente, é uma dependência do runtime e não uma integração primária
+            do app.
+        </div>
+
+        <table>
+            <tr>
+                <th>Node</th>
+                <th>Versão</th>
+                <th>Diretório de Dados</th>
+                <th>Health Check</th>
+                <th>Papel</th>
+            </tr>
+            <tr>
+                <td><strong>LND</strong></td>
+                <td>0.17.3</td>
+                <td><code>%APPDATA%/xs-wallet/nodes/lnd/{network}/</code></td>
+                <td><code>getinfo</code> (gRPC)</td>
+                <td>RPC primário (on-chain BTC + LN via LND)</td>
+            </tr>
+            <tr>
+                <td><strong>elementsd</strong></td>
+                <td>23.2.1</td>
+                <td><code>%APPDATA%/xs-wallet/nodes/liquid/{network}/</code></td>
+                <td><code>getblockchaininfo</code> (JSON-RPC)</td>
+                <td>RPC primário (Liquid/Elements)</td>
+            </tr>
+            <tr>
+                <td>bitcoind (opcional)</td>
+                <td>26.0</td>
+                <td><code>%APPDATA%/xs-wallet/nodes/btc/{network}/</code></td>
+                <td><code>getblockchaininfo</code> (RPC)</td>
+                <td>Dependência do runtime (quando necessário pelo stack)</td>
+            </tr>
+        </table>
+        <div class="caption">Tabela 6.1: Especificações de Nodes</div>
+
+        <h2>6.2 Verificação de Binários</h2>
+
+        <p>Binários são baixados no primeiro uso de sources oficiais (GitHub Releases, bitcoincore.org) e
+            verificados usando checksums SHA256 de um manifest assinado.</p>
+
+        <h3>6.2.1 Especificação de Supply Chain</h3>
+
+        <table>
+            <tr>
+                <th>Componente</th>
+                <th>Especificação</th>
+            </tr>
+            <tr>
+                <td>Algoritmo de Assinatura</td>
+                <td><strong>Ed25519</strong> (<code>manifest.sig</code>)</td>
+            </tr>
+            <tr>
+                <td>Chave Pública</td>
+                <td>Pinned no binário da aplicação (<code>src/constants/MANIFEST_PUBKEY</code>)</td>
+            </tr>
+            <tr>
+                <td>Rotação de Chave</td>
+                <td>Nova chave anunciada via release N-1; aceita ambas por 2 releases</td>
+            </tr>
+            <tr>
+                <td>Manifest URL</td>
+                <td><code>https://github.com/xs-wallet/releases/latest/nodes-manifest.json</code></td>
+            </tr>
+            <tr>
+                <td>Fallback URLs</td>
+                <td>Espelhos: IPFS (<code>ipfs://...</code>) + backup CDN</td>
+            </tr>
+            <tr>
+                <td>Hash Algorithm</td>
+                <td>SHA256 (hex) para cada binário</td>
+            </tr>
+            <tr>
+                <td>Verificação</td>
+                <td>1) Verificar sig do manifest → 2) Verificar hash do binário → 3) Extrair</td>
+            </tr>
+        </table>
+        <div class="caption">Tabela 6.2: Especificação de Supply Chain</div>
+
+        <div class="note success">
+            <strong>🔗 Cadeia de Confiança:</strong> Sem servidor central de custódia ou execução de swaps.
+            Apenas endpoints públicos de distribuição (GitHub Releases, IPFS). Usuário pode verificar assinatura
+            manualmente via CLI.
+        </div>
+
+        <h2>6.3 Implementação do Node Manager</h2>
+
+        <p><strong>Arquivo:</strong> <code>core/internal/nodemanager/manager.go</code></p>
+        <pre><code>package nodemanager
+
+import (
+    "context"
+    "os/exec"
+    "time"
+)
+
+type NodeManager struct {
+    nodes    map[string]*ManagedNode
+    dataDir  string
+    network  string
+}
+
+type ManagedNode struct {
+    Name      string
+    Binary    string
+    Version   string
+    DataDir   string
+    Process   *exec.Cmd
+    Health    HealthChecker
+    Status    NodeStatus
+}
+
+type NodeStatus string
+
+const (
+    StatusStopped  NodeStatus = "stopped"
+    StatusStarting NodeStatus = "starting"
+    StatusRunning  NodeStatus = "running"
+    StatusError    NodeStatus = "error"
+)
+
+func NewNodeManager(dataDir, network string) *NodeManager {
+    return &NodeManager{
+        nodes:   make(map[string]*ManagedNode),
+        dataDir: dataDir,
+        network: network,
+    }
+}
+
+func (nm *NodeManager) Start(ctx context.Context, nodeName string) error {
+    node := nm.nodes[nodeName]
+    if node == nil {
+        return fmt.Errorf("node %s not registered", nodeName)
+    }
+    
+    // 1. Verificar binário (hash check)
+    if err := nm.verifyBinary(node); err != nil {
+        return fmt.Errorf("binary verification failed: %w", err)
+    }
+    
+    // 2. Spawn process
+    node.Status = StatusStarting
+    if err := nm.spawnProcess(ctx, node); err != nil {
+        node.Status = StatusError
+        return err
+    }
+    
+    // 3. Aguardar health check
+    if err := nm.waitForHealth(ctx, node, 30*time.Second); err != nil {
+        nm.Stop(nodeName)
+        return err
+    }
+    
+    node.Status = StatusRunning
+    return nil
+}
+
+func (nm *NodeManager) Stop(nodeName string) error {
+    // Graceful shutdown via RPC, then SIGTERM
+}
+
+func (nm *NodeManager) HealthCheck(nodeName string) (bool, error) {
+    // Chamar health checker específico do node
+}</code></pre>
+
+        <div class="note danger">
+            <strong>⚠️ Rollback/Failure Mode:</strong> Se verificação de binário falhar → não executa binário;
+            <code>status=error</code>; loga motivo detalhado; UI mostra erro acionável com opção de retry/download
+            manual.
+            <strong>Nunca executar binário não verificado.</strong>
+        </div>
+
+        <h2>6.4 Checklist - Node Management</h2>
+
+        <table>
+            <tr>
+                <th>Tarefa</th>
+                <th>Arquivos</th>
+                <th>Status</th>
+            </tr>
+            <tr>
+                <td>Node Manager core</td>
+                <td>nodemanager/manager.go</td>
+                <td><span class="badge pending">Pendente</span></td>
+            </tr>
+            <tr>
+                <td>Binary verification</td>
+                <td>nodemanager/verify.go</td>
+                <td><span class="badge pending">Pendente</span></td>
+            </tr>
+            <tr>
+                <td>Manifest fetcher</td>
+                <td>nodemanager/manifest.go</td>
+                <td><span class="badge pending">Pendente</span></td>
+            </tr>
+            <tr>
+                <td>LND health checker</td>
+                <td>nodemanager/lnd_health.go</td>
+                <td><span class="badge pending">Pendente</span></td>
+            </tr>
+            <tr>
+                <td>Elements health checker</td>
+                <td>nodemanager/elements_health.go</td>
+                <td><span class="badge pending">Pendente</span></td>
+            </tr>
+        </table>
+    </div>
+
+    <!-- 7. PHASES 4-6 RESUMIDAS -->
+    <div class="page-break">
+        <h1>7. Phases 4-6: Resumo</h1>
+
+        <h2>7.1 Phase 4: Electron Migration (Semanas 7-8)</h2>
 
         <h3>Entregas</h3>
         <ul>
-            <li><strong>LND gRPC Adapter</strong> - <code>core/internal/adapters/lnd/client.go</code></li>
-            <li><strong>elementsd JSON-RPC</strong> - <code>core/internal/adapters/liquid/client.go</code></li>
-            <li><strong>Node Manager</strong> - <code>core/internal/nodemanager/manager.go</code></li>
-            <li><strong>Watcher base + WS integration</strong> - <code>core/internal/watcher/watcher.go</code></li>
-            <li><strong>GitHub Releases Infra</strong> - Manifest assinado (Ed25519)</li>
+            <li><strong>Electron main hardening</strong> - <code>electron/main.ts</code></li>
+            <li><strong>Preload IPC bridge</strong> - Whitelist + validação Zod</li>
+            <li><strong>Migração do frontend</strong> - HTTP/api-bridge → IPC/gRPC</li>
         </ul>
 
-        <h2>5.2 Phase 3: Swap Protocol (Semanas 5-6)</h2>
+        <h2>7.2 Phase 5: Tx Management (Semana 9)</h2>
 
         <h3>Entregas</h3>
         <ul>
-            <li><strong>Submarine Auto-Lock + Claim/Refund</strong> - MuSig2 + script-path</li>
-            <li><strong>Reverse Swap</strong> - <code>core/internal/swap/reverse.go</code></li>
-            <li><strong>P2TR Verification</strong> - <code>core/internal/swap/taproot.go</code></li>
-            <li><strong>MuSig2</strong> - <code>core/internal/musig2/session.go</code></li>
-            <li><strong>Reconcile + Invariantes</strong> - Determinístico</li>
+            <li><strong>RBF/CPFP bumper</strong> - <code>core/internal/tx/bumper.go</code></li>
+            <li><strong>Fee estimation</strong></li>
+            <li><strong>Integração WalletKit/elementsd</strong></li>
+            <li><strong>Triggers por estado/timeout</strong></li>
         </ul>
 
-        <h2>5.3 Phase 4: Electron Migration (Semanas 7-8)</h2>
+        <h2>7.3 Phase 6: Packaging (Semana 10)</h2>
 
         <h3>Entregas</h3>
         <ul>
-            <li><strong>Electron Main</strong> - <code>electron/main.ts</code> com hardening</li>
-            <li><strong>IPC Bridge</strong> - <code>electron/preload.ts</code> com whitelist + Zod</li>
-            <li><strong>Frontend Migration</strong> - Alterar <code>api.ts</code> para IPC</li>
-            <li><strong>Deprecar api-bridge</strong> - Manter apenas para debug</li>
-        </ul>
-
-        <h2>5.4 Phase 5: Tx Management (Semana 9)</h2>
-
-        <h3>Entregas</h3>
-        <ul>
-            <li><strong>RBF/CPFP</strong> - <code>core/internal/tx/bumper.go</code></li>
-            <li>Integração com LND WalletKit + elementsd</li>
-        </ul>
-
-        <h2>5.5 Phase 6: Packaging (Semana 10)</h2>
-
-        <h3>Entregas</h3>
-        <ul>
-            <li><strong>Windows Installer</strong> - Inno Setup</li>
-            <li><strong>macOS DMG</strong> - Notarização Apple</li>
-            <li><strong>Code Signing</strong> - Authenticode + Developer ID</li>
-            <li><strong>E2E Tests</strong> - Submarine, Reverse, Chain, Crash Recovery</li>
+            <li><strong>Installer/DMG/notarização</strong> - Windows Installer (Inno Setup), macOS DMG, Notarização
+                Apple</li>
+            <li><strong>Code signing</strong> - Authenticode + Developer ID</li>
+            <li><strong>Pipeline release</strong></li>
+            <li><strong>Testes E2E + crash recovery</strong></li>
         </ul>
     </div>
 
-    <!-- 6. GUIA DE DESENVOLVIMENTO -->
+    <!-- 8. GUIA DE DESENVOLVIMENTO -->
     <div class="page-break">
-        <h1>6. Guia de Desenvolvimento</h1>
+        <h1>8. Guia de Desenvolvimento</h1>
 
-        <h2>6.1 Setup do Ambiente</h2>
+        <h2>8.1 Setup do Ambiente</h2>
 
         <h3>Pré-requisitos</h3>
         <pre><code># Go 1.21+
@@ -1114,7 +1920,7 @@ cd ../api-bridge
 npm install
 npm start</code></pre>
 
-        <h2>6.2 Regtest Environment</h2>
+        <h2>8.2 Regtest Environment</h2>
 
         <pre><code># Subir regtest
 docker compose -f test/regtest/docker-compose.yml up -d
@@ -1122,28 +1928,97 @@ docker compose -f test/regtest/docker-compose.yml up -d
 # Verificar
 docker compose -f test/regtest/docker-compose.yml ps</code></pre>
 
-        <h2>6.3 Workflow de Desenvolvimento</h2>
+        <h2>8.3 Workflow de Desenvolvimento + CI</h2>
 
         <div class="diagram">
             <div class="mermaid">
                 graph LR
                 A[Escolher Task] --> B[Criar Branch]
                 B --> C[Implementar]
-                C --> D[Testar Localmente]
-                D --> E{Tests Pass?}
+                C --> D[Testar Local]
+                D --> E{Local OK?}
                 E -->|Não| C
-                E -->|Sim| F[Commit]
-                F --> G[Push + PR]
-                G --> H[Code Review]
-                H --> I[Merge]
+                E -->|Sim| F[Commit + Push]
+                F --> G[Pull Request]
+                G --> H[CI Pipeline]
+                H --> I{CI Pass?}
+                I -->|Não| C
+                I -->|Sim| J[Code Review]
+                J --> K{Approved?}
+                K -->|Não| C
+                K -->|Sim| L[Merge to Main]
 
                 style A fill:#10b981,color:#fff
-                style E fill:#f59e0b,color:#fff
-                style I fill:#2563eb,color:#fff
+                style H fill:#2563eb,color:#fff
+                style L fill:#10b981,color:#fff
             </div>
         </div>
+        <div class="caption">Figura 8.1: Workflow de Desenvolvimento com CI</div>
 
-        <h2>6.4 Convenções de Código</h2>
+        <h3>CI Pipeline (GitHub Actions)</h3>
+        <pre><code># .github/workflows/ci.yml
+name: CI
+on: [push, pull_request]
+jobs:
+  lint-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with: { go-version: '1.21' }
+      - run: go fmt ./... && git diff --exit-code  # Lint
+      - run: go vet ./...                          # Static Analysis
+      - run: go test -race ./...                   # Unit Tests
+      - run: golangci-lint run                     # SAST
+  
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: go mod verify                         # Deps integrity
+      - uses: securego/gosec@latest                # Security scan</code></pre>
+
+        <h3>Release Checklist</h3>
+        <table>
+            <tr>
+                <th>Step</th>
+                <th>Comando/Ação</th>
+                <th>Critério</th>
+            </tr>
+            <tr>
+                <td>1. Version Bump</td>
+                <td><code>git tag v0.x.0</code></td>
+                <td>Semantic versioning</td>
+            </tr>
+            <tr>
+                <td>2. CHANGELOG</td>
+                <td>Atualizar CHANGELOG.md</td>
+                <td>Breaking changes destacados</td>
+            </tr>
+            <tr>
+                <td>3. E2E Tests</td>
+                <td><code>go test -tags=e2e ./...</code></td>
+                <td>100% pass em regtest</td>
+            </tr>
+            <tr>
+                <td>4. Security Scan</td>
+                <td><code>gosec ./...</code></td>
+                <td>Zero HIGH/CRITICAL</td>
+            </tr>
+            <tr>
+                <td>5. Build</td>
+                <td><code>npm run build:electron</code></td>
+                <td>Binário assinado gerado</td>
+            </tr>
+            <tr>
+                <td>6. Publish</td>
+                <td>GitHub Release + Manifest</td>
+                <td>SHA256 + Ed25519 sig</td>
+            </tr>
+        </table>
+        <div class="caption">Tabela 8.1: Release Checklist</div>
+
+        <h2>8.4 Convenções de Código</h2>
 
         <h3>Go</h3>
         <ul>
@@ -1159,7 +2034,7 @@ docker compose -f test/regtest/docker-compose.yml ps</code></pre>
             <li>Types explícitos (evitar <code>any</code>)</li>
         </ul>
 
-        <h2>6.5 Testes</h2>
+        <h2>8.5 Testes</h2>
 
         <h3>Unit Tests</h3>
         <pre><code># Go
@@ -1176,11 +2051,11 @@ cd test/e2e
 go test -tags=integration ./...</code></pre>
     </div>
 
-    <!-- 7. REFERÊNCIAS -->
+    <!-- 9. REFERÊNCIAS -->
     <div class="page-break">
-        <h1>7. Referências</h1>
+        <h1>9. Referências</h1>
 
-        <h2>7.1 Documentação</h2>
+        <h2>9.1 Documentação</h2>
 
         <table>
             <tr>
@@ -1210,7 +2085,7 @@ go test -tags=integration ./...</code></pre>
             </tr>
         </table>
 
-        <h2>7.2 Arquitetura</h2>
+        <h2>9.2 Arquitetura</h2>
 
         <table>
             <tr>
@@ -1247,7 +2122,7 @@ go test -tags=integration ./...</code></pre>
             </tr>
         </table>
 
-        <h2>7.3 Recursos Externos</h2>
+        <h2>9.3 Recursos Externos</h2>
 
         <ul>
             <li><strong>Boltz API v2</strong>: <a href="https://api.docs.boltz.exchange">api.docs.boltz.exchange</a>

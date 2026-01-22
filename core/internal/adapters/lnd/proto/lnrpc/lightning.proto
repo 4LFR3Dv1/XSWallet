@@ -1,0 +1,478 @@
+// Proto file extracted from LND v0.17.3-beta
+// Minimal subset for XS Wallet - only required RPCs
+// Source: github.com/lightningnetwork/lnd/lnrpc/lightning.proto
+
+syntax = "proto3";
+
+package lnrpc;
+
+option go_package = "github.com/xs-wallet/xscore/internal/adapters/lnd/gen/lnrpc";
+
+// Lightning is the main RPC server of the daemon.
+service Lightning {
+    // WalletBalance returns total unspent outputs under control of the wallet.
+    rpc WalletBalance (WalletBalanceRequest) returns (WalletBalanceResponse);
+
+    // ChannelBalance returns a report on the total funds across all open channels.
+    rpc ChannelBalance (ChannelBalanceRequest) returns (ChannelBalanceResponse);
+
+    // SendCoins executes a request to send coins to a particular address.
+    rpc SendCoins (SendCoinsRequest) returns (SendCoinsResponse);
+
+    // NewAddress creates a new address under control of the local wallet.
+    rpc NewAddress (NewAddressRequest) returns (NewAddressResponse);
+
+    // GetInfo returns general information concerning the lightning node.
+    rpc GetInfo (GetInfoRequest) returns (GetInfoResponse);
+
+    // ListChannels returns a description of all the open channels.
+    rpc ListChannels (ListChannelsRequest) returns (ListChannelsResponse);
+
+    // AddInvoice creates a new invoice.
+    rpc AddInvoice (Invoice) returns (AddInvoiceResponse);
+
+    // DecodePayReq decodes a payment request.
+    rpc DecodePayReq (PayReqString) returns (PayReq);
+
+    // SendPaymentSync sends a payment synchronously.
+    rpc SendPaymentSync (SendRequest) returns (SendResponse);
+}
+
+// =========================================================================
+// Request/Response Messages
+// =========================================================================
+
+message WalletBalanceRequest {}
+
+message WalletBalanceResponse {
+    // The balance of the wallet
+    int64 total_balance = 1;
+    // The confirmed balance of the wallet
+    int64 confirmed_balance = 2;
+    // The unconfirmed balance of the wallet
+    int64 unconfirmed_balance = 3;
+    // The total amount of wallet UTXOs held in outputs that are locked
+    int64 locked_balance = 5;
+    // The amount of reserve required
+    int64 reserved_balance_anchor_chan = 6;
+}
+
+message ChannelBalanceRequest {}
+
+message Amount {
+    uint64 sat = 1;
+    uint64 msat = 2;
+}
+
+message ChannelBalanceResponse {
+    // Deprecated, use local_balance.
+    int64 balance = 1 [deprecated = true];
+    // Deprecated, use pending_open_local_balance.
+    int64 pending_open_balance = 2 [deprecated = true];
+    // Sum of channels local balances.
+    Amount local_balance = 3;
+    // Sum of channels remote balances.
+    Amount remote_balance = 4;
+    // Sum of channels local unsettled balances.
+    Amount unsettled_local_balance = 5;
+    // Sum of channels remote unsettled balances.
+    Amount unsettled_remote_balance = 6;
+    // Sum of channels pending local balances.
+    Amount pending_open_local_balance = 7;
+    // Sum of channels pending remote balances.
+    Amount pending_open_remote_balance = 8;
+}
+
+message SendCoinsRequest {
+    string addr = 1;
+    int64 amount = 2;
+    int32 target_conf = 3;
+    int64 sat_per_vbyte = 4;
+    bool send_all = 5;
+    string label = 6;
+    int32 min_confs = 7;
+    bool spend_unconfirmed = 8;
+}
+
+message SendCoinsResponse {
+    string txid = 1;
+}
+
+enum AddressType {
+    WITNESS_PUBKEY_HASH = 0;
+    NESTED_PUBKEY_HASH = 1;
+    UNUSED_WITNESS_PUBKEY_HASH = 2;
+    UNUSED_NESTED_PUBKEY_HASH = 3;
+    TAPROOT_PUBKEY = 4;
+    UNUSED_TAPROOT_PUBKEY = 5;
+}
+
+message NewAddressRequest {
+    AddressType type = 1;
+    string account = 2;
+}
+
+message NewAddressResponse {
+    string address = 1;
+}
+
+message GetInfoRequest {}
+
+message GetInfoResponse {
+    string version = 14;
+    uint32 commit_hash = 20;
+    string identity_pubkey = 1;
+    string alias = 2;
+    string color = 17;
+    uint32 num_pending_channels = 3;
+    uint32 num_active_channels = 4;
+    uint32 num_inactive_channels = 15;
+    uint32 num_peers = 5;
+    uint32 block_height = 6;
+    string block_hash = 8;
+    int64 best_header_timestamp = 13;
+    bool synced_to_chain = 9;
+    bool synced_to_graph = 18;
+    bool testnet = 10 [deprecated = true];
+    repeated Chain chains = 16;
+    repeated string uris = 12;
+    map<uint32, Feature> features = 19;
+    bool require_htlc_interceptor = 21;
+    bool store_final_htlc_resolutions = 22;
+}
+
+message Chain {
+    string chain = 1;
+    string network = 2;
+}
+
+message Feature {
+    string name = 2;
+    bool is_required = 3;
+    bool is_known = 4;
+}
+
+message ListChannelsRequest {
+    bool active_only = 1;
+    bool inactive_only = 2;
+    bool public_only = 3;
+    bool private_only = 4;
+    bytes peer = 5;
+    bool peer_alias_lookup = 6;
+}
+
+message ListChannelsResponse {
+    repeated Channel channels = 11;
+}
+
+message Channel {
+    bool active = 1;
+    string remote_pubkey = 2;
+    string channel_point = 3;
+    uint64 chan_id = 4;
+    int64 capacity = 5;
+    int64 local_balance = 6;
+    int64 remote_balance = 7;
+    int64 commit_fee = 8;
+    int64 commit_weight = 9;
+    int64 fee_per_kw = 10;
+    int64 unsettled_balance = 11;
+    int64 total_satoshis_sent = 12;
+    int64 total_satoshis_received = 13;
+    uint64 num_updates = 14;
+    repeated HTLC pending_htlcs = 15;
+    uint32 csv_delay = 16;
+    bool private = 17;
+    bool initiator = 18;
+    string chan_status_flags = 19;
+    int64 local_chan_reserve_sat = 20;
+    int64 remote_chan_reserve_sat = 21;
+    bool static_remote_key = 22 [deprecated = true];
+    CommitmentType commitment_type = 26;
+    int64 lifetime = 23;
+    int64 uptime = 24;
+    string close_address = 25;
+    int64 push_amount_sat = 27;
+    uint32 thaw_height = 28;
+    ChannelConstraints local_constraints = 29;
+    ChannelConstraints remote_constraints = 30;
+    repeated bytes alias_scids = 31;
+    bool zero_conf = 32;
+    uint32 zero_conf_confirmed_scid = 33;
+    string peer_alias = 34;
+    string peer_scid_alias = 35;
+    string memo = 36;
+}
+
+message HTLC {
+    bool incoming = 1;
+    int64 amount = 2;
+    bytes hash_lock = 3;
+    uint32 expiration_height = 4;
+    uint64 htlc_index = 5;
+    uint64 forwarding_channel = 6;
+    uint64 forwarding_htlc_index = 7;
+}
+
+enum CommitmentType {
+    UNKNOWN_COMMITMENT_TYPE = 0;
+    LEGACY = 1;
+    STATIC_REMOTE_KEY = 2;
+    ANCHORS = 3;
+    SCRIPT_ENFORCED_LEASE = 4;
+    SIMPLE_TAPROOT = 5;
+}
+
+message ChannelConstraints {
+    uint32 csv_delay = 1;
+    uint64 chan_reserve_sat = 2;
+    uint64 dust_limit_sat = 3;
+    uint64 max_pending_amt_msat = 4;
+    uint64 min_htlc_msat = 5;
+    uint32 max_accepted_htlcs = 6;
+}
+
+message Invoice {
+    string memo = 1;
+    bytes r_preimage = 3;
+    bytes r_hash = 4;
+    int64 value = 5;
+    int64 value_msat = 23;
+    bool settled = 6 [deprecated = true];
+    int64 creation_date = 7;
+    int64 settle_date = 8;
+    string payment_request = 9;
+    bytes description_hash = 10;
+    int64 expiry = 11;
+    string fallback_addr = 12;
+    uint64 cltv_expiry = 13;
+    repeated RouteHint route_hints = 14;
+    bool private = 15;
+    uint64 add_index = 16;
+    uint64 settle_index = 17;
+    int64 amt_paid = 18 [deprecated = true];
+    int64 amt_paid_sat = 19;
+    int64 amt_paid_msat = 20;
+    InvoiceState state = 21;
+    repeated InvoiceHTLC htlcs = 22;
+    map<uint32, Feature> features = 24;
+    bool is_keysend = 25;
+    bytes payment_addr = 26;
+    bool is_amp = 27;
+    map<string, AMPInvoiceState> amp_invoice_state = 28;
+    bool is_blinded = 29;
+    repeated BlindedPathConfig blinded_path_config = 30;
+}
+
+enum InvoiceState {
+    OPEN = 0;
+    SETTLED = 1;
+    CANCELED = 2;
+    ACCEPTED = 3;
+}
+
+message InvoiceHTLC {
+    uint64 chan_id = 1;
+    uint64 htlc_index = 2;
+    uint64 amt_msat = 3;
+    int32 accept_height = 4;
+    int64 accept_time = 5;
+    int64 resolve_time = 6;
+    int32 expiry_height = 7;
+    InvoiceHTLCState state = 8;
+    map<uint64, bytes> custom_records = 9;
+    uint64 mpp_total_amt_msat = 10;
+    AMP amp = 11;
+}
+
+enum InvoiceHTLCState {
+    HTLC_ACCEPTED = 0;
+    HTLC_SETTLED = 1;
+    HTLC_CANCELED = 2;
+}
+
+message AMP {
+    bytes root_share = 1;
+    bytes set_id = 2;
+    uint32 child_index = 3;
+    bytes hash = 4;
+    bytes preimage = 5;
+}
+
+message AMPInvoiceState {
+    InvoiceHTLCState state = 1;
+    int64 settle_index = 2;
+    int64 settle_time = 3;
+    int64 amt_paid_msat = 5;
+}
+
+message BlindedPathConfig {
+    uint32 min_num_real_hops = 1;
+    uint32 num_hops = 2;
+    uint32 max_num_paths = 3;
+    NodeAddrs node_omission_list = 4;
+}
+
+message NodeAddrs {
+    repeated string addrs = 1;
+}
+
+message RouteHint {
+    repeated HopHint hop_hints = 1;
+}
+
+message HopHint {
+    string node_id = 1;
+    uint64 chan_id = 2;
+    uint32 fee_base_msat = 3;
+    uint32 fee_proportional_millionths = 4;
+    uint32 cltv_expiry_delta = 5;
+}
+
+message AddInvoiceResponse {
+    bytes r_hash = 1;
+    string payment_request = 2;
+    uint64 add_index = 16;
+    bytes payment_addr = 17;
+}
+
+message PayReqString {
+    string pay_req = 1;
+}
+
+message PayReq {
+    string destination = 1;
+    string payment_hash = 2;
+    int64 num_satoshis = 3;
+    int64 timestamp = 4;
+    int64 expiry = 5;
+    string description = 6;
+    string description_hash = 7;
+    string fallback_addr = 8;
+    int64 cltv_expiry = 9;
+    repeated RouteHint route_hints = 10;
+    bytes payment_addr = 11;
+    int64 num_msat = 12;
+    map<uint32, Feature> features = 13;
+    BlindedPaymentPath blinded_payment_path = 14;
+}
+
+message BlindedPaymentPath {
+    repeated BlindedHop blinded_hops = 1;
+}
+
+message BlindedHop {
+    bytes blinded_node = 1;
+    bytes encrypted_data = 2;
+}
+
+message SendRequest {
+    bytes dest = 1;
+    string dest_string = 2 [deprecated = true];
+    int64 amt = 3;
+    int64 amt_msat = 12;
+    bytes payment_hash = 4;
+    string payment_hash_string = 5 [deprecated = true];
+    string payment_request = 6;
+    int32 final_cltv_delta = 7;
+    FeeLimit fee_limit = 8;
+    uint64 outgoing_chan_id = 9 [deprecated = true];
+    repeated uint64 outgoing_chan_ids = 19;
+    bytes last_hop_pubkey = 13;
+    uint32 cltv_limit = 10;
+    map<uint64, bytes> dest_custom_records = 11;
+    bool allow_self_payment = 14;
+    repeated FeatureBit dest_features = 15;
+    bytes payment_addr = 16;
+    uint64 max_parts = 17;
+    bool no_inflight_updates = 18;
+    uint64 max_shard_size_msat = 21;
+    bool amp = 20;
+    uint32 time_pref = 22;
+    bool cancelable = 23;
+    bytes first_hop_custom_records = 24;
+}
+
+enum FeatureBit {
+    DATALOSS_PROTECT_REQ = 0;
+    DATALOSS_PROTECT_OPT = 1;
+    INITIAL_ROUING_SYNC = 3;
+    UPFRONT_SHUTDOWN_SCRIPT_REQ = 4;
+    UPFRONT_SHUTDOWN_SCRIPT_OPT = 5;
+    GOSSIP_QUERIES_REQ = 6;
+    GOSSIP_QUERIES_OPT = 7;
+    TLV_ONION_REQ = 8;
+    TLV_ONION_OPT = 9;
+    EXT_GOSSIP_QUERIES_REQ = 10;
+    EXT_GOSSIP_QUERIES_OPT = 11;
+    STATIC_REMOTE_KEY_REQ = 12;
+    STATIC_REMOTE_KEY_OPT = 13;
+    PAYMENT_ADDR_REQ = 14;
+    PAYMENT_ADDR_OPT = 15;
+    MPP_REQ = 16;
+    MPP_OPT = 17;
+    WUMBO_CHANNELS_REQ = 18;
+    WUMBO_CHANNELS_OPT = 19;
+    ANCHORS_REQ = 20;
+    ANCHORS_OPT = 21;
+    ANCHORS_ZERO_FEE_HTLC_REQ = 22;
+    ANCHORS_ZERO_FEE_HTLC_OPT = 23;
+    ROUTE_BLINDING_REQUIRED = 24;
+    ROUTE_BLINDING_OPTIONAL = 25;
+    AMP_REQ = 30;
+    AMP_OPT = 31;
+}
+
+message FeeLimit {
+    oneof limit {
+        int64 fixed = 1;
+        int64 fixed_msat = 3;
+        int64 percent = 2;
+    }
+}
+
+message SendResponse {
+    string payment_error = 1;
+    bytes payment_preimage = 2;
+    Route payment_route = 3;
+    bytes payment_hash = 4;
+}
+
+message Route {
+    uint32 total_time_lock = 1;
+    int64 total_fees = 2 [deprecated = true];
+    int64 total_amt = 3 [deprecated = true];
+    repeated Hop hops = 4;
+    int64 total_fees_msat = 5;
+    int64 total_amt_msat = 6;
+}
+
+message Hop {
+    uint64 chan_id = 1;
+    int64 chan_capacity = 2;
+    int64 amt_to_forward = 3 [deprecated = true];
+    int64 fee = 4 [deprecated = true];
+    uint32 expiry = 5;
+    int64 amt_to_forward_msat = 6;
+    int64 fee_msat = 7;
+    string pub_key = 8;
+    bool tlv_payload = 9 [deprecated = true];
+    MPPRecord mpp_record = 10;
+    AMPRecord amp_record = 12;
+    map<uint64, bytes> custom_records = 11;
+    bytes metadata = 13;
+    bytes blinding_point = 14;
+    bytes encrypted_data = 15;
+    int64 total_amt_msat = 16;
+}
+
+message MPPRecord {
+    bytes payment_addr = 11;
+    int64 total_amt_msat = 10;
+}
+
+message AMPRecord {
+    bytes root_share = 1;
+    bytes set_id = 2;
+    uint32 child_index = 3;
+}

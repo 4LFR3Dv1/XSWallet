@@ -1,0 +1,38 @@
+{
+    "network": "regtest",
+    "data_dir": "/data",
+    "db_path": "/data/xs-wallet.db",
+    "bitcoind": {
+        "enabled": true,
+        "host": "bitcoind",
+        "port": 18443,
+        "user": "xswallet",
+        "password": "xswallet_dev_pass_2026"
+    },
+    "elementsd": {
+        "enabled": true,
+        "host": "elements",
+        "port": 18884,
+        "user": "elements",
+        "password": "elements_dev_pass_2026"
+    },
+    "lnd": {
+        "enabled": true,
+        "host": "lnd",
+        "port": 10009,
+        "tls_cert": "/lnd/tls.cert",
+        "macaroon": "/lnd/data/chain/bitcoin/regtest/admin.macaroon"
+    },
+    "boltz": {
+        "api_url": "http://boltz-backend:9001",
+        "ws_url": "ws://boltz-backend:9001/v2/ws"
+    },
+    "security": {
+        "argon2_memory": 65536,
+        "argon2_iterations": 3,
+        "argon2_parallelism": 1,
+        "max_pin_attempts": 10,
+        "lockout_minutes": 30,
+        "backoff_multiplier": 2
+    }
+}

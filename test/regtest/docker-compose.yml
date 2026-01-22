@@ -1,41 +1,289 @@
-# XS Wallet - Regtest/Testnet Environment
-#
-# Minimal setup with just bitcoind for local testing.
-# Boltz API is used remotely (testnet.boltz.exchange)
+# XS Wallet - Production Stack
+# Full node infrastructure with Tor/I2P privacy layer
 #
 # Usage:
-#   docker compose up -d
-#   cd core && .\xscore.exe --network=testnet
+#   1. Copy .env.example to .env and configure
+#   2. docker-compose up -d
+#   3. Wait for wallet initialization: docker exec -it xs-lnd lncli --network=regtest create
+#   4. Run xscore container or connect from host
+#
+# Architecture:
+#   tor-proxy → bitcoind → lnd → elements
+#            ↘          ↗
+#              i2p-proxy
+#
+# Tor/I2P Note: LND requires Tor Control Port (9051) for onion services.
+# We use separate containers: osminogin/tor-simple for Tor, divax/i2p for I2P.
 
 services:
   # ============================================================================
-  # Bitcoin Core (Testnet)
+  # Privacy Layer: Tor Proxy (with Control Port)
   # ============================================================================
-  bitcoind:
-    image: lncm/bitcoind:v27.0
-    container_name: xs-bitcoind-testnet
-    command:
-      - -testnet
-      - -server
-      - -rpcuser=rpcuser
-      - -rpcpassword=rpcpass
-      - -rpcallowip=0.0.0.0/0
-      - -rpcbind=0.0.0.0
-      - -zmqpubrawblock=tcp://0.0.0.0:28332
-      - -zmqpubrawtx=tcp://0.0.0.0:28333
-      - -txindex=1
-    ports:
-      - "18332:18332" # RPC (testnet)
-      - "18333:18333" # P2P (testnet)
-      - "28332:28332" # ZMQ blocks
-      - "28333:28333" # ZMQ tx
+  tor:
+    image: osminogin/tor-simple
+    container_name: xs-tor
+    restart: unless-stopped
+    environment:
+      # Enable SOCKS proxy on port 9050
+      - TOR_SOCKS_PORT=9050
     volumes:
-      - bitcoin_data:/home/bitcoin/.bitcoin
+      - tor-data:/var/lib/tor
+    networks:
+      - xs-network
     healthcheck:
-      test: [ "CMD", "bitcoin-cli", "-testnet", "-rpcuser=rpcuser", "-rpcpassword=rpcpass", "getblockchaininfo" ]
+      test: [ "CMD-SHELL", "nc -z localhost 9050 || exit 1" ]
       interval: 30s
       timeout: 10s
       retries: 5
+      start_period: 60s
 
+  # ============================================================================
+  # Privacy Layer: I2P Proxy (SAM Bridge)
+  # ============================================================================
+  i2p:
+    image: geti2p/i2p
+    container_name: xs-i2p
+    restart: unless-stopped
+    environment:
+      - JVM_XMX=256m
+    volumes:
+      - i2p-data:/i2p/.i2p
+    networks:
+      - xs-network
+    # I2P takes longer to bootstrap, don't block other services
+    healthcheck:
+      test: [ "CMD-SHELL", "nc -z localhost 7656 || exit 1" ]
+      interval: 60s
+      timeout: 30s
+      retries: 10
+      start_period: 180s
+
+  # ============================================================================
+  # Bitcoin Core
+  # ============================================================================
+  bitcoind:
+    image: ruimarinho/bitcoin-core:alpine
+    container_name: xs-bitcoind
+    restart: unless-stopped
+    depends_on:
+      tor:
+        condition: service_started
+    command:
+      - -server=1
+      - -${BITCOIN_NETWORK}
+      - -txindex=${BITCOIN_TXINDEX:-1}
+      - -par=${BITCOIN_PARALLEL_CORE:-0}
+      - -dbcache=${BITCOIN_DBCACHE_RAM_MB:-450}
+      - -maxconnections=${BITCOIN_MAX_CONNECTIONS:-40}
+      - -prune=${BITCOIN_PRUNE:-0}
+      - -rpcbind=0.0.0.0
+      - -rpcallowip=0.0.0.0/0
+      - -rpcuser=${BITCOIN_RPC_USER}
+      - -rpcpassword=${BITCOIN_RPC_PASSWORD}
+      - -zmqpubrawblock=tcp://0.0.0.0:${BITCOIN_ZMQ_BLOCK_PORT:-28332}
+      - -zmqpubrawtx=tcp://0.0.0.0:${BITCOIN_ZMQ_TX_PORT:-28333}
+      # Tor proxy for outbound connections
+      - -proxy=tor:9050
+      - -bind=0.0.0.0
+      # I2P disabled for now (requires SAM bridge setup)
+      # - -i2psam=i2p:7656
+      # - -i2pacceptincoming=1
+    volumes:
+      - bitcoind-data:/home/bitcoin/.bitcoin
+    networks:
+      - xs-network
+    healthcheck:
+      test: [ "CMD", "bitcoin-cli", "-${BITCOIN_NETWORK}", "-rpcuser=${BITCOIN_RPC_USER}", "-rpcpassword=${BITCOIN_RPC_PASSWORD}", "getblockchaininfo" ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  # ============================================================================
+  # LND (Lightning Network Daemon)
+  # ============================================================================
+  lnd:
+    image: lightninglabs/lnd:v0.17.5-beta
+    container_name: xs-lnd
+    restart: unless-stopped
+    depends_on:
+      bitcoind:
+        condition: service_healthy
+    entrypoint: [ "/bin/sh", "/scripts/lnd-entrypoint.sh" ]
+    command:
+      - --bitcoin.active
+      - --bitcoin.${BITCOIN_NETWORK}
+      - --bitcoin.node=bitcoind
+      - --bitcoind.rpchost=bitcoind
+      - --bitcoind.rpcuser=${BITCOIN_RPC_USER}
+      - --bitcoind.rpcpass=${BITCOIN_RPC_PASSWORD}
+      - --bitcoind.zmqpubrawblock=tcp://bitcoind:${BITCOIN_ZMQ_BLOCK_PORT:-28332}
+      - --bitcoind.zmqpubrawtx=tcp://bitcoind:${BITCOIN_ZMQ_TX_PORT:-28333}
+      - --rpclisten=0.0.0.0:10009
+      - --restlisten=0.0.0.0:8080
+      - --listen=0.0.0.0:9735
+      - --alias=${LND_ALIAS:-xs-wallet-node}
+      - --color=${LND_COLOR:-#68F442}
+      - --tlsextradomain=lnd
+      - --tlsextradomain=xs-lnd
+      # Tor: use only SOCKS proxy (no hidden service for regtest)
+      # For mainnet, add: --tor.control=tor:9051 --tor.targetipaddress=tor
+      - --tor.socks=tor:9050
+    environment:
+      - BITCOIN_NETWORK=${BITCOIN_NETWORK}
+      - LND_WALLET_PASSWORD=${LND_WALLET_PASSWORD}
+    volumes:
+      - lnd-data:/root/.lnd
+      - ./scripts:/scripts:ro
+    networks:
+      - xs-network
+
+  # ============================================================================
+  # Elements/Liquid Sidechain
+  # ============================================================================
+  elements:
+    image: ghcr.io/vulpemventures/elements:latest
+    container_name: xs-elements
+    restart: unless-stopped
+    depends_on:
+      bitcoind:
+        condition: service_healthy
+    command:
+      # Mainchain connection (use regtest RPC port)
+      - -mainchainrpcuser=${BITCOIN_RPC_USER}
+      - -mainchainrpcpassword=${BITCOIN_RPC_PASSWORD}
+      - -mainchainrpcport=18443
+      - -mainchainrpchost=bitcoind
+      # Elements configuration
+      - -chain=${ELEMENTS_NETWORK:-liquidregtest}
+      - -listen=1
+      - -rpcbind=0.0.0.0
+      - -rpcallowip=0.0.0.0/0
+      - -rpcport=18884
+      - -rpcuser=${ELEMENTS_RPC_USER}
+      - -rpcpassword=${ELEMENTS_RPC_PASSWORD}
+      - -txindex=${ELEMENTS_TXINDEX:-1}
+      - -prune=${ELEMENTS_PRUNE:-0}
+      # Tor proxy
+      - -proxy=tor:9050
+      - -bind=0.0.0.0
+    volumes:
+      - elements-data:/root/.elements
+    networks:
+      - xs-network
+
+  # ============================================================================
+  # XS Wallet Go Core
+  # ============================================================================
+  xscore:
+    build:
+      context: ../../core
+      dockerfile: Dockerfile
+    container_name: xs-core
+    restart: unless-stopped
+    profiles:
+      - full # Only starts with: docker-compose --profile full up
+    depends_on:
+      - lnd
+      - elements
+    environment:
+      - XS_NETWORK=${BITCOIN_NETWORK}
+      - XS_GRPC_PORT=9735
+      - XS_BITCOIND_HOST=bitcoind
+      - XS_BITCOIND_PORT=18443
+      - XS_BITCOIND_USER=${BITCOIN_RPC_USER}
+      - XS_BITCOIND_PASS=${BITCOIN_RPC_PASSWORD}
+      - XS_LND_HOST=lnd:10009
+      - XS_LND_TLS=/lnd/tls.cert
+      - XS_LND_MACAROON=/lnd/data/chain/bitcoin/${BITCOIN_NETWORK}/admin.macaroon
+      - XS_ELEMENTS_HOST=elements
+      - XS_ELEMENTS_PORT=18884
+      - XS_ELEMENTS_USER=${ELEMENTS_RPC_USER}
+      - XS_ELEMENTS_PASS=${ELEMENTS_RPC_PASSWORD}
+      - XS_BOLTZ_URL=${BOLTZ_API_URL:-http://boltz-backend:9001}
+    volumes:
+      - xscore-data:/data
+      - lnd-data:/lnd:ro
+      - ./config:/config:ro
+    command: [ "--config=/config/xscore.json", "--datadir=/data", "--port=9735" ]
+    ports:
+      - "9735:9735"
+    networks:
+      - xs-network
+
+  # ============================================================================
+  # Boltz Backend (Self-hosted Swap Provider)
+  # ============================================================================
+  boltz-backend:
+    build:
+      context: ../../boltz-backend
+      dockerfile: docker/boltz/Dockerfile
+      args:
+        NODE_VERSION: "22-bookworm"
+        SOURCE: "local"
+    container_name: xs-boltz
+    restart: unless-stopped
+    profiles:
+      - full # Only starts with: docker-compose --profile full up
+    depends_on:
+      - lnd
+      - elements
+    environment:
+      - BOLTZ_LND_HOST=lnd:10009
+      - BOLTZ_ELEMENTS_HOST=elements:18884
+    volumes:
+      - boltz-data:/data
+      - lnd-data:/lnd:ro
+    networks:
+      - xs-network
+
+  # ============================================================================
+  # LNBits (Optional Web UI)
+  # ============================================================================
+  lnbits:
+    image: lnbits/lnbits:v1.4.1-rc2
+    container_name: xs-lnbits
+    restart: unless-stopped
+    depends_on:
+      - lnd
+    profiles:
+      - ui # Only starts with: docker-compose --profile ui up
+    environment:
+      - HOST=0.0.0.0
+      - PORT=5000
+      - LNBITS_SITE_TITLE=${LNBITS_SITE_TITLE:-XS Wallet}
+      - LND_GRPC_ENDPOINT=lnd
+      - LND_GRPC_PORT=10009
+      - LND_GRPC_CERT=/lnd/tls.cert
+      - LND_GRPC_MACAROON=/lnd/data/chain/bitcoin/${BITCOIN_NETWORK}/admin.macaroon
+    volumes:
+      - lnbits-data:/app/data
+      - lnd-data:/lnd:ro
+    ports:
+      - "5000:5000"
+    networks:
+      - xs-network
+
+# ============================================================================
+# Networks
+# ============================================================================
+networks:
+  xs-network:
+    driver: bridge
+    driver_opts:
+      com.docker.network.bridge.name: br-xs-wallet
+    ipam:
+      driver: default
+
+# ============================================================================
+# Volumes
+# ============================================================================
 volumes:
-  bitcoin_data:
+  tor-data:
+  i2p-data:
+  bitcoind-data:
+  lnd-data:
+  elements-data:
+  xscore-data:
+  boltz-data:
+  lnbits-data:
