@@ -224,7 +224,7 @@ func (w *Watcher) reconcileSwap(ctx context.Context, s *swap.Swap) error {
 func (w *Watcher) listActiveSwaps(ctx context.Context) ([]*swap.Swap, error) {
 	rows, err := w.db.QueryContext(ctx, `
 		SELECT id, kind, env, version, state, swap_key_index,
-		       COALESCE(preimage_hex, ''), COALESCE(preimage_hash_hex, ''),
+		       COALESCE(preimage_hash_hex, ''),
 		       COALESCE(lockup_txid, ''), COALESCE(lockup_amount_sat, ''),
 		       COALESCE(error_message, ''), timeout_block_height,
 		       created_at, updated_at
@@ -244,7 +244,7 @@ func (w *Watcher) listActiveSwaps(ctx context.Context) ([]*swap.Swap, error) {
 
 		err := rows.Scan(
 			&s.ID, &s.Kind, &s.Env, &s.Version, &s.State, &s.SwapKeyIndex,
-			&s.PreimageHex, &s.PreimageHashHex,
+			&s.PreimageHashHex,
 			&s.LockupTxid, &s.LockupAmountSat,
 			&s.ErrorMessage, &timeoutBlock,
 			&createdAt, &updatedAt,

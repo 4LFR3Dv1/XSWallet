@@ -23,7 +23,9 @@ Estado atual:
 Estado atual:
 - Pragmas configurados em `core/internal/db/db.go`.
 - CAS existe em `swap.Engine.Transition`.
-- Schema duplicado: `core/internal/db/db.go` vs `database/schema.sqlite.sql`.
+- Schema unificado em `core/internal/db/db.go` (arquivo duplicado removido).
+- Colunas adicionadas em `swaps`: `encrypted_preimage`, `boltz_status`, `boltz_raw`, `from_asset`, `to_asset`.
+- Tabela `vault_lockout` criada com migracao automatica para DBs existentes.
 
 ## 3. Swaps (spec)
 - Submarine, Reverse e Chain completos.
@@ -44,9 +46,10 @@ Estado atual:
 
 Estado atual:
 - Vault Argon2id + AES-256-GCM implementado.
-- Preimage salva em claro no DB (nao conforme).
+- Preimage salva criptografada no DB (`encrypted_preimage`).
+- Lockout/backoff implementado (temporario e permanente).
 - MuSig2 nao implementado.
-- Lockout/backoff nao implementado.
+- API expõe lockout/attempts via `GetVaultStatus` e `UnlockVault`.
 
 ## 5. Node manager (spec)
 - Download/verificacao de binarios (manifest assinado).
@@ -74,7 +77,5 @@ Estado atual:
 
 ## Gaps chave
 - Migrar para Electron/IPC.
-- Unificar schema e migrar DBs existentes.
 - Implementar reverse/chain swaps + MuSig2 + claim/refund.
 - Adapters LND/elementsd + Node Manager.
-- Preimage criptografada + lockout/backoff.

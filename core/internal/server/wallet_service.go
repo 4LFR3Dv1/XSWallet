@@ -6,6 +6,7 @@ import (
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/xs-wallet/xscore/internal/adapters/bitcoin"
 	"github.com/xs-wallet/xscore/internal/config"
@@ -70,18 +71,35 @@ func (s *WalletService) InitializeVault(ctx context.Context, req *pb.InitializeV
 func (s *WalletService) UnlockVault(ctx context.Context, req *pb.UnlockVaultRequest) (*pb.UnlockVaultResponse, error) {
 	sessionID, err := s.vault.Unlock(req.Pin)
 	if err != nil {
-		if err == vault.ErrInvalidPIN {
+		switch err {
+		case vault.ErrInvalidPIN:
+			failedAttempts, _, _ := s.vault.GetLockoutStatus()
 			return &pb.UnlockVaultResponse{
-				Success:      false,
-				ErrorMessage: "Invalid PIN",
+				Success:           false,
+				ErrorMessage:      "Invalid PIN",
+				AttemptsRemaining: attemptsRemaining(failedAttempts),
 			}, nil
+		case vault.ErrTooManyAttempts:
+			return &pb.UnlockVaultResponse{
+				Success:           false,
+				ErrorMessage:      "Vault locked. Try later.",
+				AttemptsRemaining: 0,
+			}, nil
+		case vault.ErrPermanentLockout:
+			return &pb.UnlockVaultResponse{
+				Success:           false,
+				ErrorMessage:      "Permanent lockout. Recovery required.",
+				AttemptsRemaining: 0,
+			}, nil
+		default:
+			return nil, status.Errorf(codes.Internal, "failed to unlock vault: %v", err)
 		}
-		return nil, status.Errorf(codes.Internal, "failed to unlock vault: %v", err)
 	}
 
 	return &pb.UnlockVaultResponse{
-		Success:   true,
-		SessionId: sessionID,
+		Success:           true,
+		SessionId:         sessionID,
+		AttemptsRemaining: int32(vault.MaxFailedAttempts),
 	}, nil
 }
 
@@ -114,9 +132,25 @@ func (s *WalletService) GetVaultStatus(ctx context.Context, req *pb.GetVaultStat
 		state = pb.VaultStatus_STATE_UNSPECIFIED
 	}
 
+	failedAttempts, lockedUntil, _ := s.vault.GetLockoutStatus()
+	var lockoutUntil *timestamppb.Timestamp
+	if lockedUntil != nil {
+		lockoutUntil = timestamppb.New(*lockedUntil)
+	}
+
 	return &pb.VaultStatus{
-		State: state,
+		State:          state,
+		FailedAttempts: int32(failedAttempts),
+		LockoutUntil:   lockoutUntil,
 	}, nil
+}
+
+func attemptsRemaining(failedAttempts int) int32 {
+	remaining := vault.MaxFailedAttempts - failedAttempts
+	if remaining < 0 {
+		remaining = 0
+	}
+	return int32(remaining)
 }
 
 // GetBackupStatus returns backup status

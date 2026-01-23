@@ -6,6 +6,7 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
+	"crypto/sha256"
 	"database/sql"
 	"encoding/hex"
 	"errors"
@@ -55,7 +56,8 @@ type VaultBlob struct {
 
 // Vault manages the encrypted seed and session state
 type Vault struct {
-	db *db.DB
+	db      *db.DB
+	lockout *Lockout
 
 	mu        sync.RWMutex
 	unlocked  bool
@@ -66,7 +68,10 @@ type Vault struct {
 
 // NewVault creates a new Vault instance
 func NewVault(database *db.DB) *Vault {
-	return &Vault{db: database}
+	return &Vault{
+		db:      database,
+		lockout: NewLockout(database),
+	}
 }
 
 // Initialize creates a new vault with a generated or imported mnemonic
@@ -138,6 +143,11 @@ func (v *Vault) Unlock(pin string) (string, error) {
 	v.mu.Lock()
 	defer v.mu.Unlock()
 
+	// Check lockout status FIRST
+	if err := v.lockout.CheckLockout(); err != nil {
+		return "", err
+	}
+
 	// Load blob from database
 	blob, err := v.loadBlob()
 	if err != nil {
@@ -153,7 +163,15 @@ func (v *Vault) Unlock(pin string) (string, error) {
 	// Decrypt seed
 	seed, err := decrypt(blob.Ciphertext, blob.Nonce, key[:])
 	if err != nil {
+		// Record failed attempt
+		v.lockout.RecordFailedAttempt()
 		return "", ErrInvalidPIN
+	}
+
+	// Success - reset lockout counter
+	if err := v.lockout.ResetAttempts(); err != nil {
+		// Log error but don't fail unlock
+		// TODO: add logging
 	}
 
 	// Generate session ID
@@ -206,6 +224,15 @@ func (v *Vault) Status() VaultStatus {
 		return StatusUnlocked
 	}
 
+	if failedAttempts, lockedUntil, err := v.lockout.GetStatus(); err == nil {
+		if failedAttempts >= PermanentLockout {
+			return StatusLockedOut
+		}
+		if lockedUntil != nil && time.Now().Before(*lockedUntil) {
+			return StatusLockedOut
+		}
+	}
+
 	return StatusLocked
 }
 
@@ -248,6 +275,11 @@ func (v *Vault) Seed() ([]byte, error) {
 	seedCopy := make([]byte, len(v.seed))
 	copy(seedCopy, v.seed)
 	return seedCopy, nil
+}
+
+// GetLockoutStatus returns current lockout information
+func (v *Vault) GetLockoutStatus() (failedAttempts int, lockedUntil *time.Time, err error) {
+	return v.lockout.GetStatus()
 }
 
 // vaultExists checks if a vault blob exists in the database
@@ -320,4 +352,65 @@ func decrypt(ciphertext, nonce, key []byte) ([]byte, error) {
 	}
 
 	return plaintext, nil
+}
+
+// EncryptPreimage encrypts a preimage using the vault's derived key
+// Requires vault to be unlocked
+func (v *Vault) EncryptPreimage(preimage []byte) ([]byte, error) {
+	v.mu.RLock()
+	defer v.mu.RUnlock()
+
+	if !v.unlocked || v.seed == nil {
+		return nil, ErrVaultLocked
+	}
+
+	// Derive a preimage encryption key from seed
+	key := derivePreimageKey(v.seed)
+
+	nonce, ciphertext, err := encrypt(preimage, key[:])
+	if err != nil {
+		return nil, err
+	}
+
+	// Prepend nonce to ciphertext for storage
+	encrypted := append(nonce, ciphertext...)
+	return encrypted, nil
+}
+
+// DecryptPreimage decrypts a preimage
+// Requires vault to be unlocked
+func (v *Vault) DecryptPreimage(encrypted []byte) ([]byte, error) {
+	v.mu.RLock()
+	defer v.mu.RUnlock()
+
+	if !v.unlocked || v.seed == nil {
+		return nil, ErrVaultLocked
+	}
+
+	if len(encrypted) < nonceLength {
+		return nil, errors.New("invalid encrypted preimage: too short")
+	}
+
+	nonce := encrypted[:nonceLength]
+	ciphertext := encrypted[nonceLength:]
+
+	key := derivePreimageKey(v.seed)
+
+	plaintext, err := decrypt(ciphertext, nonce, key[:])
+	if err != nil {
+		return nil, err
+	}
+
+	return plaintext, nil
+}
+
+// derivePreimageKey derives a key for preimage encryption from seed
+func derivePreimageKey(seed []byte) [32]byte {
+	// Derive a stable key with SHA-256 and a context string
+	h := sha256.New()
+	h.Write(seed)
+	h.Write([]byte("preimage-encryption-v1"))
+	var key [32]byte
+	copy(key[:], h.Sum(nil))
+	return key
 }

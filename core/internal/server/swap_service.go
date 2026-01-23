@@ -39,9 +39,9 @@ func NewSwapService(database *db.DB, cfg *config.Config, engine *swap.Engine, pr
 func (s *SwapService) QuoteSwap(ctx context.Context, req *pb.QuoteSwapRequest) (*pb.SwapQuote, error) {
 	// Convert proto request to provider request
 	provReq := provider.QuoteRequest{
-		Kind:      provider.SwapKind(req.Kind.String()),
-		FromChain: provider.Chain("BTC"),
-		ToChain:   provider.Chain("LN"),
+		Kind:      protoKindToProvider(req.Kind),
+		FromChain: protoChainToProvider(req.FromChain),
+		ToChain:   protoChainToProvider(req.ToChain),
 		AmountSat: int64(req.AmountSat),
 	}
 
@@ -61,8 +61,8 @@ func (s *SwapService) QuoteSwap(ctx context.Context, req *pb.QuoteSwapRequest) (
 	return &pb.SwapQuote{
 		QuoteId:           quote.QuoteID,
 		Kind:              req.Kind,
-		FromChain:         pb.Chain_CHAIN_BTC,
-		ToChain:           pb.Chain_CHAIN_LN,
+		FromChain:         req.FromChain,
+		ToChain:           req.ToChain,
 		AmountSat:         uint64(quote.AmountSat),
 		ProviderFeeSat:    uint64(quote.ProviderFeeSat),
 		NetworkFeeSat:     uint64(quote.NetworkFeeSat),
@@ -139,7 +139,7 @@ func (s *SwapService) ListSwaps(ctx context.Context, req *pb.ListSwapsRequest) (
 	// Query all swaps from database
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT id, kind, env, version, state, swap_key_index,
-		       COALESCE(preimage_hex, ''), COALESCE(preimage_hash_hex, ''),
+		       COALESCE(preimage_hash_hex, ''),
 		       COALESCE(lockup_txid, ''), COALESCE(lockup_address, ''),
 		       COALESCE(error_message, ''),
 		       created_at, updated_at
@@ -154,11 +154,11 @@ func (s *SwapService) ListSwaps(ctx context.Context, req *pb.ListSwapsRequest) (
 
 	var swaps []*pb.SwapSnapshot
 	for rows.Next() {
-		var id, kind, env, state, preimageHex, preimageHashHex, lockupTxid, lockupAddress, errorMsg, createdAt, updatedAt string
+		var id, kind, env, state, preimageHashHex, lockupTxid, lockupAddress, errorMsg, createdAt, updatedAt string
 		var version, swapKeyIndex int64
 
 		err := rows.Scan(&id, &kind, &env, &version, &state, &swapKeyIndex,
-			&preimageHex, &preimageHashHex, &lockupTxid, &lockupAddress, &errorMsg,
+			&preimageHashHex, &lockupTxid, &lockupAddress, &errorMsg,
 			&createdAt, &updatedAt)
 		if err != nil {
 			continue
@@ -283,5 +283,33 @@ func stateStringToProto(s string) pb.SwapState {
 		return pb.SwapState_SWAP_STATE_CANCELED
 	default:
 		return pb.SwapState_SWAP_STATE_UNSPECIFIED
+	}
+}
+
+// protoKindToProvider converts proto SwapKind to provider SwapKind
+func protoKindToProvider(k pb.SwapKind) provider.SwapKind {
+	switch k {
+	case pb.SwapKind_SWAP_KIND_SUBMARINE:
+		return provider.SwapKindSubmarine
+	case pb.SwapKind_SWAP_KIND_REVERSE:
+		return provider.SwapKindReverse
+	case pb.SwapKind_SWAP_KIND_CHAIN:
+		return provider.SwapKindChain
+	default:
+		return provider.SwapKindSubmarine // fallback
+	}
+}
+
+// protoChainToProvider converts proto Chain to provider Chain
+func protoChainToProvider(c pb.Chain) provider.Chain {
+	switch c {
+	case pb.Chain_CHAIN_BTC:
+		return provider.ChainBTC
+	case pb.Chain_CHAIN_LN:
+		return provider.ChainLN
+	case pb.Chain_CHAIN_LIQUID:
+		return provider.ChainLiquid
+	default:
+		return provider.ChainBTC // fallback
 	}
 }

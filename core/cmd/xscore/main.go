@@ -154,7 +154,7 @@ func main() {
 	}
 
 	// Initialize swap engine
-	swapEngine := swap.NewEngine(database)
+	swapEngine := swap.NewEngine(database, vaultInstance)
 
 	// Initialize watcher
 	watcherInstance := watcher.NewWatcher(database, btcClient, swapEngine)

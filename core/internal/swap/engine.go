@@ -47,14 +47,14 @@ const (
 
 // Swap representa um swap
 type Swap struct {
-	ID              string
-	Kind            Kind
-	Env             string
-	Version         int64
-	State           State
-	LockedIntent    string
-	SwapKeyIndex    int64
-	PreimageHex     string
+	ID           string
+	Kind         Kind
+	Env          string
+	Version      int64
+	State        State
+	LockedIntent string
+	SwapKeyIndex int64
+	// PreimageHex removed - use encrypted_preimage in DB
 	PreimageHashHex string
 	ClaimPubkeyHex  string
 	RefundPubkeyHex string
@@ -71,12 +71,19 @@ type Swap struct {
 
 // Engine gerencia swaps
 type Engine struct {
-	db *db.DB
+	db    *db.DB
+	vault interface {
+		EncryptPreimage([]byte) ([]byte, error)
+		DecryptPreimage([]byte) ([]byte, error)
+	}
 }
 
 // NewEngine cria engine
-func NewEngine(database *db.DB) *Engine {
-	return &Engine{db: database}
+func NewEngine(database *db.DB, v interface {
+	EncryptPreimage([]byte) ([]byte, error)
+	DecryptPreimage([]byte) ([]byte, error)
+}) *Engine {
+	return &Engine{db: database, vault: v}
 }
 
 // ValidTransitions define transições válidas da state machine
@@ -104,6 +111,9 @@ var ErrConcurrentModification = errors.New("concurrent modification detected")
 // ErrInvalidTransition erro de transição inválida
 var ErrInvalidTransition = errors.New("invalid state transition")
 
+// ErrVaultLocked indicates vault is required but not available
+var ErrVaultLocked = errors.New("vault is locked")
+
 // Create cria um novo swap
 func (e *Engine) Create(ctx context.Context, kind Kind, env string, keyIndex int64) (*Swap, error) {
 	id := uuid.New().String()
@@ -113,9 +123,17 @@ func (e *Engine) Create(ctx context.Context, kind Kind, env string, keyIndex int
 	if _, err := rand.Read(preimage); err != nil {
 		return nil, fmt.Errorf("failed to generate preimage: %w", err)
 	}
-	preimageHex := hex.EncodeToString(preimage)
 	hash := sha256.Sum256(preimage)
 	preimageHashHex := hex.EncodeToString(hash[:])
+
+	// Encrypt preimage before storing
+	if e.vault == nil {
+		return nil, fmt.Errorf("vault is required to encrypt preimage")
+	}
+	encryptedPreimage, err := e.vault.EncryptPreimage(preimage)
+	if err != nil {
+		return nil, fmt.Errorf("failed to encrypt preimage: %w", err)
+	}
 
 	now := time.Now().UTC()
 
@@ -126,17 +144,16 @@ func (e *Engine) Create(ctx context.Context, kind Kind, env string, keyIndex int
 		Version:         0,
 		State:           StateOpen,
 		SwapKeyIndex:    keyIndex,
-		PreimageHex:     preimageHex,
 		PreimageHashHex: preimageHashHex,
 		CreatedAt:       now,
 		UpdatedAt:       now,
 	}
 
 	// Insert
-	_, err := e.db.ExecContext(ctx, `
-		INSERT INTO swaps (id, kind, env, version, state, swap_key_index, preimage_hex, preimage_hash_hex, created_at, updated_at)
+	_, err = e.db.ExecContext(ctx, `
+		INSERT INTO swaps (id, kind, env, version, state, swap_key_index, encrypted_preimage, preimage_hash_hex, created_at, updated_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-	`, swap.ID, swap.Kind, swap.Env, swap.Version, swap.State, swap.SwapKeyIndex, swap.PreimageHex, swap.PreimageHashHex, swap.CreatedAt.Format(time.RFC3339Nano), swap.UpdatedAt.Format(time.RFC3339Nano))
+	`, swap.ID, swap.Kind, swap.Env, swap.Version, swap.State, swap.SwapKeyIndex, encryptedPreimage, swap.PreimageHashHex, swap.CreatedAt.Format(time.RFC3339Nano), swap.UpdatedAt.Format(time.RFC3339Nano))
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to insert swap: %w", err)
@@ -219,14 +236,14 @@ func (e *Engine) Get(ctx context.Context, id string) (*Swap, error) {
 
 	err := e.db.QueryRowContext(ctx, `
 		SELECT id, kind, env, version, state, swap_key_index, 
-		       COALESCE(preimage_hex, ''), COALESCE(preimage_hash_hex, ''),
+		       COALESCE(preimage_hash_hex, ''),
 		       COALESCE(lockup_txid, ''), COALESCE(lockup_amount_sat, ''),
 		       COALESCE(error_message, ''),
 		       created_at, updated_at
 		FROM swaps WHERE id = ?
 	`, id).Scan(
 		&swap.ID, &swap.Kind, &swap.Env, &swap.Version, &swap.State, &swap.SwapKeyIndex,
-		&swap.PreimageHex, &swap.PreimageHashHex,
+		&swap.PreimageHashHex,
 		&swap.LockupTxid, &swap.LockupAmountSat,
 		&swap.ErrorMessage,
 		&createdAt, &updatedAt,
@@ -239,6 +256,73 @@ func (e *Engine) Get(ctx context.Context, id string) (*Swap, error) {
 	swap.UpdatedAt, _ = time.Parse(time.RFC3339Nano, updatedAt)
 
 	return swap, nil
+}
+
+// GetPreimage returns decrypted preimage and performs lazy migration for legacy plaintext
+func (e *Engine) GetPreimage(ctx context.Context, id string) ([]byte, error) {
+	if e.vault == nil {
+		return nil, ErrVaultLocked
+	}
+
+	var encrypted []byte
+	err := e.db.QueryRowContext(ctx, `
+		SELECT COALESCE(encrypted_preimage, X'')
+		FROM swaps WHERE id = ?
+	`, id).Scan(&encrypted)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(encrypted) > 0 {
+		return e.vault.DecryptPreimage(encrypted)
+	}
+
+	// Legacy migration path: use preimage_hex if column exists
+	hasLegacy, err := e.columnExists("swaps", "preimage_hex")
+	if err != nil || !hasLegacy {
+		return nil, errors.New("preimage not found")
+	}
+
+	var legacyHex sql.NullString
+	err = e.db.QueryRowContext(ctx, `
+		SELECT preimage_hex FROM swaps WHERE id = ?
+	`, id).Scan(&legacyHex)
+	if err != nil {
+		return nil, err
+	}
+	if !legacyHex.Valid || legacyHex.String == "" {
+		return nil, errors.New("preimage not found")
+	}
+
+	legacyBytes, err := hex.DecodeString(legacyHex.String)
+	if err != nil {
+		return nil, fmt.Errorf("invalid legacy preimage: %w", err)
+	}
+
+	encrypted, err = e.vault.EncryptPreimage(legacyBytes)
+	if err != nil {
+		return nil, fmt.Errorf("failed to encrypt legacy preimage: %w", err)
+	}
+
+	_, err = e.db.ExecContext(ctx, `
+		UPDATE swaps SET encrypted_preimage = ?, preimage_hex = NULL WHERE id = ?
+	`, encrypted, id)
+	if err != nil {
+		return nil, err
+	}
+
+	return legacyBytes, nil
+}
+
+func (e *Engine) columnExists(table, column string) (bool, error) {
+	var count int
+	err := e.db.QueryRow(`
+		SELECT COUNT(*) FROM pragma_table_info(?) WHERE name = ?
+	`, table, column).Scan(&count)
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
 }
 
 // logEvent registra evento de swap
