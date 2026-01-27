@@ -1,0 +1,2155 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DomniWallet - Especificação Técnica do Wallet + Payout Service</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+        :root {
+            --text: #1a1a1a;
+            --text-secondary: #4a4a4a;
+            --bg: #ffffff;
+            --border: #e5e5e5;
+            --accent: #F7931A;
+            --accent-secondary: #00DACC;
+            --code-bg: #f5f5f5;
+            --success: #22c55e;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            font-size: 10pt;
+            line-height: 1.6;
+            color: var(--text);
+            background: var(--bg);
+            max-width: 210mm;
+            margin: 0 auto;
+            padding: 20mm;
+        }
+
+        h1 {
+            font-size: 20pt;
+            font-weight: 700;
+            margin: 24pt 0 12pt;
+            border-bottom: 2px solid var(--accent);
+            padding-bottom: 6pt;
+        }
+
+        h2 {
+            font-size: 14pt;
+            font-weight: 600;
+            margin: 18pt 0 8pt;
+            color: var(--text);
+        }
+
+        h3 {
+            font-size: 11pt;
+            font-weight: 600;
+            margin: 12pt 0 6pt;
+        }
+
+        h4 {
+            font-size: 10pt;
+            font-weight: 600;
+            margin: 10pt 0 4pt;
+        }
+
+        p {
+            margin-bottom: 8pt;
+            text-align: justify;
+        }
+
+        .cover {
+            text-align: center;
+            page-break-after: always;
+            padding-top: 80pt;
+        }
+
+        .cover h1 {
+            font-size: 32pt;
+            border: none;
+            margin-bottom: 8pt;
+            color: var(--text);
+        }
+
+        .cover .subtitle {
+            font-size: 16pt;
+            color: var(--text-secondary);
+            margin-bottom: 8pt;
+        }
+
+        .cover .tagline {
+            font-size: 12pt;
+            color: var(--text-secondary);
+            margin-bottom: 40pt;
+        }
+
+        .cover .meta {
+            margin-top: 60pt;
+        }
+
+        .cover .meta table {
+            margin: 0 auto;
+            text-align: left;
+        }
+
+        .toc {
+            page-break-after: always;
+        }
+
+        .toc ul {
+            list-style: none;
+        }
+
+        .toc li {
+            padding: 3pt 0;
+        }
+
+        .toc .l2 {
+            padding-left: 20pt;
+        }
+
+        .toc .l3 {
+            padding-left: 40pt;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 12pt 0;
+            font-size: 9pt;
+        }
+
+        th,
+        td {
+            border: 1px solid var(--border);
+            padding: 6pt 8pt;
+            text-align: left;
+            vertical-align: top;
+        }
+
+        th {
+            background: #f0f0f0;
+            font-weight: 600;
+        }
+
+        .caption {
+            font-size: 9pt;
+            font-style: italic;
+            color: var(--text-secondary);
+            text-align: center;
+            margin: 4pt 0 16pt;
+        }
+
+        code {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 8pt;
+            background: var(--code-bg);
+            padding: 2pt 4pt;
+            border-radius: 2pt;
+        }
+
+        pre {
+            background: var(--code-bg);
+            padding: 12pt;
+            border-radius: 4pt;
+            overflow-x: auto;
+            margin: 8pt 0;
+            font-size: 8pt;
+            line-height: 1.4;
+        }
+
+        pre code {
+            background: none;
+            padding: 0;
+        }
+
+        .note {
+            background: #fef3c7;
+            border-left: 3px solid #f59e0b;
+            padding: 8pt 12pt;
+            margin: 12pt 0;
+            font-size: 9pt;
+        }
+
+        .note-info {
+            background: #dbeafe;
+            border-left: 3px solid #2563eb;
+            padding: 8pt 12pt;
+            margin: 12pt 0;
+            font-size: 9pt;
+        }
+
+        .note-danger {
+            background: #fee2e2;
+            border-left: 3px solid #ef4444;
+            padding: 8pt 12pt;
+            margin: 12pt 0;
+            font-size: 9pt;
+        }
+
+        .note-success {
+            background: #dcfce7;
+            border-left: 3px solid #22c55e;
+            padding: 8pt 12pt;
+            margin: 12pt 0;
+            font-size: 9pt;
+        }
+
+        .diagram {
+            background: #fafafa;
+            border: 1px solid var(--border);
+            border-radius: 4pt;
+            padding: 16pt;
+            margin: 12pt 0;
+            text-align: center;
+        }
+
+        .mermaid {
+            background: transparent !important;
+        }
+
+        .page-break {
+            page-break-before: always;
+        }
+
+        .status-ok {
+            color: var(--success);
+            font-weight: 600;
+        }
+
+        .status-warn {
+            color: var(--warning);
+            font-weight: 600;
+        }
+
+        .status-pending {
+            color: var(--text-secondary);
+        }
+
+        .checklist {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .checklist li {
+            padding: 2pt 0;
+        }
+
+        .checklist li::before {
+            content: "☐ ";
+        }
+
+        ul,
+        ol {
+            margin-left: 20pt;
+            margin-bottom: 8pt;
+        }
+
+        li {
+            margin-bottom: 4pt;
+        }
+
+        @media print {
+            body {
+                padding: 15mm;
+            }
+
+            .page-break {
+                page-break-before: always;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- CAPA -->
+    <div class="cover">
+        <h1>DOMNIWALLET</h1>
+        <div class="subtitle">Wallet + Payout Service - Especificação Técnica</div>
+        <div class="tagline">Sistema Custodial + Payout Multi-Rede: BTC / Liquid / Tron</div>
+
+        <div class="meta">
+            <table>
+                <tr>
+                    <th>Documento</th>
+                    <td>Especificação Técnica do Wallet + Payout Service</td>
+                </tr>
+                <tr>
+                    <th>Versão</th>
+                    <td>1.0.0</td>
+                </tr>
+                <tr>
+                    <th>Status</th>
+                    <td>Draft v1 (para revisão/aprovação)</td>
+                </tr>
+                <tr>
+                    <th>Data</th>
+                    <td>Janeiro 2026</td>
+                </tr>
+                <tr>
+                    <th>Público-Alvo</th>
+                    <td>Desenvolvedores, Arquitetos, Operações</td>
+                </tr>
+                <tr>
+                    <th>Redes Suportadas</th>
+                    <td>Bitcoin, Liquid Network, Tron</td>
+                </tr>
+                <tr>
+                    <th>Backend</th>
+                    <td>Go + PostgreSQL + Redis</td>
+                </tr>
+            </table>
+        </div>
+    </div>
+
+    <!-- ÍNDICE -->
+    <div class="toc">
+        <h1>Índice</h1>
+        <ul>
+            <li>0. Objetivo do Sistema</li>
+            <li>1. Sumário Executivo</li>
+            <li class="l2">1.1 Modelo de Operação (Custodial + Treasury Payout)</li>
+            <li class="l2">1.2 Product Contract</li>
+            <li class="l2">1.3 Decisões Finais</li>
+            <li class="l2">1.4 Confirmações por Rede</li>
+            <li>2. Arquitetura do Sistema</li>
+            <li class="l2">2.1 Visão Geral dos Componentes</li>
+            <li class="l2">2.2 Interface dos Executors</li>
+            <li class="l2">2.3 Máquina de Estados</li>
+            <li class="l2">2.4 Custódia e Derivação de Chaves</li>
+            <li class="l2">2.5 Dados Mínimos (Tabelas)</li>
+            <li class="l2">2.6 Watcher / Indexer</li>
+            <li>3. Policy Table v1</li>
+            <li class="l2">3.1 Lightning Network (Futuro)</li>
+            <li class="l2">3.2 Bitcoin On-Chain</li>
+            <li class="l2">3.3 Liquid Network</li>
+            <li class="l2">3.4 Treasury Wallet</li>
+            <li>4. Thresholds em BRL</li>
+            <li class="l2">4.1 Faixas de Valor</li>
+            <li class="l2">4.2 SLOs por Rede</li>
+            <li class="l2">4.3 Limites Operacionais</li>
+            <li>5. Especificação de Validações</li>
+            <li class="l2">5.1 Códigos de Erro</li>
+            <li class="l2">5.2 Validações por Rede</li>
+            <li class="l2">5.3 Regras de Negócio</li>
+            <li>6. Fluxos de Execução</li>
+            <li class="l2">6.1 Fluxos Integrados (Wallet + UTXO Index)</li>
+            <li class="l2">6.2 Bitcoin Flow</li>
+            <li class="l2">6.3 Lightning Flow (Futuro)</li>
+            <li class="l2">6.4 Notas Técnicas de Implementação (MVP)</li>
+            <li>7. Resiliência</li>
+            <li class="l2">7.1 Circuit Breaker</li>
+            <li class="l2">7.2 Retry Policy</li>
+            <li>8. Auditoria e Observabilidade</li>
+            <li class="l2">8.1 Schema de Auditoria</li>
+            <li class="l2">8.2 Métricas e Alertas</li>
+            <li>9. Runbook Operacional</li>
+            <li class="l2">9.1 RBF/CPFP</li>
+            <li class="l2">9.2 DLQ</li>
+            <li class="l2">9.3 Consolidação de UTXOs</li>
+            <li>10. Checklist de Production Readiness</li>
+            <li>11. Configuração de Referência</li>
+        </ul>
+    </div>
+
+    <!-- 0. OBJETIVO -->
+    <div class="page-break">
+        <h1>0. Objetivo do Sistema</h1>
+
+        <p>Resolver o problema de controle de saldo por endereço (on-chain) e permitir integração segura e auditável entre
+            depósitos on-chain, índice de UTXOs e payouts multi-rede.</p>
+
+        <ol>
+            <li>Depósitos/recebimentos rastreados pela blockchain (principalmente USDT na Liquid)</li>
+            <li>Saldo por usuário derivado on-chain (UTXO por endereço), com reservas internas de UTXO</li>
+            <li>Saques/payouts (BTC/Liquid) com idempotência, retry e DLQ</li>
+            <li>Integração nativa com o fluxo do app DominiPay (PIX/Depix)</li>
+        </ol>
+
+        <div class="note-info">
+            <strong>Nota realista:</strong> o saldo é derivado da própria blockchain (UTXOs por endereço) e das reservas
+            internas de UTXO (lock/hold). Não usamos ledger de crédito/débito no MVP; se necessário para contabilidade,
+            pode ser adicionado sem alterar a fonte de verdade on-chain.
+        </div>
+    </div>
+
+    <!-- 1. SUMÁRIO EXECUTIVO -->
+    <div class="page-break">
+        <h1>1. Sumário Executivo</h1>
+
+        <p><strong>DomniWallet Wallet + Payout Service</strong> é um sistema <strong>custodial por API</strong> que
+            controla saldo por usuário a partir do índice on-chain de UTXOs (por endereço) e depósitos on-chain
+            (principalmente USDT na Liquid), além de executar payouts multi-rede (BTC e L-BTC). Lightning fica fora do
+            MVP atual. DominiPay integra PIX/Depix e consulta saldo/saques via Wallet API.</p>
+
+        <h2>1.1 Modelo de Operação (Custodial + Treasury Payout)</h2>
+
+        <div class="note-info">
+            <strong>Modelo Custodial:</strong> BTC usa derivação da master seed (BIP86/P2TR). Liquid gera endereços
+            diretamente no <code>elementsd</code> (wallet do node). O cliente não controla a seed; a DomniWallet
+            custodia fundos e opera um índice on-chain de UTXOs + reservas internas para saques.
+        </div>
+
+        <table>
+            <tr>
+                <th>Aspecto</th>
+                <th>Descrição</th>
+            </tr>
+            <tr>
+                <td>Custódia de Clientes</td>
+                <td><strong>SIM</strong> — chave do serviço sob custódia do Wallet Service (vault/HSM); seed de recuperação do usuário é entregue uma única vez e não armazenada</td>
+            </tr>
+            <tr>
+                <td>Tesouraria</td>
+                <td>Carteiras operadas pela empresa para payouts</td>
+            </tr>
+            <tr>
+                <td>Fluxo</td>
+                <td>Depósitos confirmados → indexação de UTXOs → saques/payouts</td>
+            </tr>
+            <tr>
+                <td>Risco</td>
+                <td>Empresa assume risco de custódia e liquidez; cliente assume risco de endereço/invoice</td>
+            </tr>
+        </table>
+        <div class="caption">Tabela 1.1: Modelo de Operação</div>
+
+        <h3>Gatilho de Payout (Depix)</h3>
+
+        <p><strong>Decisão operacional (v1):</strong> o saldo spendable é liberado após
+            <code>depix_confs=2</code>. No <strong>Modelo A</strong>, o gateway Depix deposita direto no endereço do
+            usuário e o Watcher indexa o UTXO. No <strong>Modelo B</strong> (híbrido), DominiPay enviaria
+            <code>depix_confirmed</code> para o Wallet Service, mas este modelo requer ledger interno e fica fora do
+            MVP on-chain. Payouts só são criados com saldo disponível (UTXOs não reservados).</p>
+
+        <div class="note">
+            <strong>Fluxo atual:</strong> PIX recebido → Depix enviado → UTXO confirmado (Modelo A) →
+            <code>POST /v1/withdrawals</code> → Wallet Service chama Payout Service.
+        </div>
+
+        <h2>1.2 Product Contract</h2>
+
+        <p>Definição clara de como destinos são gerenciados por rede:</p>
+
+        <table>
+            <tr>
+                <th>Rede</th>
+                <th>Tipo de Destino</th>
+                <th>Requisito</th>
+            </tr>
+            <tr>
+                <td><strong>BTC</strong></td>
+                <td>Address Book</td>
+                <td>Endereço fixo cadastrado por usuário (Bech32m / Taproot preferido)</td>
+            </tr>
+            <tr>
+                <td><strong>Liquid</strong></td>
+                <td>Address Book</td>
+                <td>Endereço custodial gerado no elementsd (confidential recomendado)</td>
+            </tr>
+            <tr>
+                <td><strong>Tron</strong></td>
+                <td>Address Book</td>
+                <td>Endereço TRC20 (USDC) por usuário</td>
+            </tr>
+            <tr>
+                <td><strong>Lightning (futuro)</strong></td>
+                <td>Invoice por Payout</td>
+                <td>Fora do MVP; manter como extensão futura</td>
+            </tr>
+        </table>
+        <div class="caption">Tabela 1.2: Product Contract por Rede</div>
+
+        <div class="note">
+            <strong>Lightning (futuro):</strong> não tem endereço fixo; requer invoice BOLT11 por payout. Fica fora do MVP.
+        </div>
+
+        <h3>Contrato de Integração DominiPay → Wallet Service (MVP)</h3>
+
+        <table>
+            <tr>
+                <th>#</th>
+                <th>Regra</th>
+                <th>Detalhe</th>
+            </tr>
+            <tr>
+                <td><strong>1</strong></td>
+                <td>BTC/Liquid/Tron: <code>to_address</code> fixo</td>
+                <td>DominiPay envia endereço do address book do cliente. Validação: <code>validateaddress</code></td>
+            </tr>
+            <tr>
+                <td><strong>2</strong></td>
+                <td>LN (futuro): <code>ln_invoice</code> por payout</td>
+                <td>Fora do MVP; validações de invoice ficam para versão futura</td>
+            </tr>
+            <tr>
+                <td><strong>3</strong></td>
+                <td>Gatilho: saldo disponível</td>
+                <td>DominiPay cria <code>withdrawal</code> quando UTXOs confirmados estiverem disponíveis (Modelo A)</td>
+            </tr>
+        </table>
+        <div class="caption">Tabela 1.3: Contrato de Integração MVP</div>
+
+        <h2>1.3 Decisões Finais Aprovadas</h2>
+
+        <table>
+            <tr>
+                <th>Decisão</th>
+                <th>Resultado</th>
+                <th>Justificativa</th>
+            </tr>
+            <tr>
+                <td>Fallback entre redes</td>
+                <td><span class="status-warn">❌ Não automático</span></td>
+                <td>Altera expectativa do usuário; fallback via opt-in manual</td>
+            </tr>
+            <tr>
+                <td>RBF para BTC</td>
+                <td><span class="status-ok">✅ ON por padrão</span></td>
+                <td>Resolve stuck tx com baixa complexidade via <code>bumpfee</code></td>
+            </tr>
+            <tr>
+                <td>CPFP para BTC</td>
+                <td><span class="status-warn">⚠️ Opcional</span></td>
+                <td>Somente se controlamos o output de change</td>
+            </tr>
+            <tr>
+                <td>Zero-amount invoices (LN)</td>
+                <td><span class="status-pending">⏳ Fora do MVP</span></td>
+                <td>Aplicável apenas a LN; manter para versão futura</td>
+            </tr>
+            <tr>
+                <td>MPP (Multi-Path, LN)</td>
+                <td><span class="status-pending">⏳ Fora do MVP</span></td>
+                <td>Aplicável apenas a LN; manter para versão futura</td>
+            </tr>
+            <tr>
+                <td>Webhook Depix</td>
+                <td><span class="status-pending">⏳ Verificar</span></td>
+                <td>Confirmar se assinatura implementada</td>
+            </tr>
+        </table>
+        <div class="caption">Tabela 1.4: Decisões Finais Aprovadas</div>
+
+        <h2>1.4 Confirmações por Rede</h2>
+
+        <table>
+            <tr>
+                <th>Rede</th>
+                <th>Confirmações</th>
+                <th>Justificativa</th>
+            </tr>
+            <tr>
+                <td>Liquid (Depix)</td>
+                <td>2</td>
+                <td>Finalidade após 2 conf (~2 min). Documentação Blockstream.</td>
+            </tr>
+            <tr>
+                <td>BTC (baixo risco)</td>
+                <td>1</td>
+                <td>Valores &lt; 0.01 BTC, liberação rápida</td>
+            </tr>
+            <tr>
+                <td>BTC (médio risco)</td>
+                <td>3</td>
+                <td>Valores 0.01–0.1 BTC</td>
+            </tr>
+            <tr>
+                <td>BTC (alto risco)</td>
+                <td>6</td>
+                <td>Valores &gt; 0.1 BTC ou usuário novo</td>
+            </tr>
+        </table>
+        <div class="caption">Tabela 1.5: Confirmações por Rede</div>
+    </div>
+
+    <!-- 2. ARQUITETURA -->
+    <div class="page-break">
+        <h1>2. Arquitetura do Sistema</h1>
+
+        <h2>2.1 Visão Geral dos Componentes</h2>
+
+        <p>O sistema completo combina custódia (Wallet Service), observação de blockchain (Watchers) e execução de
+            payouts (Payout Service). O Wallet Service expõe saldo/histórico e cria withdrawals; Watchers indexam
+            UTXOs confirmados; o Payout Service reserva UTXOs e executa payouts BTC/Liquid.</p>
+
+        <table>
+            <tr>
+                <th>Componente</th>
+                <th>Responsabilidade</th>
+            </tr>
+            <tr>
+                <td><strong>DominiPay Backend</strong></td>
+                <td>Identidade (uuid), PIX/checkout, decide asset de recebimento/payout e integra Wallet API</td>
+            </tr>
+            <tr>
+                <td><strong>Wallet Service (custodial)</strong></td>
+                <td>Gerencia contas, deriva endereços, expõe saldo/histórico e cria withdrawals</td>
+            </tr>
+            <tr>
+                <td><strong>Watchers / Indexers</strong></td>
+                <td>Observam blockchain/mempool, detectam depósitos e escrevem UTXOs confirmados (chain_utxos)</td>
+            </tr>
+            <tr>
+                <td><strong>Wallet DB</strong></td>
+                <td>Fonte de verdade on-chain: accounts, addresses, chain_utxos, reservas e withdrawals</td>
+            </tr>
+            <tr>
+                <td><strong>Payout Service</strong></td>
+                <td>Orquestra saques, executa payouts por rede e monitora confirmações</td>
+            </tr>
+            <tr>
+                <td><strong>Nodes locais</strong></td>
+                <td>bitcoind, elementsd e trond (RPC + wallet)</td>
+            </tr>
+        </table>
+        <div class="caption">Tabela 2.1: Componentes do Sistema</div>
+
+        <div class="diagram">
+            <div class="mermaid">
+                flowchart TB
+                subgraph DominiPay["DominiPay Backend"]
+                App["DominiPay API"]
+                PIX["PIX/Depix Gateway"]
+                end
+
+                subgraph WalletService["Wallet Service (Custodial)"]
+                Accounts["Accounts & Addresses"]
+                WalletDB["Wallet DB (UTXO Index + Reservas)"]
+                Withdrawals["Withdrawals API"]
+                end
+
+                subgraph Watchers["Watchers / Indexers"]
+                BTCWatch["BTC Watcher"]
+                LiqWatch["Liquid Watcher"]
+                TronWatch["Tron Watcher"]
+                end
+
+                subgraph PayoutService["Payout Service"]
+                Orchestrator["Orchestrator"]
+                Queue["Event Queue"]
+                Executors["Executors: BTC/Liquid/Tron"]
+                end
+
+                subgraph Nodes["Nodes"]
+                Bitcoin["bitcoind"]
+                Elements["elementsd"]
+                Tron["trond"]
+                end
+
+                PIX --> App
+                App -->|contas / saldo / saques| WalletService
+                WalletService -->|payout request| Orchestrator
+                Orchestrator --> Queue --> Executors
+                Executors --> Bitcoin
+                Executors --> Elements
+                Executors --> Tron
+                BTCWatch --> Bitcoin
+                LiqWatch --> Elements
+                TronWatch --> Tron
+                BTCWatch -->|utxos| WalletDB
+                LiqWatch -->|utxos| WalletDB
+                TronWatch -->|accounts| WalletDB
+                Executors -->|reservas/saques| WalletDB
+
+                style WalletService fill:#0EA5E9,color:#fff
+                style PayoutService fill:#F7931A,color:#fff
+                style Watchers fill:#7B3FF2,color:#fff
+                style Nodes fill:#00FF88,color:#000
+            </div>
+        </div>
+        <div class="caption">Figura 2.1: Diagrama de Arquitetura do Sistema</div>
+
+        <h2>2.2 Interface dos Executors</h2>
+
+        <pre><code>type NetworkExecutor interface {
+    // Validação
+    ValidateAddress(addr string) (bool, error)
+
+    // Execução
+    SendPayout(req PayoutRequest) (*PayoutResult, error)
+
+    // Monitoramento
+    WatchConfirmations(txid string) <-chan ConfirmationEvent
+    GetBalance() (*Balance, error)
+}</code></pre>
+        <div class="caption">Listagem 2.1: Interface NetworkExecutor</div>
+
+        <h2>2.3 Máquina de Estados</h2>
+
+        <div class="diagram">
+            <div class="mermaid">
+                stateDiagram-v2
+                [*] --> PENDING: Depix confirmado
+                PENDING --> VALIDATING: Lock adquirido
+                VALIDATING --> READY: Validações OK
+                VALIDATING --> REJECTED: Validação falhou
+
+                READY --> RESERVED: UTXO reservado
+                RESERVED --> EXECUTING: Tx enviada
+
+                EXECUTING --> CONFIRMING: Tx no mempool
+                CONFIRMING --> COMPLETED: Confirmações OK
+
+                EXECUTING --> FAILED_RETRYABLE: Falha temporária
+                FAILED_RETRYABLE --> READY: Retry backoff
+
+                EXECUTING --> FAILED_FINAL: Falha permanente
+                FAILED_FINAL --> DLQ: Movido para DLQ
+
+                COMPLETED --> [*]
+            </div>
+        </div>
+        <div class="caption">Figura 2.2: Máquina de Estados do Payout</div>
+
+        <table>
+            <tr>
+                <th>De</th>
+                <th>Para</th>
+                <th>Trigger</th>
+                <th>Ação</th>
+            </tr>
+            <tr>
+                <td>PENDING</td>
+                <td>VALIDATING</td>
+                <td>Evento de fila</td>
+                <td>Adquirir lock por <code>payment_id</code></td>
+            </tr>
+            <tr>
+                <td>READY</td>
+                <td>RESERVED</td>
+                <td>Validação OK</td>
+                <td>BTC/Liquid: Coin reservation (marcar UTXOs)</td>
+            </tr>
+            <tr>
+                <td>RESERVED</td>
+                <td>EXECUTING</td>
+                <td>UTXO reservado</td>
+                <td>Criar/assinar/broadcast tx</td>
+            </tr>
+            <tr>
+                <td>CONFIRMING</td>
+                <td>COMPLETED</td>
+                <td>Confirmações atingidas</td>
+                <td>Liberar lock, persistir proof</td>
+            </tr>
+            <tr>
+                <td>FAILED_RETRYABLE</td>
+                <td>READY</td>
+                <td>Timer backoff</td>
+                <td>Incrementar <code>retry_count</code></td>
+            </tr>
+            <tr>
+                <td>FAILED_RETRYABLE</td>
+                <td>FAILED_FINAL</td>
+                <td><code>retry_count >= 3</code></td>
+                <td>Mover para DLQ</td>
+            </tr>
+        </table>
+        <div class="caption">Tabela 2.2: Transições de Estado</div>
+
+        <h2>2.4 Custódia e Derivação de Chaves</h2>
+
+        <p>O Wallet Service é custodial para operações do dia a dia. Para BTC, usa P2TR com dois caminhos: key-path
+            (chave do serviço) para saques normais e script-path de recuperação do usuário com CSV por tier de risco.
+            Cada usuário recebe um <code>account_index</code> determinístico (hardened) para o key-path BIP86. O sistema
+            gera uma seed de recuperação para o usuário, entrega uma única vez e não armazena; apenas o pubkey/xpub é
+            guardado para compor o script de recuperação. Para Liquid, os endereços são gerados diretamente no
+            <code>elementsd</code> (wallet do node), associados ao <code>account_id</code> por label.</p>
+
+        <table>
+            <tr>
+                <th>Item</th>
+                <th>Decisão</th>
+            </tr>
+            <tr>
+                <td>Conta por usuário</td>
+                <td><code>accounts(uuid → account_index)</code> determinístico</td>
+            </tr>
+            <tr>
+                <td>BTC (custódia)</td>
+                <td>P2TR key-path (serviço): <code>m/86'/0'/account'/0/i</code></td>
+            </tr>
+            <tr>
+                <td>BTC (recuperação)</td>
+                <td>Script-path com CSV por tier de risco; pubkey do usuário derivado de seed gerada e entregue uma única vez</td>
+            </tr>
+            <tr>
+                <td>Seed do usuário</td>
+                <td>Gerada pelo sistema, entregue uma única vez e não armazenada; guardar apenas pubkey/xpub</td>
+            </tr>
+            <tr>
+                <td>Liquid</td>
+                <td>Endereços gerados no <code>elementsd</code> (wallet do node); label por <code>account_id</code></td>
+            </tr>
+            <tr>
+                <td>Tron</td>
+                <td>BIP44 (coin type 195): <code>m/44'/195'/account'/0/i</code> (custodial)</td>
+            </tr>
+            <tr>
+                <td>UUID ≠ PubKey</td>
+                <td>Não usar uuid como pubkey (mistura identidade com criptografia)</td>
+            </tr>
+        </table>
+        <div class="caption">Tabela 2.3: Modelo de Custódia e Derivação</div>
+
+        <h3>2.4.1 Recuperação (Break-glass) BTC</h3>
+
+        <p>O caminho de recuperação do usuário usa script-path com CSV por tier de risco. O sistema gera a seed de
+            recuperação e entrega uma única vez; não armazena a seed. Apenas o <code>user_xpub</code> (por conta) é
+            guardado para compor o script. A recuperação exige reconstruir o descriptor P2TR (key-path do serviço +
+            script-path CSV com pubkey do usuário) e varrer os UTXOs após o timelock.</p>
+
+        <ul>
+            <li><strong>Padrão recomendado:</strong> <code>user_xpub</code> por conta (não pubkey única) para permitir
+                recuperação por endereço e rotação segura.</li>
+            <li><strong>Compatibilidade:</strong> a recuperação deve usar wallet que aceite descriptors P2TR com CSV
+                (ou fluxo de sweep custom).</li>
+            <li><strong>UX de recuperação:</strong> fornecer ao usuário o <code>user_xpub</code>, policy de CSV e
+                exemplo de derivação <code>m/86'/0'/account'/0/i</code> para reconstrução.</li>
+        </ul>
+
+
+        <div class="note">
+            <strong>Segurança mínima:</strong> seed do serviço armazenada em vault/TPM/HSM (ou encrypted-at-rest + unlock
+            controlado). A seed de recuperação do usuário é entregue uma única vez e não é armazenada (guardar apenas
+            pubkey/xpub). Hot wallets com limites e política de backup/rotação.
+        </div>
+
+        <h2>2.5 Dados Mínimos (Tabelas)</h2>
+
+        <table>
+            <tr>
+                <th>Entidade</th>
+                <th>Campos-chave</th>
+            </tr>
+            <tr>
+                <td>accounts</td>
+                <td>uuid (UNIQUE), account_index, user_xpub (BTC), status</td>
+            </tr>
+            <tr>
+                <td>addresses</td>
+                <td>account_id, network, asset, address, derivation_path, is_active</td>
+            </tr>
+            <tr>
+                <td>chain_utxos</td>
+                <td>network, asset, txid, vout, address_id, amount, confirmations, confirmed_at, spent_txid</td>
+            </tr>
+            <tr>
+                <td>chain_accounts</td>
+                <td>network (tron), asset, address_id, balance, last_block, last_txid</td>
+            </tr>
+            <tr>
+                <td>utxo_reservations</td>
+                <td>network, asset, txid, vout, withdrawal_id, reserved_at, status</td>
+            </tr>
+            <tr>
+                <td>withdrawals</td>
+                <td>account_id, network, asset, amount, destination, status</td>
+            </tr>
+            <tr>
+                <td>payouts</td>
+                <td>withdrawal_id, status, txid/payment_hash, error</td>
+            </tr>
+        </table>
+        <div class="caption">Tabela 2.4: Entidades Mínimas</div>
+
+        <div class="note-info">
+            <strong>Idempotência de depósitos:</strong> índice único em <code>chain_utxos</code>
+            (<code>network, asset, txid, vout</code>) garante registro único por UTXO/asset.
+        </div>
+
+        <h2>2.6 Watcher / Indexer (Observação de Depósitos)</h2>
+
+        <p>Como observar endereços na prática:</p>
+        <ul>
+            <li><strong>Opção 1 (rápida, MVP):</strong> usar wallet RPC dos nodes; importar descriptors e listar
+                transações. Prós: rápida; Contras: depende de indexing e rescan.</li>
+            <li><strong>Opção 2 (robusta):</strong> indexador próprio + mempool/esplora. Prós: escala melhor; Contras:
+                mais trabalho.</li>
+        </ul>
+
+        <div class="note">
+            <strong>Recomendação:</strong> iniciar com Opção 1 + reconciliação periódica. Evoluir para Opção 2 quando
+            throughput justificar.
+        </div>
+
+        <div class="note-info">
+            <strong>Robustez do watcher:</strong> tratar reorgs, UTXO que some, transações RBF substituídas e
+            confirmações revertidas (confirmed → mempool). Persistir <code>block_hash</code> e <code>height</code>
+            por UTXO e ter reconciliação periódica para corrigir o estado. Para redes account-based (Tron),
+            persistir saldo + último bloco e reconciliar transferências de token.
+        </div>
+    </div>
+
+    <!-- 3. POLICY TABLE -->
+    <div class="page-break">
+        <h1>3. Policy Table v1</h1>
+
+        <p>Valores iniciais para implementação, prontos para ajuste baseado em métricas de produção.</p>
+
+        <div class="note">
+            <strong>Escopo do MVP:</strong> apenas BTC e Liquid. Lightning fica fora do MVP e é referência futura.
+        </div>
+
+        <h2>3.1 Lightning Network (Futuro - fora do MVP)</h2>
+
+        <h3>3.1.1 Parâmetros por Faixa de Valor</h3>
+
+        <table>
+            <tr>
+                <th>Faixa</th>
+                <th>timeout</th>
+                <th>cltv_limit</th>
+                <th>fee_limit</th>
+                <th>MPP</th>
+                <th>max_parts</th>
+                <th>max_shard</th>
+            </tr>
+            <tr>
+                <td>&lt; 100k sats</td>
+                <td>30s</td>
+                <td>40</td>
+                <td>5000 ppm, min 5, max 500 sat</td>
+                <td>OFF</td>
+                <td>6</td>
+                <td>50k sat</td>
+            </tr>
+            <tr>
+                <td>100k–1M sats</td>
+                <td>60s</td>
+                <td>60</td>
+                <td>3000 ppm, min 20, max 2k sat</td>
+                <td>ON</td>
+                <td>10</td>
+                <td>100k sat</td>
+            </tr>
+            <tr>
+                <td>&gt; 1M sats</td>
+                <td>90s</td>
+                <td>80</td>
+                <td>2000 ppm, min 50, max 5k sat</td>
+                <td>ON</td>
+                <td>12</td>
+                <td>200k sat</td>
+            </tr>
+        </table>
+        <div class="caption">Tabela 3.1: Parâmetros LN por Faixa</div>
+
+        <h3>3.1.2 Regras Auxiliares LN</h3>
+
+        <ul>
+            <li>Validar invoice: <code>expiry</code>, <code>num_satoshis</code>, <code>payment_hash</code>,
+                <code>destination</code>
+            </li>
+            <li>Bloquear se <code>now + timeout_seconds</code> estiver a menos de 20% do expiry</li>
+            <li>Zero-amount: aceitar somente se payout define valor; enviar via <code>amt_msat</code></li>
+            <li>Persistir <code>payment_preimage</code> + status após SUCCEEDED</li>
+        </ul>
+
+        <h2>3.2 Bitcoin On-Chain</h2>
+
+        <table>
+            <tr>
+                <th>Parâmetro</th>
+                <th>Valor</th>
+            </tr>
+            <tr>
+                <td>Confirmações (baixo risco)</td>
+                <td>1</td>
+            </tr>
+            <tr>
+                <td>Confirmações (médio risco)</td>
+                <td>3</td>
+            </tr>
+            <tr>
+                <td>Confirmações (alto risco)</td>
+                <td>6</td>
+            </tr>
+            <tr>
+                <td>RBF</td>
+                <td>ON por padrão</td>
+            </tr>
+            <tr>
+                <td>CPFP</td>
+                <td>Opcional (quando controlamos change)</td>
+            </tr>
+            <tr>
+                <td>Fee estimation targets</td>
+                <td>2 / 6 / 12 blocos</td>
+            </tr>
+            <tr>
+                <td>Fee fallback</td>
+                <td>10 sat/vB</td>
+            </tr>
+        </table>
+        <div class="caption">Tabela 3.2: Parâmetros BTC</div>
+
+        <h3>3.2.1 Timelock CSV (Recuperação BTC)</h3>
+
+        <p>Aplica-se apenas ao script-path de recuperação do usuário. O key-path do serviço não é afetado.</p>
+
+        <table>
+            <tr>
+                <th>Faixa (BRL)</th>
+                <th>CSV (blocos)</th>
+                <th>Tempo aprox.</th>
+            </tr>
+            <tr>
+                <td>Pequeno (&lt; R$ 600)</td>
+                <td>144</td>
+                <td>~1 dia</td>
+            </tr>
+            <tr>
+                <td>Médio (R$ 600–6.000)</td>
+                <td>432</td>
+                <td>~3 dias</td>
+            </tr>
+            <tr>
+                <td>Grande (&gt; R$ 6.000)</td>
+                <td>1008</td>
+                <td>~1 semana</td>
+            </tr>
+        </table>
+        <div class="caption">Tabela 3.2a: Timelock CSV por Faixa</div>
+
+        <h2>3.3 Liquid Network</h2>
+
+        <table>
+            <tr>
+                <th>Parâmetro</th>
+                <th>Valor</th>
+            </tr>
+            <tr>
+                <td>Depix confirmações</td>
+                <td>2</td>
+            </tr>
+            <tr>
+                <td>Payout confirmações</td>
+                <td>2</td>
+            </tr>
+            <tr>
+                <td>Fee fallback</td>
+                <td>0.1 sat/vB</td>
+            </tr>
+        </table>
+        <div class="caption">Tabela 3.3: Parâmetros Liquid</div>
+
+        <h2>3.4 Tron Network</h2>
+
+        <table>
+            <tr>
+                <th>Parâmetro</th>
+                <th>Valor</th>
+            </tr>
+            <tr>
+                <td>Confirmações (USDC TRC20)</td>
+                <td>19 (ajustável)</td>
+            </tr>
+            <tr>
+                <td>Fee model</td>
+                <td>Energy/Bandwidth (manter saldo de TRX)</td>
+            </tr>
+        </table>
+        <div class="caption">Tabela 3.4: Parâmetros Tron</div>
+
+        <h2>3.5 Treasury Wallet Limits</h2>
+
+        <p>Limites para as carteiras da tesouraria operacional (não-custodial de clientes):</p>
+
+        <table>
+            <tr>
+                <th>Rede</th>
+                <th>min_balance</th>
+                <th>target_balance</th>
+                <th>max_balance</th>
+            </tr>
+            <tr>
+                <td>BTC</td>
+                <td>0.05 BTC</td>
+                <td>0.2 BTC</td>
+                <td>0.5 BTC</td>
+            </tr>
+            <tr>
+                <td>Liquid (L-BTC)</td>
+                <td>0.02 L-BTC</td>
+                <td>0.1 L-BTC</td>
+                <td>0.3 L-BTC</td>
+            </tr>
+            <tr>
+                <td>Lightning</td>
+                <td>500k sats</td>
+                <td>2M sats</td>
+                <td>5M sats</td>
+            </tr>
+        </table>
+        <div class="caption">Tabela 3.4: Limites de Treasury Wallet</div>
+
+        <div class="note">
+            <strong>Importante:</strong> Reposição da cold → treasury wallet requer <strong>aprovação humana</strong>
+            via
+            dashboard ou CLI. Nunca automático.
+        </div>
+    </div>
+
+    <!-- 4. THRESHOLDS EM BRL -->
+    <div class="page-break">
+        <h1>4. Thresholds em BRL</h1>
+
+        <p>Taxa de conversão de referência: <strong>1 BTC = R$ 600.000</strong> (ajustar conforme mercado).</p>
+
+        <h2>4.1 Faixas de Valor</h2>
+
+        <table>
+            <tr>
+                <th>Faixa</th>
+                <th>BRL</th>
+                <th>Sats</th>
+                <th>Classificação</th>
+            </tr>
+            <tr>
+                <td>Pequeno</td>
+                <td>&lt; R$ 600</td>
+                <td>&lt; 100k</td>
+                <td>Baixo risco</td>
+            </tr>
+            <tr>
+                <td>Médio</td>
+                <td>R$ 600 – R$ 6.000</td>
+                <td>100k – 1M</td>
+                <td>Médio risco</td>
+            </tr>
+            <tr>
+                <td>Grande</td>
+                <td>&gt; R$ 6.000</td>
+                <td>&gt; 1M</td>
+                <td>Alto risco</td>
+            </tr>
+        </table>
+        <div class="caption">Tabela 4.1: Faixas de Valor em BRL</div>
+
+        <h2>4.2 SLOs por Rede</h2>
+
+        <h3>4.2.1 Lightning Network (Futuro)</h3>
+
+        <table>
+            <tr>
+                <th>Métrica</th>
+                <th>Target</th>
+                <th>Janela</th>
+            </tr>
+            <tr>
+                <td>Taxa de sucesso</td>
+                <td>≥ 98%</td>
+                <td>24h rolling</td>
+            </tr>
+            <tr>
+                <td>Latência (p50)</td>
+                <td>≤ 15s</td>
+                <td>24h rolling</td>
+            </tr>
+            <tr>
+                <td>Latência (p99)</td>
+                <td>≤ 120s</td>
+                <td>24h rolling</td>
+            </tr>
+            <tr>
+                <td>Fee médio pago</td>
+                <td>≤ 0.3% do valor</td>
+                <td>Mensal</td>
+            </tr>
+        </table>
+        <div class="caption">Tabela 4.2: SLOs Lightning</div>
+
+        <h3>4.2.2 Bitcoin On-Chain</h3>
+
+        <table>
+            <tr>
+                <th>Métrica</th>
+                <th>Target</th>
+                <th>Janela</th>
+            </tr>
+            <tr>
+                <td>Taxa de broadcast</td>
+                <td>≥ 99.5%</td>
+                <td>24h</td>
+            </tr>
+            <tr>
+                <td>Tempo até 1 conf (p50)</td>
+                <td>≤ 15 min</td>
+                <td>24h</td>
+            </tr>
+            <tr>
+                <td>Tempo até 1 conf (p99)</td>
+                <td>≤ 60 min</td>
+                <td>24h</td>
+            </tr>
+            <tr>
+                <td>Tx stuck (&gt; 24h)</td>
+                <td>≤ 0.1%</td>
+                <td>Semanal</td>
+            </tr>
+        </table>
+        <div class="caption">Tabela 4.3: SLOs Bitcoin</div>
+
+        <h2>4.3 Limites Operacionais</h2>
+
+        <h3>4.3.1 Por Payout</h3>
+
+        <table>
+            <tr>
+                <th>Rede</th>
+                <th>Mínimo</th>
+                <th>Máximo</th>
+            </tr>
+            <tr>
+                <td>Lightning</td>
+                <td>R$ 1 (~170 sat)</td>
+                <td>R$ 60.000 (~10M sat)</td>
+            </tr>
+            <tr>
+                <td>BTC</td>
+                <td>R$ 60 (~10k sat)</td>
+                <td>R$ 300.000 (~50M sat)</td>
+            </tr>
+            <tr>
+                <td>Liquid</td>
+                <td>R$ 6 (~1k sat)</td>
+                <td>R$ 300.000 (~50M sat)</td>
+            </tr>
+        </table>
+        <div class="caption">Tabela 4.4: Limites por Payout</div>
+
+        <h3>4.3.2 Por Usuário (Diário)</h3>
+
+        <table>
+            <tr>
+                <th>Tier</th>
+                <th>Limite Diário</th>
+            </tr>
+            <tr>
+                <td>Básico</td>
+                <td>R$ 10.000</td>
+            </tr>
+            <tr>
+                <td>Verificado</td>
+                <td>R$ 50.000</td>
+            </tr>
+            <tr>
+                <td>Premium</td>
+                <td>R$ 200.000</td>
+            </tr>
+        </table>
+        <div class="caption">Tabela 4.5: Limites por Usuário</div>
+    </div>
+
+    <!-- 5. VALIDAÇÕES -->
+    <div class="page-break">
+        <h1>5. Especificação de Validações</h1>
+
+        <h2>5.1 Códigos de Erro</h2>
+
+        <h3>5.1.1 Validação (4xx)</h3>
+
+        <table>
+            <tr>
+                <th>Código</th>
+                <th>HTTP</th>
+                <th>Descrição</th>
+                <th>Retryable</th>
+            </tr>
+            <tr>
+                <td><code>PAYOUT_INVALID_ADDRESS</code></td>
+                <td>400</td>
+                <td>Endereço inválido</td>
+                <td>❌</td>
+            </tr>
+            <tr>
+                <td><code>PAYOUT_MIXED_CASE_BECH32</code></td>
+                <td>400</td>
+                <td>Bech32 com mixed-case</td>
+                <td>❌</td>
+            </tr>
+            <tr>
+                <td><code>PAYOUT_INVALID_INVOICE</code></td>
+                <td>400</td>
+                <td>Invoice LN malformada</td>
+                <td>❌</td>
+            </tr>
+            <tr>
+                <td><code>PAYOUT_INVOICE_EXPIRED</code></td>
+                <td>400</td>
+                <td>Invoice já expirada</td>
+                <td>❌</td>
+            </tr>
+            <tr>
+                <td><code>PAYOUT_INVOICE_NEAR_EXPIRY</code></td>
+                <td>400</td>
+                <td>Invoice &lt; 20% tempo restante</td>
+                <td>❌</td>
+            </tr>
+            <tr>
+                <td><code>PAYOUT_AMOUNT_MISMATCH</code></td>
+                <td>400</td>
+                <td>Valor difere do esperado</td>
+                <td>❌</td>
+            </tr>
+            <tr>
+                <td><code>PAYOUT_DUPLICATE</code></td>
+                <td>409</td>
+                <td>payment_id já processado</td>
+                <td>❌</td>
+            </tr>
+            <tr>
+                <td><code>PAYOUT_LIMIT_EXCEEDED</code></td>
+                <td>429</td>
+                <td>Limite diário excedido</td>
+                <td>❌</td>
+            </tr>
+        </table>
+        <div class="caption">Tabela 5.1: Códigos de Erro de Validação</div>
+
+        <h3>5.1.2 Execução (5xx)</h3>
+
+        <table>
+            <tr>
+                <th>Código</th>
+                <th>HTTP</th>
+                <th>Descrição</th>
+                <th>Retryable</th>
+            </tr>
+            <tr>
+                <td><code>PAYOUT_INSUFFICIENT_BALANCE</code></td>
+                <td>503</td>
+                <td>Saldo insuficiente</td>
+                <td>✅</td>
+            </tr>
+            <tr>
+                <td><code>PAYOUT_NETWORK_UNAVAILABLE</code></td>
+                <td>503</td>
+                <td>Rede indisponível</td>
+                <td>✅</td>
+            </tr>
+            <tr>
+                <td><code>PAYOUT_CIRCUIT_OPEN</code></td>
+                <td>503</td>
+                <td>Circuit breaker aberto</td>
+                <td>✅</td>
+            </tr>
+            <tr>
+                <td><code>PAYOUT_LN_NO_ROUTE</code></td>
+                <td>502</td>
+                <td>Sem rota LN disponível</td>
+                <td>✅</td>
+            </tr>
+            <tr>
+                <td><code>PAYOUT_LN_FEE_TOO_HIGH</code></td>
+                <td>502</td>
+                <td>Fee LN excede limite</td>
+                <td>✅</td>
+            </tr>
+            <tr>
+                <td><code>PAYOUT_TX_REJECTED</code></td>
+                <td>502</td>
+                <td>Tx rejeitada pelo node</td>
+                <td>❌</td>
+            </tr>
+        </table>
+        <div class="caption">Tabela 5.2: Códigos de Erro de Execução</div>
+
+        <h2>5.2 Validações por Rede</h2>
+
+        <h3>5.2.1 BTC Address</h3>
+
+        <pre><code>func ValidateBTCAddress(addr string) error {
+    // 1. Verificar mixed-case (BIP-173)
+    if hasMixedCase(addr) && strings.HasPrefix(strings.ToLower(addr), "bc1") {
+        return ErrMixedCaseBech32
+    }
+    // 2. Chamar bitcoind validateaddress
+    resp, _ := rpc.Call("validateaddress", addr)
+    if !resp.IsValid {
+        return ErrInvalidAddress
+    }
+    return nil
+}</code></pre>
+        <div class="caption">Listagem 5.1: Validação de Endereço BTC</div>
+
+        <h3>5.2.2 Lightning Invoice (Futuro)</h3>
+
+        <pre><code>func ValidateLNInvoice(invoice string, expectedAmount int64) error {
+    decoded, err := lnd.DecodePayReq(invoice)
+    if err != nil {
+        return ErrInvalidInvoice
+    }
+    
+    // Expiração
+    expiresAt := decoded.Timestamp + decoded.Expiry
+    if time.Now().Unix() > expiresAt {
+        return ErrInvoiceExpired
+    }
+    
+    // 80% do expiry
+    remaining := expiresAt - time.Now().Unix()
+    if remaining < int64(decoded.Expiry)*0.2 {
+        return ErrInvoiceNearExpiry
+    }
+    
+    // Amount
+    if decoded.NumSatoshis == 0 {
+        // Zero-amount: aceitar se expectedAmount > 0
+    } else if decoded.NumSatoshis != expectedAmount {
+        return ErrAmountMismatch
+    }
+    
+    return nil
+}</code></pre>
+        <div class="caption">Listagem 5.2: Validação de Invoice LN</div>
+
+        <h2>5.3 Regras de Negócio</h2>
+
+        <pre><code>-- Constraint de unicidade
+CREATE UNIQUE INDEX idx_payout_idempotency 
+ON payouts (payment_id, network);
+
+-- Lock + Check
+BEGIN;
+SELECT * FROM payouts 
+WHERE payment_id = $1 AND network = $2 
+FOR UPDATE NOWAIT;
+
+INSERT INTO payouts (payment_id, network, status, ...)
+VALUES ($1, $2, 'PENDING', ...)
+ON CONFLICT DO NOTHING
+RETURNING id;
+COMMIT;</code></pre>
+        <div class="caption">Listagem 5.3: Idempotência via SQL</div>
+    </div>
+
+    <!-- 6. FLUXOS -->
+    <div class="page-break">
+        <h1>6. Fluxos de Execução</h1>
+
+        <h2>6.1 Fluxos Integrados (Wallet + UTXO Index)</h2>
+
+        <h3>6.1.1 Onboarding (conta + endereço)</h3>
+        <ol>
+            <li>DominiPay cria usuário e chama <code>POST /v1/accounts</code> com <code>uuid</code></li>
+            <li>DominiPay solicita endereços por rede/asset (ex.: Liquid USDT, Liquid L-BTC)</li>
+            <li>Wallet Service deriva e retorna o endereço, gravando em <code>addresses</code></li>
+        </ol>
+
+        <h3>6.1.2 Depósito normal (USDT Liquid)</h3>
+        <ol>
+            <li>Cliente deposita USDT na Liquid no endereço do usuário</li>
+            <li>Watcher detecta UTXO (<code>txid:vout</code>, asset_id, amount, address)</li>
+            <li>Após <code>confirmations &gt;= N</code>, grava em <code>chain_utxos</code></li>
+            <li>Saldo é derivado de <code>chain_utxos</code> (menos UTXOs reservados)</li>
+            <li>DominiPay consulta saldo via <code>GET /v1/accounts/{uuid}/balances</code></li>
+        </ol>
+        <h3>6.1.2b Depósito normal (USDC Tron)</h3>
+        <ol>
+            <li>Cliente deposita USDC (TRC20) no endereço Tron do usuário</li>
+            <li>Watcher detecta transferência (txid, contract, amount, address)</li>
+            <li>Após <code>confirmations &gt;= N</code>, grava em <code>chain_accounts</code></li>
+            <li>Saldo é derivado de <code>chain_accounts</code> (menos reservas)</li>
+            <li>DominiPay consulta saldo via <code>GET /v1/accounts/{uuid}/balances</code></li>
+        </ol>
+
+        <h3>6.1.3 Fluxo PIX → Depix → Crédito</h3>
+        <div class="note-info">
+            <strong>Evolução futura (ledger):</strong> se for necessário saldo lógico (Modelo B), definir eventos
+            geradores (<code>depix_confirmed</code>, <code>swap_fill</code>, <code>estorno</code>) e um reconciliador
+            que concilia ledger vs on-chain sem quebrar a fonte de verdade.
+        </div>
+        <p>Dois modelos possíveis, dependentes do gateway Depix:</p>
+
+        <div class="note">
+            <strong>Modelo A (suportado no MVP):</strong> Depix deposita direto no endereço do usuário.<br>
+            PIX confirmado → Depix envia para endereço USDT do usuário → Watcher indexa UTXO automaticamente.
+        </div>
+
+        <div class="note-info">
+            <strong>Modelo B (híbrido):</strong> Depix deposita na tesouraria.<br>
+            PIX confirmado → DominiPay emite evento <code>depix_confirmed</code> → este modelo exige ledger interno
+            e fica fora do escopo do MVP on-chain.
+        </div>
+
+        <h3>6.1.4 Payout (saque) BTC/Liquid/Tron</h3>
+        <ol>
+            <li>DominiPay chama <code>POST /v1/withdrawals</code> com rede, asset, amount e destination</li>
+            <li>Wallet Service valida saldo on-chain e destino; reserva UTXOs (<code>lockunspent</code>) ou saldo lógico (Tron)</li>
+            <li>Wallet Service chama Payout Service com idempotência</li>
+            <li>Payout Service executa (BTC/Liquid/Tron) e monitora confirmações</li>
+            <li>Ao concluir: marcar UTXOs como spent e status <code>COMPLETED</code></li>
+            <li>Se falhar: liberar reservas/locks</li>
+        </ol>
+
+        <h3>6.1.5 APIs e Eventos</h3>
+
+        <table>
+            <tr>
+                <th>Fluxo</th>
+                <th>Endpoint</th>
+                <th>Descrição</th>
+            </tr>
+            <tr>
+                <td>Wallet Service</td>
+                <td><code>POST /v1/accounts</code></td>
+                <td>Cria conta para <code>uuid</code></td>
+            </tr>
+            <tr>
+                <td>Wallet Service</td>
+                <td><code>POST /v1/accounts/{uuid}/addresses</code></td>
+                <td>Gera endereço por rede/asset</td>
+            </tr>
+            <tr>
+                <td>Wallet Service</td>
+                <td><code>GET /v1/accounts/{uuid}/balances</code></td>
+                <td>Consulta saldo por asset</td>
+            </tr>
+            <tr>
+                <td>Wallet Service</td>
+                <td><code>GET /v1/accounts/{uuid}/transactions</code></td>
+                <td>Extrato e histórico</td>
+            </tr>
+            <tr>
+                <td>Wallet Service</td>
+                <td><code>POST /v1/withdrawals</code></td>
+                <td>Cria saque e reserva UTXOs</td>
+            </tr>
+            <tr>
+                <td>Wallet Service</td>
+                <td><code>GET /v1/withdrawals/{id}</code></td>
+                <td>Status do saque</td>
+            </tr>
+            <tr>
+                <td>Eventos DominiPay</td>
+                <td><code>POST /v1/events/depix_confirmed</code></td>
+                <td>Modelo B; idempotência por <code>payment_id</code></td>
+            </tr>
+            <tr>
+                <td>Wallet → Payout Service</td>
+                <td><code>POST /v1/payouts</code></td>
+                <td>Executa payout (idempotente)</td>
+            </tr>
+        </table>
+        <div class="caption">Tabela 6.1: APIs e Eventos do Fluxo Integrado</div>
+
+        <h2>6.2 Bitcoin Flow</h2>
+
+        <div class="diagram">
+            <div class="mermaid">
+                sequenceDiagram
+                participant O as Orchestrator
+                participant E as BTC Executor
+                participant B as bitcoind
+                participant W as Wallet DB
+
+                O->>E: SendPayout(req)
+                E->>B: validateaddress
+                B-->>E: isvalid=true
+                E->>B: listunspent
+                B-->>E: utxos
+
+                alt Saldo insuficiente
+                E-->>O: ErrInsufficientBalance
+                end
+
+                E->>W: Reserve UTXOs
+                E->>B: createrawtransaction
+                E->>B: signrawtransactionwithwallet
+                E->>B: sendrawtransaction
+                B-->>E: txid
+
+                E->>W: Update status=EXECUTING
+
+                loop Até N confirmações
+                E->>B: gettransaction(txid)
+                B-->>E: confirmations
+                E->>W: Update confirmations
+                end
+
+                E->>W: Update status=COMPLETED
+                E-->>O: Success(txid)
+            </div>
+        </div>
+        <div class="caption">Figura 6.2: Fluxo de Payout BTC</div>
+
+        <h2>6.3 Lightning Flow (Futuro - fora do MVP)</h2>
+
+        <div class="note">
+            <strong>Fora do MVP:</strong> esta seção é referência futura e não faz parte do escopo atual.
+        </div>
+
+        <div class="diagram">
+            <div class="mermaid">
+                sequenceDiagram
+                participant O as Orchestrator
+                participant E as LN Executor
+                participant LND as LND
+                participant L as Wallet DB
+
+                O->>E: SendPayout(invoice, amount)
+                E->>LND: DecodePayReq
+                LND-->>E: decoded invoice
+
+                alt Invoice expirada
+                E-->>O: ErrInvoiceExpired
+                end
+
+                E->>LND: ChannelBalance
+                LND-->>E: local_balance
+
+                E->>L: Reserve UTXOs
+
+                E->>LND: SendPaymentV2(invoice, fee_limit, timeout)
+
+                loop Streaming updates
+                LND-->>E: PaymentStatus
+                alt status=SUCCEEDED
+                E->>L: Store preimage
+                E->>L: Update status=COMPLETED
+                else status=FAILED
+                E->>L: Update status=FAILED_RETRYABLE
+                end
+                end
+
+                E-->>O: Result(payment_hash, preimage)
+            </div>
+        </div>
+        <div class="caption">Figura 6.3: Fluxo de Payout Lightning</div>
+
+        <h2>6.4 Notas Técnicas de Implementação (MVP)</h2>
+
+        <div class="note-info">
+            <strong>Anti-fraude:</strong> aplicar limite por withdrawal e cooldown para mudança de destination/
+            address book (por tier). Alterações recentes devem bloquear saques até o cooldown expirar.
+        </div>
+
+        <table>
+            <tr>
+                <th>Rede</th>
+                <th>Requisito Técnico</th>
+                <th>Implementação</th>
+            </tr>
+            <tr>
+                <td><strong>BTC/Liquid</strong></td>
+                <td>PSBT Funding + UTXO Lock</td>
+                <td>Usar <code>walletcreatefundedpsbt</code> ou <code>fundrawtransaction</code> para funding automático
+                    + fee.
+                    Reservar UTXOs específicos via <code>lockunspent</code> antes do broadcast. RBF já decidido ON.</td>
+            </tr>
+            <tr>
+                <td><strong>BTC/Liquid</strong></td>
+                <td>Unlock em falha</td>
+                <td>Se tx falhar antes de broadcast, chamar <code>lockunspent(true, utxos)</code> para liberar.</td>
+            </tr>
+        </table>
+        <div class="caption">Tabela 6.2: Requisitos Técnicos MVP</div>
+
+        <div class="note-danger">
+            <strong>Sem UTXO lock:</strong> "saldo tem, mas não dá pra gastar" — tx fica presa aguardando inputs já
+            usados.
+        </div>
+    </div>
+
+    <!-- 7. RESILIÊNCIA -->
+    <div class="page-break">
+        <h1>7. Resiliência</h1>
+
+        <h2>7.1 Circuit Breaker</h2>
+
+        <p>Circuit breakers são <strong>independentes por rede</strong>. BTC aberto NÃO bloqueia Liquid.</p>
+
+        <pre><code>type CircuitBreaker struct {
+    State            string        // CLOSED, OPEN, HALF_OPEN
+    FailureCount     int
+    FailureThreshold int           // default: 5
+    OpenDuration     time.Duration // default: 60s
+    LastFailure      time.Time
+    Queue            []PayoutRequest // Fila preservada
+    MaxQueueSize     int             // default: 100 (backlog limit)
+}
+
+func (cb *CircuitBreaker) Execute(fn func() error) error {
+    if cb.State == "OPEN" {
+        if time.Since(cb.LastFailure) > cb.OpenDuration {
+            cb.State = "HALF_OPEN"
+        } else {
+            // Shed load se backlog exceder limite
+            if len(cb.Queue) >= cb.MaxQueueSize {
+                return ErrBacklogFull // Retryable, não enfileira
+            }
+            return ErrCircuitOpen // Enqueue
+        }
+    }
+    
+    err := fn()
+    if err != nil {
+        cb.FailureCount++
+        cb.LastFailure = time.Now()
+        if cb.FailureCount >= cb.FailureThreshold {
+            cb.State = "OPEN"
+        }
+        return err
+    }
+    
+    cb.FailureCount = 0
+    cb.State = "CLOSED"
+    return nil
+}</code></pre>
+        <div class="caption">Listagem 7.1: Circuit Breaker com Backlog Limit</div>
+
+        <div class="note-danger">
+            <strong>Proteção Financeira:</strong> Quando circuit abre, payouts são <strong>enfileirados até o
+                limite</strong>.
+            Se <code>len(queue) >= MaxQueueSize</code>, novos payouts são rejeitados com <code>ErrBacklogFull</code>
+            (retryable). Isso evita "fila de dívida" em burst de Depix.
+        </div>
+
+        <table>
+            <tr>
+                <th>Parâmetro</th>
+                <th>Valor Padrão</th>
+                <th>Descrição</th>
+            </tr>
+            <tr>
+                <td><code>MaxQueueSize</code></td>
+                <td>100 por rede</td>
+                <td>Limite de backlog; acima disso, shed load</td>
+            </tr>
+            <tr>
+                <td><code>FailureThreshold</code></td>
+                <td>5</td>
+                <td>Falhas consecutivas para abrir circuit</td>
+            </tr>
+            <tr>
+                <td><code>OpenDuration</code></td>
+                <td>60s</td>
+                <td>Tempo em OPEN antes de tentar HALF_OPEN</td>
+            </tr>
+        </table>
+        <div class="caption">Tabela 7.0: Parâmetros do Circuit Breaker</div>
+
+        <h2>7.2 Retry Policy</h2>
+
+        <h3>7.2.1 Lightning Network (Futuro)</h3>
+
+        <table>
+            <tr>
+                <th>Tentativa</th>
+                <th>Delay</th>
+                <th>Ajuste</th>
+            </tr>
+            <tr>
+                <td>1</td>
+                <td>imediato</td>
+                <td>Parâmetros normais</td>
+            </tr>
+            <tr>
+                <td>2</td>
+                <td>5s</td>
+                <td><code>max_hops</code> reduzido</td>
+            </tr>
+            <tr>
+                <td>3</td>
+                <td>15s</td>
+                <td><code>fee_limit</code> +20%</td>
+            </tr>
+            <tr>
+                <td>4</td>
+                <td>—</td>
+                <td>Marcar FAILED_RETRYABLE</td>
+            </tr>
+        </table>
+        <div class="caption">Tabela 7.1: Retry Policy LN</div>
+
+        <h3>7.2.2 Condições de Abort</h3>
+
+        <table>
+            <tr>
+                <th>Condição</th>
+                <th>Ação</th>
+            </tr>
+            <tr>
+                <td>Invoice &gt; 80% expiry consumido</td>
+                <td>Abortar, solicitar nova invoice</td>
+            </tr>
+            <tr>
+                <td><code>insufficient_balance</code></td>
+                <td>Abortar imediatamente, alertar ops</td>
+            </tr>
+            <tr>
+                <td><code>payment_hash_reuse</code></td>
+                <td>Não retry, marcar duplicate</td>
+            </tr>
+        </table>
+        <div class="caption">Tabela 7.2: Condições de Abort</div>
+    </div>
+
+    <!-- 8. AUDITORIA -->
+    <div class="page-break">
+        <h1>8. Auditoria e Observabilidade</h1>
+
+        <h2>8.1 Schema de Auditoria</h2>
+
+        <pre><code>CREATE TABLE payout_audit (
+    id BIGSERIAL PRIMARY KEY,
+    payout_id BIGINT REFERENCES payouts(id),
+    payment_id VARCHAR(64) NOT NULL,
+    network VARCHAR(10) NOT NULL,
+    
+    -- Prova
+    txid VARCHAR(64),           -- BTC/Liquid
+    payment_hash VARCHAR(64),   -- LN
+    preimage_hash VARCHAR(64),  -- SHA256(preimage)
+    
+    -- Hash chain
+    prev_hash VARCHAR(64),
+    record_hash VARCHAR(64),    -- SHA256(prev || payment_id || txid)
+    
+    -- Metadata
+    amount_sats BIGINT,
+    fee_paid_sats BIGINT,
+    confirmations INT,
+    status VARCHAR(20),
+    
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Trigger para impedir UPDATE (WORM)
+CREATE TRIGGER audit_immutable
+BEFORE UPDATE ON payout_audit
+FOR EACH ROW EXECUTE FUNCTION prevent_audit_update();</code></pre>
+        <div class="caption">Listagem 8.1: Schema de Auditoria Append-Only</div>
+
+        <h2>8.2 Métricas Prometheus</h2>
+
+        <pre><code># Counters
+domini_payout_total{network, status}
+domini_payout_retries_total{network}
+
+# Histograms
+domini_payout_duration_seconds{network}
+domini_payout_confirmations_wait_seconds{network}
+domini_ln_fee_paid_sats{bucket}
+
+# Gauges
+domini_hot_wallet_balance_sats{network}
+domini_utxo_count{network}
+domini_circuit_breaker_state{network}  # 0=closed, 1=open, 2=half_open</code></pre>
+        <div class="caption">Listagem 8.2: Métricas Prometheus</div>
+
+        <h2>8.3 Alertas Recomendados</h2>
+
+        <table>
+            <tr>
+                <th>Alerta</th>
+                <th>Condição</th>
+                <th>Severidade</th>
+            </tr>
+            <tr>
+                <td>HotWalletLow</td>
+                <td><code>balance &lt; min_balance</code> por 5 min</td>
+                <td>Warning</td>
+            </tr>
+            <tr>
+                <td>HotWalletCritical</td>
+                <td><code>balance &lt; min_balance * 0.5</code></td>
+                <td>Critical</td>
+            </tr>
+            <tr>
+                <td>CircuitBreakerOpen</td>
+                <td><code>state == OPEN</code> por 2 min</td>
+                <td>Critical</td>
+            </tr>
+            <tr>
+                <td>HighFailureRate</td>
+                <td><code>failed / total &gt; 0.1</code> em 5 min</td>
+                <td>Warning</td>
+            </tr>
+            <tr>
+                <td>UTXOFragmentation</td>
+                <td><code>utxo_count &gt; 100</code></td>
+                <td>Warning</td>
+            </tr>
+            <tr>
+                <td>PayoutLatencyHigh</td>
+                <td>p99 &gt; 120s (LN) ou &gt; 30min (BTC)</td>
+                <td>Warning</td>
+            </tr>
+        </table>
+        <div class="caption">Tabela 8.1: Alertas Recomendados</div>
+    </div>
+
+    <!-- 9. RUNBOOK -->
+    <div class="page-break">
+        <h1>9. Runbook Operacional</h1>
+
+        <h2>9.1 RBF - Replace-By-Fee</h2>
+
+        <p>Para transações BTC stuck no mempool por mais de 1 hora:</p>
+
+        <pre><code># 1. Verificar status da tx
+bitcoin-cli gettransaction &lt;txid&gt;
+
+# 2. Calcular novo fee (target: próximo bloco)
+NEW_FEE=$(bitcoin-cli estimatesmartfee 2 | jq '.feerate')
+
+# 3. Bump fee
+bitcoin-cli bumpfee &lt;txid&gt; '{"fee_rate": '$NEW_FEE'}'
+
+# 4. Verificar nova tx
+bitcoin-cli gettransaction &lt;new_txid&gt;</code></pre>
+        <div class="caption">Listagem 9.1: Procedimento RBF</div>
+
+        <div class="note">
+            <strong>Pré-requisito:</strong> Tx original deve ter sido criada com <code>replaceable=true</code>.
+        </div>
+
+        <h2>9.2 DLQ - Dead Letter Queue</h2>
+
+        <h3>9.2.1 O que vai para DLQ</h3>
+        <ul>
+            <li>Payouts com 3+ falhas</li>
+            <li>Erros não-retryable</li>
+            <li>Timeouts esgotados</li>
+        </ul>
+
+        <h3>9.2.2 Processamento</h3>
+
+        <pre><code># Listar itens
+curl https://api.domini.pay/v1/admin/dlq?limit=50
+
+# Retry forçado
+curl -X POST https://api.domini.pay/v1/admin/dlq/&lt;id&gt;/retry
+
+# Resolução manual
+curl -X POST https://api.domini.pay/v1/admin/dlq/&lt;id&gt;/resolve \
+  -d '{"resolution": "manual_refund", "notes": "PIX"}'</code></pre>
+        <div class="caption">Listagem 9.2: Comandos DLQ</div>
+
+        <h2>9.3 Consolidação de UTXOs</h2>
+
+        <table>
+            <tr>
+                <th>Trigger</th>
+                <th>Ação</th>
+            </tr>
+            <tr>
+                <td>UTXOs &gt; 50</td>
+                <td>Consolidar no domingo 02:00 UTC</td>
+            </tr>
+            <tr>
+                <td>Fees &lt; 5 sat/vB</td>
+                <td>Consolidar imediatamente</td>
+            </tr>
+        </table>
+        <div class="caption">Tabela 9.1: Triggers de Consolidação</div>
+
+        <pre><code># Contar UTXOs
+bitcoin-cli listunspent | jq 'length'
+
+# Consolidar
+bitcoin-cli sendtoaddress "&lt;hot_wallet&gt;" \
+  $(bitcoin-cli getbalance) \
+  "" "" true true null "unset" null $FEE_RATE</code></pre>
+        <div class="caption">Listagem 9.3: Consolidação Manual</div>
+    </div>
+
+    <!-- 10. CHECKLIST -->
+    <div class="page-break">
+        <h1>10. Checklist de Production Readiness</h1>
+
+        <h2>10.1 Funcionalidades Core</h2>
+
+        <ul class="checklist">
+            <li>BTC Executor: send, watch, confirm</li>
+            <li>Liquid Executor: send, watch, confirm</li>
+            <li>LN Executor: decode, send, track</li>
+            <li>State machine completa</li>
+            <li>Idempotência por <code>payment_id + network</code></li>
+            <li>Lock distribuído (DB ou Redis)</li>
+            <li>Reserva de saldo pré-envio</li>
+        </ul>
+
+        <h2>10.2 Resiliência</h2>
+
+        <ul class="checklist">
+            <li>Circuit breaker por rede (com fila)</li>
+            <li>Retry policy com backoff</li>
+            <li>DLQ para falhas finais</li>
+            <li>Fallback de fee estimation</li>
+            <li>Timeout configurável por rede</li>
+        </ul>
+
+        <h2>10.3 Segurança</h2>
+
+        <ul class="checklist">
+            <li>Preimage LN criptografado em repouso</li>
+            <li>Hot wallet limits enforced</li>
+            <li>Aprovação humana para reposição</li>
+            <li>Auditoria append-only</li>
+            <li>Hash chain para integridade</li>
+        </ul>
+
+        <h2>10.4 Operacional</h2>
+
+        <ul class="checklist">
+            <li>Consolidação de UTXOs (cron)</li>
+            <li>Métricas Prometheus</li>
+            <li>Alertas configurados</li>
+            <li>Runbook de DLQ</li>
+            <li>Dashboard de monitoramento</li>
+        </ul>
+
+        <h2>10.5 Testes</h2>
+
+        <ul class="checklist">
+            <li>Unit tests: 80%+ cobertura</li>
+            <li>Integration tests: cada executor</li>
+            <li>Chaos tests: kill mid-payout</li>
+            <li>Replay test: idempotência validada</li>
+            <li>Load test: throughput esperado</li>
+        </ul>
+
+        <h2>10.6 SLOs Propostos</h2>
+
+        <table>
+            <tr>
+                <th>Métrica</th>
+                <th>Target</th>
+                <th>Medição</th>
+            </tr>
+            <tr>
+                <td>Disponibilidade</td>
+                <td>99.9%</td>
+                <td>Uptime do Payout Service</td>
+            </tr>
+            <tr>
+                <td>Latência LN (p99)</td>
+                <td>&lt; 120s</td>
+                <td>Da requisição ao COMPLETED</td>
+            </tr>
+            <tr>
+                <td>Latência BTC (p99)</td>
+                <td>&lt; 60 min</td>
+                <td>Da requisição à 1ª confirmação</td>
+            </tr>
+            <tr>
+                <td>Taxa de sucesso</td>
+                <td>&gt; 98%</td>
+                <td>Payouts COMPLETED / Total</td>
+            </tr>
+            <tr>
+                <td>Falhas não recuperadas</td>
+                <td>&lt; 0.1%</td>
+                <td>Payouts em DLQ / Total</td>
+            </tr>
+        </table>
+        <div class="caption">Tabela 10.1: SLOs Propostos</div>
+    </div>
+
+    <!-- 11. CONFIGURAÇÃO -->
+    <div class="page-break">
+        <h1>11. Configuração de Referência</h1>
+
+        <pre><code>ln:
+  timeout_seconds:
+    small: 30    # < 100k sats
+    medium: 60   # 100k-1M sats
+    large: 90    # > 1M sats
+  cltv_limit:
+    small: 40
+    medium: 60
+    large: 80
+  fee_limit_ppm:
+    small: 5000   # 0.5%
+    medium: 3000  # 0.3%
+    large: 2000   # 0.2%
+  fee_limit_min_sat:
+    small: 5
+    medium: 20
+    large: 50
+  fee_limit_max_sat:
+    small: 500
+    medium: 2000
+    large: 5000
+  mpp:
+    enable_threshold_sat: 100000
+    max_parts:
+      small: 6
+      medium: 10
+      large: 12
+    max_shard_size_sat:
+      small: 50000
+      medium: 100000
+      large: 200000
+  retry:
+    max_attempts: 3
+    backoff_seconds: [5, 15, 45]
+    expiry_threshold_pct: 0.8
+
+btc:
+  confs_final:
+    low: 1
+    medium: 3
+    high: 6
+  rbf: true
+  fee_targets_blocks: [2, 6, 12]
+  fee_fallback_sat_vb: 10
+
+liquid:
+  depix_confs: 2
+  payout_confs: 2
+  fee_fallback_sat_vb: 0.1
+
+hot_wallet:
+  btc:
+    min_balance_sat: 5000000    # 0.05 BTC
+    target_balance_sat: 20000000 # 0.2 BTC
+    max_balance_sat: 50000000    # 0.5 BTC
+  liquid:
+    min_balance_sat: 2000000
+    target_balance_sat: 10000000
+    max_balance_sat: 30000000
+  lightning:
+    min_balance_sat: 500000
+    target_balance_sat: 2000000
+    max_balance_sat: 5000000
+
+circuit_breaker:
+  failure_threshold: 5
+  open_duration_seconds: 60
+
+consolidation:
+  utxo_threshold: 50
+  schedule: "0 2 * * 0"  # Domingo 02:00</code></pre>
+        <div class="caption">Listagem 11.1: Configuração YAML Completa</div>
+
+        <div class="note-success">
+            <strong>Documento aprovado para implementação.</strong> Revisar semanalmente a taxa de conversão BRL e
+            mensalmente as métricas de SLO para ajustes na Policy Table.
+        </div>
+    </div>
+
+    <script>
+        mermaid.initialize({ startOnLoad: true, theme: 'neutral' });
+    </script>
+</body>
+
+</html>

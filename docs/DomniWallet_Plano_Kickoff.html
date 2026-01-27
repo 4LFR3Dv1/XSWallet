@@ -1,0 +1,925 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DomniWallet - Plano de Kickoff (MVP)</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+        :root {
+            --text: #1a1a1a;
+            --text-secondary: #4a4a4a;
+            --bg: #ffffff;
+            --border: #e5e5e5;
+            --accent: #F7931A;
+            --accent-secondary: #00DACC;
+            --code-bg: #f5f5f5;
+            --success: #22c55e;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            font-size: 10pt;
+            line-height: 1.6;
+            color: var(--text);
+            background: var(--bg);
+            max-width: 210mm;
+            margin: 0 auto;
+            padding: 20mm;
+        }
+
+        h1 {
+            font-size: 20pt;
+            font-weight: 700;
+            margin: 24pt 0 12pt;
+            border-bottom: 2px solid var(--accent);
+            padding-bottom: 6pt;
+        }
+
+        h2 {
+            font-size: 14pt;
+            font-weight: 600;
+            margin: 18pt 0 8pt;
+            color: var(--text);
+        }
+
+        h3 {
+            font-size: 11pt;
+            font-weight: 600;
+            margin: 12pt 0 6pt;
+        }
+
+        h4 {
+            font-size: 10pt;
+            font-weight: 600;
+            margin: 10pt 0 4pt;
+        }
+
+        p {
+            margin-bottom: 8pt;
+            text-align: justify;
+        }
+
+        .cover {
+            text-align: center;
+            page-break-after: always;
+            padding-top: 80pt;
+        }
+
+        .cover h1 {
+            font-size: 32pt;
+            border: none;
+            margin-bottom: 8pt;
+            color: var(--text);
+        }
+
+        .cover .subtitle {
+            font-size: 16pt;
+            color: var(--text-secondary);
+            margin-bottom: 8pt;
+        }
+
+        .cover .tagline {
+            font-size: 12pt;
+            color: var(--text-secondary);
+            margin-bottom: 40pt;
+        }
+
+        .cover .meta {
+            margin-top: 60pt;
+        }
+
+        .cover .meta table {
+            margin: 0 auto;
+            text-align: left;
+        }
+
+        .toc {
+            page-break-after: always;
+        }
+
+        .toc ul {
+            list-style: none;
+        }
+
+        .toc li {
+            padding: 3pt 0;
+        }
+
+        .toc .l2 {
+            padding-left: 20pt;
+        }
+
+        .toc .l3 {
+            padding-left: 40pt;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 12pt 0;
+            font-size: 9pt;
+        }
+
+        th,
+        td {
+            border: 1px solid var(--border);
+            padding: 6pt 8pt;
+            text-align: left;
+            vertical-align: top;
+        }
+
+        th {
+            background: #f0f0f0;
+            font-weight: 600;
+        }
+
+        .caption {
+            font-size: 9pt;
+            font-style: italic;
+            color: var(--text-secondary);
+            text-align: center;
+            margin: 4pt 0 16pt;
+        }
+
+        code {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 8pt;
+            background: var(--code-bg);
+            padding: 2pt 4pt;
+            border-radius: 2pt;
+        }
+
+        pre {
+            background: var(--code-bg);
+            padding: 12pt;
+            border-radius: 4pt;
+            overflow-x: auto;
+            margin: 8pt 0;
+            font-size: 8pt;
+            line-height: 1.4;
+        }
+
+        pre code {
+            background: none;
+            padding: 0;
+        }
+
+        .note {
+            background: #fef3c7;
+            border-left: 3px solid #f59e0b;
+            padding: 8pt 12pt;
+            margin: 12pt 0;
+            font-size: 9pt;
+        }
+
+        .note-info {
+            background: #dbeafe;
+            border-left: 3px solid #2563eb;
+            padding: 8pt 12pt;
+            margin: 12pt 0;
+            font-size: 9pt;
+        }
+
+        .note-danger {
+            background: #fee2e2;
+            border-left: 3px solid #ef4444;
+            padding: 8pt 12pt;
+            margin: 12pt 0;
+            font-size: 9pt;
+        }
+
+        .note-success {
+            background: #dcfce7;
+            border-left: 3px solid #22c55e;
+            padding: 8pt 12pt;
+            margin: 12pt 0;
+            font-size: 9pt;
+        }
+
+        .diagram {
+            background: #fafafa;
+            border: 1px solid var(--border);
+            border-radius: 4pt;
+            padding: 16pt;
+            margin: 12pt 0;
+            text-align: center;
+        }
+
+        .mermaid {
+            background: transparent !important;
+        }
+
+        .page-break {
+            page-break-before: always;
+        }
+
+        .status-ok {
+            color: var(--success);
+            font-weight: 600;
+        }
+
+        .status-warn {
+            color: var(--warning);
+            font-weight: 600;
+        }
+
+        .status-pending {
+            color: var(--text-secondary);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="cover">
+        <h1>DOMNIWALLET</h1>
+        <div class="subtitle">Plano de Kickoff (MVP)</div>
+        <div class="tagline">Wallet + Payout Service</div>
+        <div class="meta">
+            <table>
+                <tr>
+                    <td>Versão</td>
+                    <td>v1.0</td>
+                </tr>
+                <tr>
+                    <td>Data</td>
+                    <td>27/01/2026</td>
+                </tr>
+                <tr>
+                    <td>Escopo</td>
+                    <td>MVP (BTC, Liquid, Tron USDC)</td>
+                </tr>
+            </table>
+        </div>
+    </div>
+
+    <div class="toc">
+        <h1>Índice</h1>
+        <ul>
+            <li>0. Objetivo do Kickoff</li>
+            <li>1. Premissas do MVP</li>
+            <li>2. Workstreams e Entregáveis</li>
+            <li class="l2">2.1 Arquitetura & Contratos</li>
+            <li class="l2">2.2 Infra & Nodes</li>
+            <li class="l2">2.3 Dados & DB</li>
+            <li class="l2">2.4 Wallet Service</li>
+            <li class="l2">2.5 Watchers</li>
+            <li class="l2">2.6 Payout Service</li>
+            <li class="l2">2.7 Observabilidade & Operação</li>
+            <li class="l2">2.8 Segurança & Compliance</li>
+            <li class="l2">2.9 QA & Testes</li>
+            <li>3. Cronograma Semanal</li>
+            <li>4. Responsáveis por Stream</li>
+            <li>5. Checklist PRD Técnico</li>
+            <li>6. Backlog Inicial</li>
+            <li>7. Riscos e Mitigações</li>
+            <li>8. Próximos Passos</li>
+        </ul>
+    </div>
+
+    <h1>0. Objetivo do Kickoff</h1>
+    <p>Estabelecer um plano de execução completo para o MVP do DomniWallet, cobrindo componentes, dados, integrações, resiliência e operação, com cronograma semanal, responsáveis e backlog inicial de tickets.</p>
+
+    <h1>1. Premissas do MVP</h1>
+    <table>
+        <tr>
+            <th>Item</th>
+            <th>Decisão</th>
+        </tr>
+        <tr>
+            <td>Redes suportadas</td>
+            <td>BTC on-chain, Liquid e Tron (USDC TRC20)</td>
+        </tr>
+        <tr>
+            <td>Lightning</td>
+            <td>Fora do MVP</td>
+        </tr>
+        <tr>
+            <td>Validações</td>
+            <td>Conforme <code>validation_spec.md</code> (BTC exige Taproot no MVP)</td>
+        </tr>
+        <tr>
+            <td>Políticas</td>
+            <td>Confirmações, limites e SLOs conforme <code>policy_table_brl.md</code></td>
+        </tr>
+        <tr>
+            <td>Máquina de estados</td>
+            <td>Transições completas com DLQ e retry</td>
+        </tr>
+    </table>
+
+    <div class="note-info">
+        <strong>Stack definida:</strong> Go para serviços. Banco de dados: PostgreSQL 15+ (ACID, locks e índices fortes para idempotência e reservas de UTXO).
+    </div>
+
+    <h1>2. Workstreams e Entregáveis</h1>
+
+    <h2>2.1 Arquitetura & Contratos</h2>
+    <table>
+        <tr>
+            <th>Entregável</th>
+            <th>Descrição</th>
+        </tr>
+        <tr>
+            <td>Diagrama de componentes</td>
+            <td>Wallet Service, Watchers, Payout Service, Wallet DB e integração DominiPay</td>
+        </tr>
+        <tr>
+            <td>Contratos internos</td>
+            <td>Payloads e códigos de erro padronizados</td>
+        </tr>
+    </table>
+
+    <h2>2.2 Infra & Nodes</h2>
+    <table>
+        <tr>
+            <th>Entregável</th>
+            <th>Descrição</th>
+        </tr>
+        <tr>
+            <td>Nodes funcionais</td>
+            <td>BTC, Liquid e Tron com RPC seguro</td>
+        </tr>
+        <tr>
+            <td>Wallets hot/cold</td>
+            <td>Processo de aprovação e reabastecimento</td>
+        </tr>
+    </table>
+
+    <h2>2.3 Dados & DB</h2>
+    <table>
+        <tr>
+            <th>Entregável</th>
+            <th>Descrição</th>
+        </tr>
+        <tr>
+            <td>Migrações mínimas</td>
+            <td>Tabelas core (<code>accounts</code>, <code>addresses</code>, <code>chain_utxos</code>, <code>withdrawals</code>, <code>payouts</code>)</td>
+        </tr>
+        <tr>
+            <td>Idempotência</td>
+            <td>Índice único em <code>chain_utxos (network, asset, txid, vout)</code></td>
+        </tr>
+        <tr>
+            <td>Auditoria WORM</td>
+            <td>Tabela <code>payout_audit</code> com trigger anti-update</td>
+        </tr>
+    </table>
+
+    <h2>2.4 Wallet Service</h2>
+    <table>
+        <tr>
+            <th>Entregável</th>
+            <th>Descrição</th>
+        </tr>
+        <tr>
+            <td>Contas e endereços</td>
+            <td>Derivação e geração de endereços por rede</td>
+        </tr>
+        <tr>
+            <td>Saldo e histórico</td>
+            <td>Consulta agregada com base em UTXOs confirmados</td>
+        </tr>
+        <tr>
+            <td>Withdrawals</td>
+            <td>Criação de saques para o Payout Service</td>
+        </tr>
+    </table>
+
+    <h2>2.5 Watchers</h2>
+    <table>
+        <tr>
+            <th>Entregável</th>
+            <th>Descrição</th>
+        </tr>
+        <tr>
+            <td>Indexação BTC/Liquid</td>
+            <td>Observação de blocos e mempool, gravação de UTXOs confirmados</td>
+        </tr>
+        <tr>
+            <td>Reconciliação</td>
+            <td>Tratamento de reorgs e rollback de UTXOs</td>
+        </tr>
+    </table>
+
+    <h2>2.6 Payout Service</h2>
+    <table>
+        <tr>
+            <th>Entregável</th>
+            <th>Descrição</th>
+        </tr>
+        <tr>
+            <td>State machine</td>
+            <td>Fluxo completo com retries e DLQ</td>
+        </tr>
+        <tr>
+            <td>Executors</td>
+            <td>BTC, Liquid e Tron (USDC)</td>
+        </tr>
+        <tr>
+            <td>Reservas UTXO</td>
+            <td>Lock transacional e liberação segura</td>
+        </tr>
+        <tr>
+            <td>Circuit breaker</td>
+            <td>Isolado por rede com fila limitada</td>
+        </tr>
+    </table>
+
+    <h2>2.7 Observabilidade & Operação</h2>
+    <table>
+        <tr>
+            <th>Entregável</th>
+            <th>Descrição</th>
+        </tr>
+        <tr>
+            <td>Métricas e alertas</td>
+            <td>SLOs de sucesso/latência e alertas recomendados</td>
+        </tr>
+        <tr>
+            <td>Runbook</td>
+            <td>RBF/CPFP, DLQ, circuit breaker, hot wallet</td>
+        </tr>
+    </table>
+
+    <h2>2.8 Segurança & Compliance</h2>
+    <table>
+        <tr>
+            <th>Entregável</th>
+            <th>Descrição</th>
+        </tr>
+        <tr>
+            <td>Validações</td>
+            <td>Endereços por rede, Taproot-only para BTC</td>
+        </tr>
+        <tr>
+            <td>Limites e cooldowns</td>
+            <td>Por valor/tier e regras antifraude</td>
+        </tr>
+    </table>
+
+    <h2>2.9 QA & Testes</h2>
+    <table>
+        <tr>
+            <th>Entregável</th>
+            <th>Descrição</th>
+        </tr>
+        <tr>
+            <td>Testes unitários</td>
+            <td>Validações, regras de negócio e state machine</td>
+        </tr>
+        <tr>
+            <td>Integração</td>
+            <td>Conexão real com nodes</td>
+        </tr>
+        <tr>
+            <td>E2E de falhas</td>
+            <td>RBF/CPFP, circuit breaker, reorg</td>
+        </tr>
+    </table>
+
+    <h1>3. Cronograma Semanal</h1>
+    <table>
+        <tr>
+            <th>Semana</th>
+            <th>Foco</th>
+            <th>Entregáveis principais</th>
+            <th>Responsáveis</th>
+        </tr>
+        <tr>
+            <td>0</td>
+            <td>Kickoff</td>
+            <td>Escopo, decisões MVP, contratos e backlog inicial</td>
+            <td>Product, Tech Lead</td>
+        </tr>
+        <tr>
+            <td>1</td>
+            <td>Infra + DB base</td>
+            <td>Nodes, secrets, migrações e auditoria WORM</td>
+            <td>SRE, Backend</td>
+        </tr>
+        <tr>
+            <td>2</td>
+            <td>Wallet + Watchers v1</td>
+            <td>Contas, endereços, withdrawals e indexação BTC/Liquid</td>
+            <td>Backend</td>
+        </tr>
+        <tr>
+            <td>3</td>
+            <td>Payout core</td>
+            <td>State machine, reservas e executors por rede</td>
+            <td>Backend</td>
+        </tr>
+        <tr>
+            <td>4</td>
+            <td>Resiliência + Observabilidade</td>
+            <td>Circuit breaker, DLQ, métricas e alertas</td>
+            <td>Backend, SRE</td>
+        </tr>
+        <tr>
+            <td>5</td>
+            <td>QA + E2E</td>
+            <td>Testes de integração e simulação de falhas</td>
+            <td>QA, Backend</td>
+        </tr>
+        <tr>
+            <td>6</td>
+            <td>Prod readiness</td>
+            <td>Checklist final, hardening e go-live</td>
+            <td>Tech Lead, SRE</td>
+        </tr>
+    </table>
+
+    <h1>4. Responsáveis por Stream</h1>
+    <table>
+        <tr>
+            <th>Stream</th>
+            <th>Owner primário</th>
+            <th>Apoio</th>
+        </tr>
+        <tr>
+            <td>Arquitetura & Contratos</td>
+            <td>Tech Lead</td>
+            <td>Product</td>
+        </tr>
+        <tr>
+            <td>Infra & Nodes</td>
+            <td>SRE</td>
+            <td>Backend</td>
+        </tr>
+        <tr>
+            <td>Dados & DB</td>
+            <td>Backend</td>
+            <td>DBA (se houver)</td>
+        </tr>
+        <tr>
+            <td>Wallet Service</td>
+            <td>Backend</td>
+            <td>QA</td>
+        </tr>
+        <tr>
+            <td>Watchers</td>
+            <td>Backend</td>
+            <td>SRE</td>
+        </tr>
+        <tr>
+            <td>Payout Service</td>
+            <td>Backend</td>
+            <td>QA</td>
+        </tr>
+        <tr>
+            <td>Observabilidade & Operação</td>
+            <td>SRE</td>
+            <td>Backend</td>
+        </tr>
+        <tr>
+            <td>Segurança & Compliance</td>
+            <td>SecOps</td>
+            <td>Tech Lead</td>
+        </tr>
+        <tr>
+            <td>QA & Testes</td>
+            <td>QA</td>
+            <td>Backend</td>
+        </tr>
+    </table>
+
+    <h1>5. Checklist PRD Técnico</h1>
+    <table>
+        <tr>
+            <th>Item</th>
+            <th>Status</th>
+        </tr>
+        <tr>
+            <td>Escopo MVP e não-objetivos (Lightning fora)</td>
+            <td class="status-pending">Pendente</td>
+        </tr>
+        <tr>
+            <td>Fluxos principais e máquina de estados</td>
+            <td class="status-pending">Pendente</td>
+        </tr>
+        <tr>
+            <td>Contratos internos e códigos de erro</td>
+            <td class="status-pending">Pendente</td>
+        </tr>
+        <tr>
+            <td>Políticas de confirmação, limites e SLOs</td>
+            <td class="status-pending">Pendente</td>
+        </tr>
+        <tr>
+            <td>Regras de validação por rede</td>
+            <td class="status-pending">Pendente</td>
+        </tr>
+        <tr>
+            <td>Dados mínimos e índices de idempotência</td>
+            <td class="status-pending">Pendente</td>
+        </tr>
+        <tr>
+            <td>Auditoria WORM</td>
+            <td class="status-pending">Pendente</td>
+        </tr>
+        <tr>
+            <td>Circuit breaker e DLQ</td>
+            <td class="status-pending">Pendente</td>
+        </tr>
+        <tr>
+            <td>Observabilidade e runbook operacional</td>
+            <td class="status-pending">Pendente</td>
+        </tr>
+        <tr>
+            <td>Dependências externas e ambientes (DB: PostgreSQL 15+)</td>
+            <td class="status-pending">Pendente</td>
+        </tr>
+        <tr>
+            <td>Plano de testes e critérios de aceite</td>
+            <td class="status-pending">Pendente</td>
+        </tr>
+    </table>
+
+    <h1>6. Backlog Inicial</h1>
+    <table>
+        <tr>
+            <th>ID</th>
+            <th>Área</th>
+            <th>Descrição</th>
+            <th>Owner</th>
+            <th>Aceitação</th>
+        </tr>
+        <tr>
+            <td>BK-01</td>
+            <td>Arquitetura</td>
+            <td>Diagrama de componentes e contratos internos</td>
+            <td>Tech Lead</td>
+            <td>Diagrama e contratos aprovados</td>
+        </tr>
+        <tr>
+            <td>BK-02</td>
+            <td>Infra</td>
+            <td>Provisionar nodes BTC/Liquid/Tron (RPC seguro)</td>
+            <td>SRE</td>
+            <td>Healthchecks OK</td>
+        </tr>
+        <tr>
+            <td>BK-03</td>
+            <td>Infra</td>
+            <td>Gerenciar secrets/configuração por ambiente</td>
+            <td>SRE</td>
+            <td>Secrets versionados e auditados</td>
+        </tr>
+        <tr>
+            <td>BK-04</td>
+            <td>DB</td>
+            <td>Criar migrações de tabelas mínimas</td>
+            <td>Backend</td>
+            <td>Schema validado</td>
+        </tr>
+        <tr>
+            <td>BK-05</td>
+            <td>DB</td>
+            <td>Índice único de idempotência em <code>chain_utxos</code></td>
+            <td>Backend</td>
+            <td>Inserções duplicadas bloqueadas</td>
+        </tr>
+        <tr>
+            <td>BK-06</td>
+            <td>DB</td>
+            <td>Implementar auditoria WORM (<code>payout_audit</code>)</td>
+            <td>Backend</td>
+            <td>Trigger anti-update funcionando</td>
+        </tr>
+        <tr>
+            <td>BK-07</td>
+            <td>Wallet</td>
+            <td>Endpoint de criação de contas e derivação</td>
+            <td>Backend</td>
+            <td>Conta com índice e xpub</td>
+        </tr>
+        <tr>
+            <td>BK-08</td>
+            <td>Wallet</td>
+            <td>Endpoint de geração de endereços por rede</td>
+            <td>Backend</td>
+            <td>Endereços válidos por rede</td>
+        </tr>
+        <tr>
+            <td>BK-09</td>
+            <td>Wallet</td>
+            <td>Endpoint de saldo/histórico</td>
+            <td>Backend</td>
+            <td>Saldo consistente com UTXOs</td>
+        </tr>
+        <tr>
+            <td>BK-10</td>
+            <td>Wallet</td>
+            <td>Criação de withdrawals</td>
+            <td>Backend</td>
+            <td>Withdrawal com status inicial</td>
+        </tr>
+        <tr>
+            <td>BK-11</td>
+            <td>Watchers</td>
+            <td>Indexação BTC (blocos + mempool)</td>
+            <td>Backend</td>
+            <td>UTXOs confirmados gravados</td>
+        </tr>
+        <tr>
+            <td>BK-12</td>
+            <td>Watchers</td>
+            <td>Indexação Liquid</td>
+            <td>Backend</td>
+            <td>UTXOs confirmados gravados</td>
+        </tr>
+        <tr>
+            <td>BK-13</td>
+            <td>Payout</td>
+            <td>State machine base</td>
+            <td>Backend</td>
+            <td>Transições conforme spec</td>
+        </tr>
+        <tr>
+            <td>BK-14</td>
+            <td>Payout</td>
+            <td>Reserva de UTXO com lock transacional</td>
+            <td>Backend</td>
+            <td>Reserva e rollback seguros</td>
+        </tr>
+        <tr>
+            <td>BK-15</td>
+            <td>Payout</td>
+            <td>Executor BTC com RBF habilitado</td>
+            <td>Backend</td>
+            <td>Tx replaceable broadcast</td>
+        </tr>
+        <tr>
+            <td>BK-16</td>
+            <td>Payout</td>
+            <td>Executor Liquid</td>
+            <td>Backend</td>
+            <td>Tx enviada e confirmada</td>
+        </tr>
+        <tr>
+            <td>BK-17</td>
+            <td>Payout</td>
+            <td>Executor Tron (USDC)</td>
+            <td>Backend</td>
+            <td>Tx enviada e confirmada</td>
+        </tr>
+        <tr>
+            <td>BK-18</td>
+            <td>Payout</td>
+            <td>Confirmações por rede</td>
+            <td>Backend</td>
+            <td>Status atualizado por target</td>
+        </tr>
+        <tr>
+            <td>BK-19</td>
+            <td>Payout</td>
+            <td>Idempotência por <code>payment_id + network</code></td>
+            <td>Backend</td>
+            <td>Duplicados retornam 409</td>
+        </tr>
+        <tr>
+            <td>BK-20</td>
+            <td>Regras</td>
+            <td>Validações por rede (Taproot-only BTC)</td>
+            <td>Backend</td>
+            <td>Erros conforme spec</td>
+        </tr>
+        <tr>
+            <td>BK-21</td>
+            <td>Regras</td>
+            <td>Limites e cooldown de destino</td>
+            <td>Backend</td>
+            <td>Bloqueios aplicados por tier</td>
+        </tr>
+        <tr>
+            <td>BK-22</td>
+            <td>Resiliência</td>
+            <td>Circuit breaker por rede</td>
+            <td>Backend</td>
+            <td>Estados e backlog limit</td>
+        </tr>
+        <tr>
+            <td>BK-23</td>
+            <td>Resiliência</td>
+            <td>DLQ + reprocessamento</td>
+            <td>Backend</td>
+            <td>Itens com 3 falhas vão à DLQ</td>
+        </tr>
+        <tr>
+            <td>BK-24</td>
+            <td>Obs</td>
+            <td>Métricas Prometheus</td>
+            <td>SRE</td>
+            <td>KPIs expostos</td>
+        </tr>
+        <tr>
+            <td>BK-25</td>
+            <td>Obs</td>
+            <td>Alertas e dashboards</td>
+            <td>SRE</td>
+            <td>SLOs monitorados</td>
+        </tr>
+        <tr>
+            <td>BK-26</td>
+            <td>Runbook</td>
+            <td>Validar procedimentos operacionais</td>
+            <td>SRE</td>
+            <td>Execução em staging</td>
+        </tr>
+        <tr>
+            <td>BK-27</td>
+            <td>QA</td>
+            <td>Testes unitários críticos</td>
+            <td>QA</td>
+            <td>Coverage mínimo em validações</td>
+        </tr>
+        <tr>
+            <td>BK-28</td>
+            <td>QA</td>
+            <td>Integração com nodes</td>
+            <td>QA</td>
+            <td>Fluxos BTC/Liquid/Tron OK</td>
+        </tr>
+        <tr>
+            <td>BK-29</td>
+            <td>QA</td>
+            <td>E2E de falhas (RBF/CPFP, reorg)</td>
+            <td>QA</td>
+            <td>Cenários simulados aprovados</td>
+        </tr>
+        <tr>
+            <td>BK-30</td>
+            <td>Security</td>
+            <td>Revisão de chaves e derivação</td>
+            <td>SecOps</td>
+            <td>Aprovação formal</td>
+        </tr>
+    </table>
+
+    <h1>7. Riscos e Mitigações</h1>
+    <table>
+        <tr>
+            <th>Risco</th>
+            <th>Impacto</th>
+            <th>Mitigação</th>
+        </tr>
+        <tr>
+            <td>Mempool congestionado</td>
+            <td>Latência alta em BTC</td>
+            <td>RBF/CPFP, ajuste de fee targets</td>
+        </tr>
+        <tr>
+            <td>Reorgs</td>
+            <td>Reversão de UTXOs</td>
+            <td>Watcher com reprocessamento e reconciliação</td>
+        </tr>
+        <tr>
+            <td>Saldo insuficiente hot wallet</td>
+            <td>Payouts bloqueados</td>
+            <td>Alertas + processo de reabastecimento aprovado</td>
+        </tr>
+        <tr>
+            <td>Backlog excessivo</td>
+            <td>Degradação e fila de dívida</td>
+            <td>Circuit breaker com limite de fila</td>
+        </tr>
+    </table>
+
+    <h1>8. Próximos Passos</h1>
+    <table>
+        <tr>
+            <th>Ação</th>
+            <th>Owner</th>
+            <th>Prazo</th>
+        </tr>
+        <tr>
+            <td>Confirmar stack final e DB</td>
+            <td>Tech Lead</td>
+            <td>Semana 0</td>
+        </tr>
+        <tr>
+            <td>Definir metas de go-live</td>
+            <td>Product</td>
+            <td>Semana 0</td>
+        </tr>
+        <tr>
+            <td>Detalhar sprint 1 no board</td>
+            <td>PM/Tech Lead</td>
+            <td>Semana 0</td>
+        </tr>
+    </table>
+</body>
+
+</html>

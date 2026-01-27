@@ -1,0 +1,87 @@
+# DomniWallet - Node Stack (BTC + Liquid)
+# Minimal infrastructure for custodial wallet + payout service.
+#
+# Usage:
+#   1. Copy .env.example to .env and configure
+#   2. docker compose up -d
+#
+# Note: Tron node is external by default. Configure TRON_RPC_URL in the app.
+
+services:
+  bitcoind:
+    image: ruimarinho/bitcoin-core:alpine
+    container_name: domni-bitcoind
+    restart: unless-stopped
+    command:
+      - -server=1
+      - -chain=${BITCOIN_NETWORK:-main}
+      - -txindex=${BITCOIN_TXINDEX:-1}
+      - -par=${BITCOIN_PARALLEL_CORE:-0}
+      - -dbcache=${BITCOIN_DBCACHE_RAM_MB:-450}
+      - -maxconnections=${BITCOIN_MAX_CONNECTIONS:-40}
+      - -prune=${BITCOIN_PRUNE:-0}
+      - -rpcbind=0.0.0.0
+      - -rpcallowip=0.0.0.0/0
+      - -rpcuser=${BITCOIN_RPC_USER}
+      - -rpcpassword=${BITCOIN_RPC_PASSWORD}
+      - -zmqpubrawblock=tcp://0.0.0.0:${BITCOIN_ZMQ_BLOCK_PORT:-28332}
+      - -zmqpubrawtx=tcp://0.0.0.0:${BITCOIN_ZMQ_TX_PORT:-28333}
+      - -bind=0.0.0.0
+    ports:
+      - "${BITCOIN_RPC_PORT:-8332}:8332"
+      - "${BITCOIN_P2P_PORT:-8333}:8333"
+      - "${BITCOIN_ZMQ_BLOCK_PORT:-28332}:28332"
+      - "${BITCOIN_ZMQ_TX_PORT:-28333}:28333"
+    volumes:
+      - bitcoind-data:/bitcoin
+    networks:
+      - domni-network
+    healthcheck:
+      test: [ "CMD", "bitcoin-cli", "-chain=${BITCOIN_NETWORK:-main}", "-rpcuser=${BITCOIN_RPC_USER}", "-rpcpassword=${BITCOIN_RPC_PASSWORD}", "getblockchaininfo" ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  elements:
+    image: ghcr.io/vulpemventures/elements:latest
+    container_name: domni-elements
+    restart: unless-stopped
+    depends_on:
+      bitcoind:
+        condition: service_healthy
+    command:
+      - -mainchainrpcuser=${BITCOIN_RPC_USER}
+      - -mainchainrpcpassword=${BITCOIN_RPC_PASSWORD}
+      - -mainchainrpcport=${BITCOIN_RPC_PORT:-8332}
+      - -mainchainrpchost=bitcoind
+      - -chain=${ELEMENTS_NETWORK:-liquidv1}
+      - -listen=1
+      - -port=${ELEMENTS_P2P_PORT:-18886}
+      - -rpcbind=0.0.0.0
+      - -rpcallowip=0.0.0.0/0
+      - -rpcport=${ELEMENTS_RPC_PORT:-18884}
+      - -rpcuser=${ELEMENTS_RPC_USER}
+      - -rpcpassword=${ELEMENTS_RPC_PASSWORD}
+      - -txindex=${ELEMENTS_TXINDEX:-1}
+      - -prune=${ELEMENTS_PRUNE:-0}
+      - -bind=0.0.0.0
+    ports:
+      - "${ELEMENTS_RPC_PORT:-18884}:18884"
+      - "${ELEMENTS_P2P_PORT:-18886}:18886"
+    volumes:
+      - elements-data:/root/.elements
+    networks:
+      - domni-network
+
+networks:
+  domni-network:
+    driver: bridge
+    driver_opts:
+      com.docker.network.bridge.name: br-domni
+    ipam:
+      driver: default
+
+volumes:
+  bitcoind-data:
+  elements-data:

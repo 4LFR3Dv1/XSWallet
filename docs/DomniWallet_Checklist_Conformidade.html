@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DomniWallet - Checklist de Conformidade (Docs)</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+        :root {
+            --text: #1a1a1a;
+            --text-secondary: #4a4a4a;
+            --bg: #ffffff;
+            --border: #e5e5e5;
+            --accent: #F7931A;
+            --accent-secondary: #00DACC;
+            --code-bg: #f5f5f5;
+            --success: #22c55e;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            font-size: 10pt;
+            line-height: 1.6;
+            color: var(--text);
+            background: var(--bg);
+            max-width: 210mm;
+            margin: 0 auto;
+            padding: 20mm;
+        }
+
+        h1 {
+            font-size: 20pt;
+            font-weight: 700;
+            margin: 24pt 0 12pt;
+            border-bottom: 2px solid var(--accent);
+            padding-bottom: 6pt;
+        }
+
+        h2 {
+            font-size: 14pt;
+            font-weight: 600;
+            margin: 18pt 0 8pt;
+            color: var(--text);
+        }
+
+        h3 {
+            font-size: 11pt;
+            font-weight: 600;
+            margin: 12pt 0 6pt;
+        }
+
+        p {
+            margin-bottom: 8pt;
+            text-align: justify;
+        }
+
+        .cover {
+            text-align: center;
+            page-break-after: always;
+            padding-top: 80pt;
+        }
+
+        .cover h1 {
+            font-size: 32pt;
+            border: none;
+            margin-bottom: 8pt;
+            color: var(--text);
+        }
+
+        .cover .subtitle {
+            font-size: 16pt;
+            color: var(--text-secondary);
+            margin-bottom: 8pt;
+        }
+
+        .cover .tagline {
+            font-size: 12pt;
+            color: var(--text-secondary);
+            margin-bottom: 40pt;
+        }
+
+        .cover .meta {
+            margin-top: 60pt;
+        }
+
+        .cover .meta table {
+            margin: 0 auto;
+            text-align: left;
+        }
+
+        .toc {
+            page-break-after: always;
+        }
+
+        .toc ul {
+            list-style: none;
+        }
+
+        .toc li {
+            padding: 3pt 0;
+        }
+
+        .toc .l2 {
+            padding-left: 20pt;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 12pt 0;
+            font-size: 9pt;
+        }
+
+        th,
+        td {
+            border: 1px solid var(--border);
+            padding: 6pt 8pt;
+            text-align: left;
+            vertical-align: top;
+        }
+
+        th {
+            background: #f0f0f0;
+            font-weight: 600;
+        }
+
+        .caption {
+            font-size: 9pt;
+            font-style: italic;
+            color: var(--text-secondary);
+            text-align: center;
+            margin: 4pt 0 16pt;
+        }
+
+        code {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 8pt;
+            background: var(--code-bg);
+            padding: 2pt 4pt;
+            border-radius: 2pt;
+        }
+
+        .note {
+            background: #fef3c7;
+            border-left: 3px solid #f59e0b;
+            padding: 8pt 12pt;
+            margin: 12pt 0;
+            font-size: 9pt;
+        }
+
+        .note-info {
+            background: #dbeafe;
+            border-left: 3px solid #2563eb;
+            padding: 8pt 12pt;
+            margin: 12pt 0;
+            font-size: 9pt;
+        }
+
+        .note-success {
+            background: #dcfce7;
+            border-left: 3px solid #22c55e;
+            padding: 8pt 12pt;
+            margin: 12pt 0;
+            font-size: 9pt;
+        }
+
+        .page-break {
+            page-break-before: always;
+        }
+
+        .status-ok {
+            color: var(--success);
+            font-weight: 600;
+        }
+
+        .status-warn {
+            color: var(--warning);
+            font-weight: 600;
+        }
+
+        .status-pending {
+            color: var(--text-secondary);
+            font-weight: 600;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="cover">
+        <h1>DOMNIWALLET</h1>
+        <div class="subtitle">Checklist de Conformidade (Documentação)</div>
+        <div class="tagline">Wallet + Payout Service</div>
+        <div class="meta">
+            <table>
+                <tr>
+                    <td>Versão</td>
+                    <td>v1.0</td>
+                </tr>
+                <tr>
+                    <td>Data</td>
+                    <td>27/01/2026</td>
+                </tr>
+                <tr>
+                    <td>Referências</td>
+                    <td>Especificação Técnica, validation_spec.md, policy_table_brl.md, runbook.md</td>
+                </tr>
+            </table>
+        </div>
+    </div>
+
+    <div class="toc">
+        <h1>Índice</h1>
+        <ul>
+            <li>0. Objetivo</li>
+            <li>1. Resumo Executivo</li>
+            <li>2. Checklist de Conformidade</li>
+            <li class="l2">2.1 Arquitetura & Componentes</li>
+            <li class="l2">2.2 Dados & DB</li>
+            <li class="l2">2.3 APIs do Wallet Service</li>
+            <li class="l2">2.4 Fluxos & Execução</li>
+            <li class="l2">2.5 Validações & Erros</li>
+            <li class="l2">2.6 Resiliência & Operação</li>
+            <li class="l2">2.7 Segurança & Compliance</li>
+            <li class="l2">2.8 Testes</li>
+            <li>3. Plano de Execução Semanal</li>
+            <li>4. Backlog Inicial (Tickets)</li>
+            <li>5. Próximos Passos</li>
+        </ul>
+    </div>
+
+    <h1>0. Objetivo</h1>
+    <p>Mapear o que já está implementado versus o que está descrito na documentação técnica, com checklist rastreável,
+        owners e prazos por item.</p>
+
+    <h1>1. Resumo Executivo</h1>
+    <table>
+        <tr>
+            <th>Métrica</th>
+            <th>Valor</th>
+        </tr>
+        <tr>
+            <td>Itens implementados</td>
+            <td>17</td>
+        </tr>
+        <tr>
+            <td>Itens parciais</td>
+            <td>7</td>
+        </tr>
+        <tr>
+            <td>Itens pendentes</td>
+            <td>8</td>
+        </tr>
+        <tr>
+            <td>Data base do levantamento</td>
+            <td>27/01/2026</td>
+        </tr>
+    </table>
+
+    <div class="note-info">
+        <strong>Stack confirmada:</strong> Go + PostgreSQL 15+. Testes de integração com regtest BTC estão funcionais.
+    </div>
+
+    <h1>2. Checklist de Conformidade</h1>
+
+    <h2>2.1 Arquitetura & Componentes</h2>
+    <table>
+        <tr>
+            <th>Item</th>
+            <th>Status</th>
+            <th>Owner</th>
+            <th>Prazo</th>
+            <th>Evidência</th>
+        </tr>
+        <tr>
+            <td>Wallet Service com APIs básicas</td>
+            <td class="status-ok">OK</td>
+            <td>Backend</td>
+            <td>27/01/2026</td>
+            <td><code>C:\Users\windows10\Downloads\DomniWallet\wallet-service\internal\httpapi\server.go</code></td>
+        </tr>
+        <tr>
+            <td>Payout Service (state machine + executors)</td>
+            <td class="status-warn">Parcial</td>
+            <td>Backend</td>
+            <td>17/02/2026</td>
+            <td><code>C:\Users\windows10\Downloads\DomniWallet\payout-service\internal\engine\engine.go</code></td>
+        </tr>
+        <tr>
+            <td>Watcher/Indexer (BTC/Liquid/Tron)</td>
+            <td class="status-pending">Pendente</td>
+            <td>Backend</td>
+            <td>10/02/2026</td>
+            <td>—</td>
+        </tr>
+        <tr>
+            <td>Executor BTC integrado ao serviço</td>
+            <td class="status-ok">OK</td>
+            <td>Backend</td>
+            <td>17/02/2026</td>
+            <td><code>C:\Users\windows10\Downloads\DomniWallet\payout-service\internal\executors\btc\executor.go</code></td>
+        </tr>
+    </table>
+
+    <h2>2.2 Dados & DB</h2>
+    <table>
+        <tr>
+            <th>Item</th>
+            <th>Status</th>
+            <th>Owner</th>
+            <th>Prazo</th>
+            <th>Evidência</th>
+        </tr>
+        <tr>
+            <td>Schema mínimo de tabelas</td>
+            <td class="status-ok">OK</td>
+            <td>Backend</td>
+            <td>27/01/2026</td>
+            <td><code>C:\Users\windows10\Downloads\DomniWallet\wallet-service\internal\db\schema.go</code></td>
+        </tr>
+        <tr>
+            <td>Índice de idempotência em <code>chain_utxos</code></td>
+            <td class="status-ok">OK</td>
+            <td>Backend</td>
+            <td>27/01/2026</td>
+            <td><code>C:\Users\windows10\Downloads\DomniWallet\wallet-service\internal\db\schema.go</code></td>
+        </tr>
+        <tr>
+            <td>Auditoria WORM + hash chain</td>
+            <td class="status-pending">Pendente</td>
+            <td>Security</td>
+            <td>24/02/2026</td>
+            <td>—</td>
+        </tr>
+    </table>
+
+    <h2>2.3 APIs do Wallet Service</h2>
+    <table>
+        <tr>
+            <th>Endpoint</th>
+            <th>Status</th>
+            <th>Owner</th>
+            <th>Prazo</th>
+            <th>Evidência</th>
+        </tr>
+        <tr>
+            <td><code>POST /v1/accounts</code></td>
+            <td class="status-ok">OK</td>
+            <td>Backend</td>
+            <td>27/01/2026</td>
+            <td><code>...wallet-service\internal\httpapi\server.go</code></td>
+        </tr>
+        <tr>
+            <td><code>POST /v1/accounts/{uuid}/addresses</code></td>
+            <td class="status-ok">OK</td>
+            <td>Backend</td>
+            <td>27/01/2026</td>
+            <td><code>...wallet-service\internal\httpapi\server.go</code></td>
+        </tr>
+        <tr>
+            <td><code>GET /v1/accounts/{uuid}/balances</code></td>
+            <td class="status-ok">OK</td>
+            <td>Backend</td>
+            <td>27/01/2026</td>
+            <td><code>...wallet-service\internal\httpapi\server.go</code></td>
+        </tr>
+        <tr>
+            <td><code>GET /v1/accounts/{uuid}/transactions</code></td>
+            <td class="status-ok">OK</td>
+            <td>Backend</td>
+            <td>27/01/2026</td>
+            <td><code>...wallet-service\internal\httpapi\server.go</code></td>
+        </tr>
+        <tr>
+            <td><code>POST /v1/withdrawals</code></td>
+            <td class="status-ok">OK</td>
+            <td>Backend</td>
+            <td>27/01/2026</td>
+            <td><code>...wallet-service\internal\httpapi\server.go</code></td>
+        </tr>
+        <tr>
+            <td><code>GET /v1/withdrawals/{id}</code></td>
+            <td class="status-ok">OK</td>
+            <td>Backend</td>
+            <td>27/01/2026</td>
+            <td><code>...wallet-service\internal\httpapi\server.go</code></td>
+        </tr>
+        <tr>
+            <td><code>POST /v1/events/depix_confirmed</code></td>
+            <td class="status-pending">Pendente</td>
+            <td>Backend</td>
+            <td>10/02/2026</td>
+            <td>—</td>
+        </tr>
+        <tr>
+            <td><code>POST /v1/payouts</code></td>
+            <td class="status-ok">OK</td>
+            <td>Backend</td>
+            <td>17/02/2026</td>
+            <td><code>C:\Users\windows10\Downloads\DomniWallet\payout-service\internal\httpapi\server.go</code></td>
+        </tr>
+    </table>
+
+    <h2>2.4 Fluxos & Execução</h2>
+    <table>
+        <tr>
+            <th>Item</th>
+            <th>Status</th>
+            <th>Owner</th>
+            <th>Prazo</th>
+            <th>Evidência</th>
+        </tr>
+        <tr>
+            <td>Reserva de UTXO em DB</td>
+            <td class="status-warn">Parcial</td>
+            <td>Backend</td>
+            <td>27/01/2026</td>
+            <td><code>...wallet-service\internal\store\store.go</code></td>
+        </tr>
+        <tr>
+            <td>Lock via node (lockunspent)</td>
+            <td class="status-pending">Pendente</td>
+            <td>Backend</td>
+            <td>17/02/2026</td>
+            <td>—</td>
+        </tr>
+        <tr>
+            <td>Fluxo BTC com broadcast real (regtest)</td>
+            <td class="status-ok">OK</td>
+            <td>Backend</td>
+            <td>27/01/2026</td>
+            <td><code>C:\Users\windows10\Downloads\DomniWallet\reuse\xs_wallet\adapters\bitcoin\txbuilder_integration_test.go</code></td>
+        </tr>
+    </table>
+
+    <h2>2.5 Validações & Erros</h2>
+    <table>
+        <tr>
+            <th>Item</th>
+            <th>Status</th>
+            <th>Owner</th>
+            <th>Prazo</th>
+            <th>Evidência</th>
+        </tr>
+        <tr>
+            <td>Formato de erro padronizado</td>
+            <td class="status-warn">Parcial</td>
+            <td>Backend</td>
+            <td>03/02/2026</td>
+            <td><code>C:\Users\windows10\Downloads\DomniWallet\payout-service\internal\httpapi\server.go</code></td>
+        </tr>
+        <tr>
+            <td>Validação BTC Taproot (p2tr)</td>
+            <td class="status-warn">Parcial</td>
+            <td>Backend</td>
+            <td>03/02/2026</td>
+            <td><code>C:\Users\windows10\Downloads\DomniWallet\payout-service\internal\httpapi\server.go</code></td>
+        </tr>
+        <tr>
+            <td>Limites e cooldown (policy table)</td>
+            <td class="status-pending">Pendente</td>
+            <td>Product + Backend</td>
+            <td>10/02/2026</td>
+            <td><code>C:\Users\windows10\Downloads\DomniWallet\docs\policy_table_brl.md</code></td>
+        </tr>
+    </table>
+
+    <h2>2.6 Resiliência & Operação</h2>
+    <table>
+        <tr>
+            <th>Item</th>
+            <th>Status</th>
+            <th>Owner</th>
+            <th>Prazo</th>
+            <th>Evidência</th>
+        </tr>
+        <tr>
+            <td>Circuit breaker por rede</td>
+            <td class="status-warn">Parcial</td>
+            <td>Backend + SRE</td>
+            <td>17/02/2026</td>
+            <td><code>C:\Users\windows10\Downloads\DomniWallet\payout-service\internal\store\store.go</code></td>
+        </tr>
+        <tr>
+            <td>DLQ + endpoints admin</td>
+            <td class="status-warn">Parcial</td>
+            <td>Backend + SRE</td>
+            <td>17/02/2026</td>
+            <td><code>C:\Users\windows10\Downloads\DomniWallet\payout-service\internal\store\store.go</code></td>
+        </tr>
+        <tr>
+            <td>Métricas / alertas SLO</td>
+            <td class="status-pending">Pendente</td>
+            <td>SRE</td>
+            <td>24/02/2026</td>
+            <td><code>C:\Users\windows10\Downloads\DomniWallet\docs\runbook.md</code></td>
+        </tr>
+    </table>
+
+    <h2>2.7 Segurança & Compliance</h2>
+    <table>
+        <tr>
+            <th>Item</th>
+            <th>Status</th>
+            <th>Owner</th>
+            <th>Prazo</th>
+            <th>Evidência</th>
+        </tr>
+        <tr>
+            <td>Auditoria append-only (WORM)</td>
+            <td class="status-pending">Pendente</td>
+            <td>Security</td>
+            <td>24/02/2026</td>
+            <td>—</td>
+        </tr>
+        <tr>
+            <td>Regras antifraude (cooldown destino)</td>
+            <td class="status-pending">Pendente</td>
+            <td>Product + Backend</td>
+            <td>10/02/2026</td>
+            <td><code>C:\Users\windows10\Downloads\DomniWallet\docs\policy_table_brl.md</code></td>
+        </tr>
+    </table>
+
+    <h2>2.8 Testes</h2>
+    <table>
+        <tr>
+            <th>Item</th>
+            <th>Status</th>
+            <th>Owner</th>
+            <th>Prazo</th>
+            <th>Evidência</th>
+        </tr>
+        <tr>
+            <td>Integração BTC Taproot (broadcast + confirm)</td>
+            <td class="status-ok">OK</td>
+            <td>Backend</td>
+            <td>27/01/2026</td>
+            <td><code>C:\Users\windows10\Downloads\DomniWallet\reuse\xs_wallet\adapters\bitcoin\txbuilder_integration_test.go</code></td>
+        </tr>
+        <tr>
+            <td>E2E payout-service BTC (broadcast + confirm + outputs)</td>
+            <td class="status-ok">OK</td>
+            <td>Backend</td>
+            <td>27/01/2026</td>
+            <td><code>C:\Users\windows10\Downloads\DomniWallet\payout-service\scripts\payout_service_e2e.ps1</code></td>
+        </tr>
+        <tr>
+            <td>Suite E2E Gateway (PIX/depósito/payout)</td>
+            <td class="status-warn">Parcial</td>
+            <td>QA</td>
+            <td>03/02/2026</td>
+            <td><code>C:\Users\windows10\Downloads\DomniWallet\gateway\test\flow_integration_test.go</code></td>
+        </tr>
+        <tr>
+            <td>Testes Liquid/Tron + chaos (RBF/CPFP, reorg)</td>
+            <td class="status-pending">Pendente</td>
+            <td>QA</td>
+            <td>03/03/2026</td>
+            <td>—</td>
+        </tr>
+    </table>
+
+    <h1>3. Plano de Execução Semanal</h1>
+    <table>
+        <tr>
+            <th>Semana</th>
+            <th>Período</th>
+            <th>Foco</th>
+            <th>Owners</th>
+        </tr>
+        <tr>
+            <td>1</td>
+            <td>27/01–02/02</td>
+            <td>Validações + erros padronizados, Taproot obrigatório</td>
+            <td>Backend</td>
+        </tr>
+        <tr>
+            <td>2</td>
+            <td>03/02–09/02</td>
+            <td>Watcher BTC/Liquid + depix_confirmed + policy table</td>
+            <td>Backend + Product</td>
+        </tr>
+        <tr>
+            <td>3</td>
+            <td>10/02–16/02</td>
+            <td>Payout Service MVP + integração Wallet → Payout</td>
+            <td>Backend</td>
+        </tr>
+        <tr>
+            <td>4</td>
+            <td>17/02–23/02</td>
+            <td>Circuit breaker + DLQ + retry policy</td>
+            <td>Backend + SRE</td>
+        </tr>
+        <tr>
+            <td>5</td>
+            <td>24/02–02/03</td>
+            <td>Auditoria WORM + métricas + alertas</td>
+            <td>Security + SRE</td>
+        </tr>
+        <tr>
+            <td>6</td>
+            <td>03/03–09/03</td>
+            <td>E2E completo (BTC/Liquid/Tron) + chaos</td>
+            <td>QA + Backend</td>
+        </tr>
+    </table>
+
+    <h1>4. Backlog Inicial (Tickets)</h1>
+    <table>
+        <tr>
+            <th>ID</th>
+            <th>Descrição</th>
+            <th>Owner</th>
+            <th>Prazo</th>
+        </tr>
+        <tr>
+            <td>DW-001</td>
+            <td>Implementar formato de erro e validações conforme <code>validation_spec.md</code></td>
+            <td>Backend</td>
+            <td>03/02/2026</td>
+        </tr>
+        <tr>
+            <td>DW-002</td>
+            <td>Validação BTC Taproot via RPC</td>
+            <td>Backend</td>
+            <td>03/02/2026</td>
+        </tr>
+        <tr>
+            <td>DW-003</td>
+            <td>Endpoint <code>/v1/events/depix_confirmed</code> com idempotência</td>
+            <td>Backend</td>
+            <td>10/02/2026</td>
+        </tr>
+        <tr>
+            <td>DW-004</td>
+            <td>Watcher BTC (mempool + confirmações)</td>
+            <td>Backend</td>
+            <td>10/02/2026</td>
+        </tr>
+        <tr>
+            <td>DW-005</td>
+            <td>Watcher Liquid (UTXO + asset_id)</td>
+            <td>Backend</td>
+            <td>10/02/2026</td>
+        </tr>
+        <tr>
+            <td>DW-006</td>
+            <td>Payout Service MVP + executor BTC</td>
+            <td>Backend</td>
+            <td>17/02/2026</td>
+        </tr>
+        <tr>
+            <td>DW-007</td>
+            <td>Circuit breaker + DLQ</td>
+            <td>Backend + SRE</td>
+            <td>17/02/2026</td>
+        </tr>
+        <tr>
+            <td>DW-008</td>
+            <td>Auditoria WORM + hash chain</td>
+            <td>Security</td>
+            <td>24/02/2026</td>
+        </tr>
+        <tr>
+            <td>DW-009</td>
+            <td>Métricas Prometheus + alertas SLO</td>
+            <td>SRE</td>
+            <td>24/02/2026</td>
+        </tr>
+        <tr>
+            <td>DW-010</td>
+            <td>E2E + chaos tests (RBF/CPFP, reorg)</td>
+            <td>QA</td>
+            <td>03/03/2026</td>
+        </tr>
+    </table>
+
+    <h1>5. Próximos Passos</h1>
+    <table>
+        <tr>
+            <th>Ação</th>
+            <th>Owner</th>
+            <th>Prazo</th>
+        </tr>
+        <tr>
+            <td>Validar owners e datas do plano semanal</td>
+            <td>Tech Lead</td>
+            <td>28/01/2026</td>
+        </tr>
+        <tr>
+            <td>Priorizar top 5 tickets (DW-001 a DW-005)</td>
+            <td>Product + Backend</td>
+            <td>29/01/2026</td>
+        </tr>
+        <tr>
+            <td>Executar sprint 1 (validações + Taproot)</td>
+            <td>Backend</td>
+            <td>03/02/2026</td>
+        </tr>
+    </table>
+</body>
+
+</html>
