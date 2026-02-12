@@ -130,6 +130,34 @@ export function useNewAddress() {
     return { generate, loading, address };
 }
 
+export function useSendOnchain() {
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [txid, setTxid] = useState<string | null>(null);
+
+    const send = async (request: api.SendOnchainRequest) => {
+        setLoading(true);
+        setError(null);
+        try {
+            const resp = await api.sendOnchain(request);
+            if (!resp.success) {
+                setError('Send failed');
+                return resp;
+            }
+            setTxid(resp.txid || null);
+            return resp;
+        } catch (e) {
+            const msg = e instanceof Error ? e.message : 'Unknown error';
+            setError(msg);
+            throw e;
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return { send, loading, error, txid };
+}
+
 // ============================================================================
 // SWAP HOOKS
 // ============================================================================

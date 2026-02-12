@@ -4,13 +4,18 @@ import { AppShell } from '../AppShell';
 import { PageHeader } from '../PageHeader';
 import { TerminalCard } from '../TerminalCard';
 import { PrimaryButton, SecondaryButton } from '../PrimaryButton';
-import { useBalances, useNewAddress } from '@/services/hooks';
+import { useBalances, useNewAddress, useSendOnchain } from '@/services/hooks';
 
 export function WalletPage() {
     const [activeChain, setActiveChain] = useState<'btc' | 'liquid'>('btc');
     const { balances, loading: balancesLoading } = useBalances();
     const { generate, loading: addressLoading, address } = useNewAddress();
+    const { send, loading: sendLoading, error: sendError, txid } = useSendOnchain();
     const [addresses, setAddresses] = useState<Array<{ address: string; path: string }>>([]);
+    const [showSend, setShowSend] = useState(false);
+    const [sendAddress, setSendAddress] = useState('');
+    const [sendAmount, setSendAmount] = useState('');
+    const [sendFeeRate, setSendFeeRate] = useState('');
 
     const handleGenerateAddress = async () => {
         const result = await generate(activeChain);
@@ -25,6 +30,23 @@ export function WalletPage() {
 
     const formatSats = (sats: number) => {
         return (sats / 100_000_000).toFixed(8);
+    };
+
+    const handleSend = async () => {
+        const amount = Number(sendAmount);
+        if (!sendAddress || !Number.isFinite(amount) || amount <= 0) {
+            return;
+        }
+        const amountSats = Math.round(amount * 100_000_000);
+        const feeRate = sendFeeRate ? Number(sendFeeRate) : undefined;
+
+        await send({
+            chain: activeChain,
+            address: sendAddress,
+            amount_sats: amountSats,
+            fee_rate_sat_vb: feeRate && feeRate > 0 ? feeRate : undefined,
+            label: 'send',
+        });
     };
 
     const balance = activeChain === 'btc'
@@ -140,10 +162,50 @@ export function WalletPage() {
                                 <div className="text-[#10B981] font-medium mb-1">Receive</div>
                                 <div className="text-sm text-[#6C7A89]">Generate address to receive funds</div>
                             </button>
-                            <button className="w-full p-4 bg-[#00B4D8]/10 border border-[#00B4D8]/30 rounded-xl hover:bg-[#00B4D8]/20 transition-all text-left">
+                            <button
+                                className="w-full p-4 bg-[#00B4D8]/10 border border-[#00B4D8]/30 rounded-xl hover:bg-[#00B4D8]/20 transition-all text-left"
+                                onClick={() => setShowSend(!showSend)}
+                            >
                                 <div className="text-[#00B4D8] font-medium mb-1">Send</div>
                                 <div className="text-sm text-[#6C7A89]">Transfer funds to another address</div>
                             </button>
+                            {showSend && (
+                                <div className="p-4 bg-[#151B23] border border-[#242C36] rounded-xl space-y-3">
+                                    <input
+                                        className="w-full bg-[#0D1117] border border-[#242C36] rounded-lg px-3 py-2 text-sm text-[#E7EDF5] placeholder-[#6C7A89]"
+                                        placeholder="Destination address"
+                                        value={sendAddress}
+                                        onChange={(e) => setSendAddress(e.target.value)}
+                                    />
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <input
+                                            className="w-full bg-[#0D1117] border border-[#242C36] rounded-lg px-3 py-2 text-sm text-[#E7EDF5] placeholder-[#6C7A89]"
+                                            placeholder={`Amount (${activeChain === 'btc' ? 'BTC' : 'L-BTC'})`}
+                                            value={sendAmount}
+                                            onChange={(e) => setSendAmount(e.target.value)}
+                                        />
+                                        <input
+                                            className="w-full bg-[#0D1117] border border-[#242C36] rounded-lg px-3 py-2 text-sm text-[#E7EDF5] placeholder-[#6C7A89]"
+                                            placeholder="Fee rate (sat/vB)"
+                                            value={sendFeeRate}
+                                            onChange={(e) => setSendFeeRate(e.target.value)}
+                                        />
+                                    </div>
+                                    <PrimaryButton onClick={handleSend} disabled={sendLoading}>
+                                        {sendLoading ? 'Sending...' : 'Send now'}
+                                    </PrimaryButton>
+                                    {sendError && (
+                                        <div className="text-xs text-[#F87171]">
+                                            {sendError}
+                                        </div>
+                                    )}
+                                    {txid && (
+                                        <div className="text-xs text-[#10B981] break-all">
+                                            Sent: {txid}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                         </div>
                     </TerminalCard>
                 </div>

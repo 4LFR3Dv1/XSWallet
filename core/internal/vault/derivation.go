@@ -4,6 +4,7 @@ package vault
 import (
 	"fmt"
 
+	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/btcutil/hdkeychain"
 	"github.com/btcsuite/btcd/chaincfg"
@@ -75,64 +76,83 @@ func DeriveBIP84Address(seed []byte, accountIndex, changeIndex, addressIndex uin
 		coinType = 0
 	}
 
+	address, path, _, err := DeriveBIP84AddressWithParams(seed, accountIndex, changeIndex, addressIndex, coinType, params)
+	if err != nil {
+		return "", "", err
+	}
+	return address, path, nil
+}
+
+// DeriveBIP84Key derives a private/public key pair for a BIP84 path.
+// coinType must follow SLIP-0044 (BTC mainnet=0, testnet/regtest=1, Liquid mainnet=1776).
+func DeriveBIP84Key(seed []byte, accountIndex, changeIndex, addressIndex uint32, coinType uint32, params *chaincfg.Params) (*btcec.PrivateKey, *btcec.PublicKey, string, error) {
+	if params == nil {
+		return nil, nil, "", fmt.Errorf("params is nil")
+	}
+
 	// Create master key
 	master, err := hdkeychain.NewMaster(seed, params)
 	if err != nil {
-		return "", "", fmt.Errorf("failed to create master key: %w", err)
+		return nil, nil, "", fmt.Errorf("failed to create master key: %w", err)
 	}
 
 	// Derive path: m/84'/coin'/account'/change/index
-	// Each ' means hardened derivation (add 0x80000000)
-
-	// m/84'
 	purpose, err := master.Derive(84 + hdkeychain.HardenedKeyStart)
 	if err != nil {
-		return "", "", fmt.Errorf("failed to derive purpose: %w", err)
+		return nil, nil, "", fmt.Errorf("failed to derive purpose: %w", err)
 	}
 
-	// m/84'/coin'
 	coin, err := purpose.Derive(coinType + hdkeychain.HardenedKeyStart)
 	if err != nil {
-		return "", "", fmt.Errorf("failed to derive coin: %w", err)
+		return nil, nil, "", fmt.Errorf("failed to derive coin: %w", err)
 	}
 
-	// m/84'/coin'/account'
 	account, err := coin.Derive(accountIndex + hdkeychain.HardenedKeyStart)
 	if err != nil {
-		return "", "", fmt.Errorf("failed to derive account: %w", err)
+		return nil, nil, "", fmt.Errorf("failed to derive account: %w", err)
 	}
 
-	// m/84'/coin'/account'/change
 	change, err := account.Derive(changeIndex)
 	if err != nil {
-		return "", "", fmt.Errorf("failed to derive change: %w", err)
+		return nil, nil, "", fmt.Errorf("failed to derive change: %w", err)
 	}
 
-	// m/84'/coin'/account'/change/index
 	child, err := change.Derive(addressIndex)
 	if err != nil {
-		return "", "", fmt.Errorf("failed to derive address index: %w", err)
+		return nil, nil, "", fmt.Errorf("failed to derive address index: %w", err)
 	}
 
-	// Get the public key and derive P2WPKH address
+	privKey, err := child.ECPrivKey()
+	if err != nil {
+		return nil, nil, "", fmt.Errorf("failed to get private key: %w", err)
+	}
+
 	pubKey, err := child.ECPubKey()
 	if err != nil {
-		return "", "", fmt.Errorf("failed to get public key: %w", err)
+		return nil, nil, "", fmt.Errorf("failed to get public key: %w", err)
 	}
 
-	// Create P2WPKH address (native SegWit)
+	path := fmt.Sprintf("m/84'/%d'/%d'/%d/%d", coinType, accountIndex, changeIndex, addressIndex)
+	return privKey, pubKey, path, nil
+}
+
+// DeriveBIP84AddressWithParams derives a native SegWit (P2WPKH) address for custom params/coin type.
+func DeriveBIP84AddressWithParams(seed []byte, accountIndex, changeIndex, addressIndex uint32, coinType uint32, params *chaincfg.Params) (string, string, []byte, error) {
+	_, pubKey, path, err := DeriveBIP84Key(seed, accountIndex, changeIndex, addressIndex, coinType, params)
+	if err != nil {
+		return "", "", nil, err
+	}
+
 	witnessProg := pubKey.SerializeCompressed()
 	addressPubKeyHash, err := btcutil.NewAddressWitnessPubKeyHash(
 		btcutil.Hash160(witnessProg),
 		params,
 	)
 	if err != nil {
-		return "", "", fmt.Errorf("failed to create address: %w", err)
+		return "", "", nil, fmt.Errorf("failed to create address: %w", err)
 	}
 
-	path := fmt.Sprintf("m/84'/%d'/%d'/%d/%d", coinType, accountIndex, changeIndex, addressIndex)
-
-	return addressPubKeyHash.EncodeAddress(), path, nil
+	return addressPubKeyHash.EncodeAddress(), path, witnessProg, nil
 }
 
 // GetSwapKeyPair derives a key pair for swap operations

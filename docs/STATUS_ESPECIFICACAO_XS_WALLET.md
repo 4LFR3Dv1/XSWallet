@@ -14,6 +14,7 @@ Estado atual:
 - Ponte HTTP existe via `api-bridge/` (temporaria).
 - Go Core existe, mas adapters LND/elementsd nao existem.
 - boltz-backend existe no repo.
+- Wallet on-chain BTC + Liquid (confidential) implementada via seed do vault (BIP84 + SLIP-0077).
 
 ## 2. Database (spec)
 - SQLite WAL + pragmas do spec.
@@ -26,6 +27,7 @@ Estado atual:
 - Schema unificado em `core/internal/db/db.go` (arquivo duplicado removido).
 - Colunas adicionadas em `swaps`: `encrypted_preimage`, `boltz_status`, `boltz_raw`, `from_asset`, `to_asset`.
 - Tabela `vault_lockout` criada com migracao automatica para DBs existentes.
+- Tabelas `wallet_addresses` e `wallet_transactions` adicionadas para enderecos/tx on-chain.
 
 ## 3. Swaps (spec)
 - Submarine, Reverse e Chain completos.
@@ -66,6 +68,7 @@ Estado atual:
 Estado atual:
 - Frontend Vite/React sem Electron.
 - Sem IPC security.
+- UI inclui fluxo basico de envio on-chain (BTC/Liquid) via API Bridge.
 
 ## 7. API contracts (spec)
 - boltz-backend v2 endpoints.

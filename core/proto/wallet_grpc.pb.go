@@ -34,6 +34,7 @@ const (
 	WalletService_ListAddresses_FullMethodName      = "/xswallet.WalletService/ListAddresses"
 	WalletService_ListUtxos_FullMethodName          = "/xswallet.WalletService/ListUtxos"
 	WalletService_ListTransactions_FullMethodName   = "/xswallet.WalletService/ListTransactions"
+	WalletService_SendOnchain_FullMethodName        = "/xswallet.WalletService/SendOnchain"
 	WalletService_WatchBalances_FullMethodName      = "/xswallet.WalletService/WatchBalances"
 )
 
@@ -59,6 +60,7 @@ type WalletServiceClient interface {
 	ListUtxos(ctx context.Context, in *ListUtxosRequest, opts ...grpc.CallOption) (*ListUtxosResponse, error)
 	// Transactions
 	ListTransactions(ctx context.Context, in *ListTransactionsRequest, opts ...grpc.CallOption) (*ListTransactionsResponse, error)
+	SendOnchain(ctx context.Context, in *SendOnchainRequest, opts ...grpc.CallOption) (*SendOnchainResponse, error)
 	// Streaming
 	WatchBalances(ctx context.Context, in *WatchBalancesRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[BalanceUpdate], error)
 }
@@ -191,6 +193,16 @@ func (c *walletServiceClient) ListTransactions(ctx context.Context, in *ListTran
 	return out, nil
 }
 
+func (c *walletServiceClient) SendOnchain(ctx context.Context, in *SendOnchainRequest, opts ...grpc.CallOption) (*SendOnchainResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SendOnchainResponse)
+	err := c.cc.Invoke(ctx, WalletService_SendOnchain_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *walletServiceClient) WatchBalances(ctx context.Context, in *WatchBalancesRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[BalanceUpdate], error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	stream, err := c.cc.NewStream(ctx, &WalletService_ServiceDesc.Streams[0], WalletService_WatchBalances_FullMethodName, cOpts...)
@@ -232,6 +244,7 @@ type WalletServiceServer interface {
 	ListUtxos(context.Context, *ListUtxosRequest) (*ListUtxosResponse, error)
 	// Transactions
 	ListTransactions(context.Context, *ListTransactionsRequest) (*ListTransactionsResponse, error)
+	SendOnchain(context.Context, *SendOnchainRequest) (*SendOnchainResponse, error)
 	// Streaming
 	WatchBalances(*WatchBalancesRequest, grpc.ServerStreamingServer[BalanceUpdate]) error
 	mustEmbedUnimplementedWalletServiceServer()
@@ -279,6 +292,9 @@ func (UnimplementedWalletServiceServer) ListUtxos(context.Context, *ListUtxosReq
 }
 func (UnimplementedWalletServiceServer) ListTransactions(context.Context, *ListTransactionsRequest) (*ListTransactionsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListTransactions not implemented")
+}
+func (UnimplementedWalletServiceServer) SendOnchain(context.Context, *SendOnchainRequest) (*SendOnchainResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SendOnchain not implemented")
 }
 func (UnimplementedWalletServiceServer) WatchBalances(*WatchBalancesRequest, grpc.ServerStreamingServer[BalanceUpdate]) error {
 	return status.Error(codes.Unimplemented, "method WatchBalances not implemented")
@@ -520,6 +536,24 @@ func _WalletService_ListTransactions_Handler(srv interface{}, ctx context.Contex
 	return interceptor(ctx, in, info, handler)
 }
 
+func _WalletService_SendOnchain_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SendOnchainRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WalletServiceServer).SendOnchain(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: WalletService_SendOnchain_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WalletServiceServer).SendOnchain(ctx, req.(*SendOnchainRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _WalletService_WatchBalances_Handler(srv interface{}, stream grpc.ServerStream) error {
 	m := new(WatchBalancesRequest)
 	if err := stream.RecvMsg(m); err != nil {
@@ -585,6 +619,10 @@ var WalletService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListTransactions",
 			Handler:    _WalletService_ListTransactions_Handler,
+		},
+		{
+			MethodName: "SendOnchain",
+			Handler:    _WalletService_SendOnchain_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

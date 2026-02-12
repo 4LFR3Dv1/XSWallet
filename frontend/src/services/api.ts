@@ -82,6 +82,21 @@ export interface AddressResponse {
     derivation_path: string;
 }
 
+export interface SendOnchainRequest {
+    chain: 'btc' | 'liquid';
+    address: string;
+    amount_sats: number;
+    fee_rate_sat_vb?: number;
+    subtract_fee?: boolean;
+    label?: string;
+}
+
+export interface SendOnchainResponse {
+    success: boolean;
+    txid?: string;
+    fee_sat?: number;
+}
+
 export async function getBalances(): Promise<Balances> {
     const res = await fetch(`${API_BASE}/wallet/balances`);
     if (!res.ok) throw new Error('Failed to get balances');
@@ -95,6 +110,23 @@ export async function getNewAddress(chain: 'btc' | 'liquid'): Promise<AddressRes
         body: JSON.stringify({ chain: chain === 'btc' ? 'CHAIN_BTC' : 'CHAIN_LIQUID' }),
     });
     if (!res.ok) throw new Error('Failed to get address');
+    return res.json();
+}
+
+export async function sendOnchain(request: SendOnchainRequest): Promise<SendOnchainResponse> {
+    const res = await fetch(`${API_BASE}/wallet/send`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            chain: request.chain === 'btc' ? 'CHAIN_BTC' : 'CHAIN_LIQUID',
+            address: request.address,
+            amount_sat: request.amount_sats,
+            fee_rate_sat_vb: request.fee_rate_sat_vb,
+            subtract_fee: request.subtract_fee ?? false,
+            label: request.label ?? '',
+        }),
+    });
+    if (!res.ok) throw new Error('Failed to send on-chain');
     return res.json();
 }
 

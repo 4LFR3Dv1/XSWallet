@@ -54,6 +54,25 @@ type Tx struct {
 	Hex           string `json:"hex"`
 }
 
+// ScanUtxo represents an unspent output from scantxoutset
+type ScanUtxo struct {
+	TxID          string  `json:"txid"`
+	Vout          uint32  `json:"vout"`
+	Address       string  `json:"address"`
+	Amount        float64 `json:"amount"`
+	Confirmations int64   `json:"-"`
+	Height        int64   `json:"height"`
+	ScriptPubKey  string  `json:"scriptPubKey"`
+}
+
+// ScanTxOutSetResult is the response from scantxoutset
+type ScanTxOutSetResult struct {
+	Success bool       `json:"success"`
+	Height  int64      `json:"height"`
+	TxOuts  int64      `json:"txouts"`
+	Unspents []ScanUtxo `json:"unspents"`
+}
+
 // rpcRequest represents a JSON-RPC request
 type rpcRequest struct {
 	JSONRPC string        `json:"jsonrpc"`
@@ -257,4 +276,28 @@ func (c *Client) GenerateToAddress(ctx context.Context, numBlocks int, address s
 	}
 
 	return hashes, nil
+}
+
+// ScanTxOutSet scans the UTXO set for the given addresses.
+func (c *Client) ScanTxOutSet(ctx context.Context, addresses []string) (*ScanTxOutSetResult, error) {
+	if len(addresses) == 0 {
+		return &ScanTxOutSetResult{Success: true, Unspents: []ScanUtxo{}}, nil
+	}
+
+	scanObjects := make([]string, 0, len(addresses))
+	for _, addr := range addresses {
+		scanObjects = append(scanObjects, fmt.Sprintf("addr(%s)", addr))
+	}
+
+	result, err := c.call(ctx, "scantxoutset", "start", scanObjects)
+	if err != nil {
+		return nil, err
+	}
+
+	var resp ScanTxOutSetResult
+	if err := json.Unmarshal(result, &resp); err != nil {
+		return nil, err
+	}
+
+	return &resp, nil
 }

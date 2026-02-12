@@ -68,6 +68,20 @@ type UTXO struct {
 	ScriptPubKey  string  `json:"scriptPubKey"`
 }
 
+// RawInput represents a transaction input
+type RawInput struct {
+	TxID string `json:"txid"`
+	Vout uint32 `json:"vout"`
+}
+
+// PrevTx represents a previous output needed for segwit signing
+type PrevTx struct {
+	TxID         string  `json:"txid"`
+	Vout         uint32  `json:"vout"`
+	ScriptPubKey string  `json:"scriptPubKey"`
+	Amount       float64 `json:"amount"`
+}
+
 // GetBlockchainInfo returns blockchain info for Liquid network
 func (c *Client) GetBlockchainInfo(ctx context.Context) (*BlockchainInfo, error) {
 	var result BlockchainInfo
@@ -153,6 +167,15 @@ func (c *Client) EstimateFee(ctx context.Context, blocks int) (float64, error) {
 	return result.FeeRate * 100000, nil
 }
 
+// GenerateToAddress mines blocks to the specified address (regtest only).
+func (c *Client) GenerateToAddress(ctx context.Context, numBlocks int, address string) ([]string, error) {
+	var hashes []string
+	if err := c.call(ctx, "generatetoaddress", []interface{}{numBlocks, address}, &hashes); err != nil {
+		return nil, err
+	}
+	return hashes, nil
+}
+
 // IssueAsset issues a new asset (Liquid-specific)
 func (c *Client) IssueAsset(ctx context.Context, amount, tokenAmount float64) (string, string, error) {
 	var result struct {
@@ -164,6 +187,67 @@ func (c *Client) IssueAsset(ctx context.Context, amount, tokenAmount float64) (s
 		return "", "", err
 	}
 	return result.Asset, result.TxID, nil
+}
+
+// CreateBlindedAddress creates a confidential address from an unconfidential address and blinding pubkey.
+func (c *Client) CreateBlindedAddress(ctx context.Context, address string, blindingPubKeyHex string) (string, error) {
+	var blinded string
+	if err := c.call(ctx, "createblindedaddress", []interface{}{address, blindingPubKeyHex}, &blinded); err != nil {
+		return "", err
+	}
+	return blinded, nil
+}
+
+// ImportAddress imports a watch-only address.
+func (c *Client) ImportAddress(ctx context.Context, address, label string, rescan bool) error {
+	return c.call(ctx, "importaddress", []interface{}{address, label, rescan}, nil)
+}
+
+// ImportBlindingKey imports a blinding private key for a given address.
+func (c *Client) ImportBlindingKey(ctx context.Context, address, blindingPrivKeyHex string) error {
+	return c.call(ctx, "importblindingkey", []interface{}{address, blindingPrivKeyHex}, nil)
+}
+
+// CreateRawTransaction creates a raw transaction with given inputs/outputs.
+func (c *Client) CreateRawTransaction(ctx context.Context, inputs []RawInput, outputs map[string]float64) (string, error) {
+	var hex string
+	if err := c.call(ctx, "createrawtransaction", []interface{}{inputs, outputs}, &hex); err != nil {
+		return "", err
+	}
+	return hex, nil
+}
+
+// BlindRawTransaction blinds a raw transaction using wallet blinding keys.
+func (c *Client) BlindRawTransaction(ctx context.Context, rawHex string) (string, error) {
+	var blinded string
+	if err := c.call(ctx, "blindrawtransaction", []interface{}{rawHex}, &blinded); err != nil {
+		return "", err
+	}
+	return blinded, nil
+}
+
+// DecodeRawTransaction decodes a raw transaction and returns its vsize.
+func (c *Client) DecodeRawTransaction(ctx context.Context, rawHex string) (int64, error) {
+	var resp struct {
+		Vsize int64 `json:"vsize"`
+	}
+	if err := c.call(ctx, "decoderawtransaction", []interface{}{rawHex}, &resp); err != nil {
+		return 0, err
+	}
+	return resp.Vsize, nil
+}
+
+// SignRawTransactionWithKey signs a raw transaction with given privkeys and prevouts.
+func (c *Client) SignRawTransactionWithKey(ctx context.Context, rawHex string, privKeys []string, prevTxs []PrevTx) (string, bool, error) {
+	var resp struct {
+		Hex      string `json:"hex"`
+		Complete bool   `json:"complete"`
+	}
+	params := []interface{}{rawHex, privKeys, prevTxs}
+	if err := c.call(ctx, "signrawtransactionwithkey", params, &resp); err != nil {
+		return "", false, err
+	}
+	return resp.Hex, resp.Complete, nil
 }
 
 // rpcRequest represents a JSON-RPC request

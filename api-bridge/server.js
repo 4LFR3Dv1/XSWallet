@@ -497,6 +497,36 @@ app.get('/api/v1/wallet/balances', (req, res) => {
     });
 });
 
+// Send on-chain transaction
+app.post('/api/v1/wallet/send', (req, res) => {
+    const { chain = 'CHAIN_BTC', address, amount_sat, fee_rate_sat_vb, subtract_fee = false, label = '' } = req.body;
+    if (!address || !amount_sat) {
+        return errorResponse(res, 'GRPC_INVALID_ARGUMENT', 'Missing required fields', {
+            required: ['address', 'amount_sat'],
+        }, req.id);
+    }
+
+    const deadline = new Date(Date.now() + CONFIG.GRPC_DEADLINE_MS.create);
+    const metadata = createAuthMetadataFromReq(req);
+
+    walletClient.SendOnchain({
+        chain,
+        address,
+        amount_sat,
+        fee_rate_sat_vb,
+        subtract_fee,
+        label,
+    }, metadata, { deadline }, (err, response) => {
+        if (err) return handleGrpcError(err, res, req.id);
+
+        res.json({
+            success: response.success,
+            txid: response.txid,
+            fee_sat: response.fee_sat,
+        });
+    });
+});
+
 // Preimage generate (mock for DevDash)
 app.post('/api/v1/preimage/generate', (req, res) => {
     const crypto = require('crypto');
@@ -599,29 +629,6 @@ app.get('/api/v1/elements/info', (req, res) => {
         chain: 'liquidregtest',
         blocks: 0,
         initialized: false,
-    });
-});
-
-// Wallet derive (mock)
-app.post('/api/v1/wallet/derive', (req, res) => {
-    const { seed_phrase, path = "m/84'/0'/0'/0/0" } = req.body;
-    res.json({
-        path,
-        address: 'bcrt1qmock' + Math.random().toString(36).substring(2, 15),
-        pubkey: '02' + Array(64).fill(0).map(() => Math.floor(Math.random() * 16).toString(16)).join(''),
-        warning: 'MOCK derivation for development only!',
-    });
-});
-
-// Wallet validate (mock)
-app.post('/api/v1/wallet/validate', (req, res) => {
-    const { mnemonic } = req.body;
-    const words = mnemonic?.split(' ') || [];
-    const valid = words.length === 12 || words.length === 24;
-    res.json({
-        valid,
-        word_count: words.length,
-        error: valid ? null : 'Mnemonic must have 12 or 24 words',
     });
 });
 

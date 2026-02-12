@@ -180,7 +180,7 @@ func main() {
 
 	// Register services
 	swapService := server.NewSwapService(database, cfg, swapEngine, provider)
-	walletService := server.NewWalletService(database, cfg, vaultInstance, btcClient)
+	walletService := server.NewWalletService(database, cfg, vaultInstance, btcClient, liquidClient)
 	nodeService := server.NewNodeService(cfg)
 
 	pb.RegisterSwapServiceServer(grpcServer, swapService)

@@ -8,13 +8,15 @@
 
 ## 📋 Visão Geral
 
-XS Wallet é uma aplicação desktop self-custody que permite atomic swaps usando Taproot e boltz-backend (self-hosted). Projetada com princípios de **Zero Trust** e **Crash Recovery**.
+XS Wallet é uma aplicação desktop self-custody com carteira on-chain (BTC + Liquid confidential) e atomic swaps usando Taproot e boltz-backend (self-hosted). Projetada com princípios de **Zero Trust** e **Crash Recovery**.
 
 ### Status Atual
 
 | Componente | Status |
 |------------|--------|
 | Go Core (xscore) | ✅ Implementado |
+| Wallet On-chain BTC (BIP84) | ✅ Implementado |
+| Wallet On-chain Liquid (confidential) | ✅ Implementado |
 | Boltz HTTP/WS Client | ✅ Production-Ready |
 | Status Normalization | ✅ Implementado |
 | Swap Engine (CAS) | ✅ Base Implementada |
@@ -22,8 +24,10 @@ XS Wallet é uma aplicação desktop self-custody que permite atomic swaps usand
 | Submarine Swap | ⚠️ Parcial (falta Auto-Lock) |
 | Reverse/Chain Swap | ⏳ Pendente |
 | MuSig2 | ⏳ Pendente |
-| LND/elementsd Adapters | ⏳ Pendente |
+| LND Adapter | ⚠️ Base implementada (sem fluxo completo) |
+| elementsd Adapter | ✅ Implementado (JSON-RPC) |
 | Electron/IPC | ⏳ Pendente |
+| Node Manager | ⏳ Pendente |
 
 ## 🏗️ Arquitetura
 
@@ -31,22 +35,19 @@ XS Wallet é uma aplicação desktop self-custody que permite atomic swaps usand
 ┌─────────────────────────────────────────────────┐
 │              XS Wallet Desktop                  │
 ├──────────────────┬──────────────────────────────┤
-│  Electron (IPC)  │     Go Core (xscore)         │
-│  ├─ React UI     │     ├─ Swap Engine           │
-│  └─ Preload      │     ├─ SQLite WAL            │
-│                  │     ├─ Boltz Client          │
+│   Frontend UI    │     Go Core (xscore)         │
+│  ├─ React + Vite │     ├─ Wallet On-chain       │
+│  ├─ API Bridge   │     ├─ Swap Engine           │
+│  └─ HTTP (temp)  │     ├─ Vault + SQLite WAL    │
 │                  │     └─ gRPC Server           │
 ├──────────────────┴──────────────────────────────┤
 │              RPC Adapters                        │
-│  ├─ LND (gRPC)   └─ elementsd (JSON-RPC)        │
+│  ├─ bitcoind     ├─ elementsd                   │
+│  └─ LND          └─ boltz-backend               │
 └─────────────────────────────────────────────────┘
-         │
-         ▼
-┌─────────────────────────┐
-│  boltz-backend          │
-│  (self-hosted)          │
-└─────────────────────────┘
 ```
+
+Frontend atualmente comunica via HTTP (`api-bridge/`) como ponte temporária para o gRPC do `xscore`. A arquitetura alvo continua Electron + IPC.
 
 ## 📁 Estrutura do Projeto
 
@@ -70,6 +71,12 @@ XS WALLET/
 
 ## 🚀 Quick Start
 
+### 0. Nodes (regtest)
+```bash
+docker compose -f test/regtest/docker-compose.yml up -d
+```
+Para mainnet/testnet, rode `bitcoind` e `elementsd` e ajuste as credenciais no config JSON do `xscore`.
+
 ### 1. Go Core
 ```bash
 cd core
@@ -82,6 +89,7 @@ go build ./cmd/xscore
 cd api-bridge
 npm install && npm start
 ```
+Ajuste `GRPC_HOST` se o `xscore` estiver em outro host/porta.
 
 ### 3. Frontend
 ```bash
@@ -95,7 +103,7 @@ npm install && npm run dev
 |------|--------|----------|
 | 1. Core Fixes | 1-2 | QuoteSwap fix, schema unificado, preimage encrypted |
 | 2. Swap Protocol | 3-4 | Auto-Lock, Reverse, Chain, MuSig2 |
-| 3. Node Adapters | 5-6 | LND, elementsd, Node Manager |
+| 3. Node Manager + LND | 5-6 | Node Manager, LND flows completos |
 | 4. Electron | 7-8 | Main process, IPC, frontend migration |
 | 5. Tx Management | 9 | RBF/CPFP |
 | 6. Packaging | 10 | Installers, code signing, E2E |
@@ -114,6 +122,7 @@ npm install && npm run dev
 
 - **Backend**: Go 1.21+, gRPC, SQLite WAL
 - **Criptografia**: Argon2id (64MB/3iter), AES-256-GCM
+- **Nodes**: Bitcoin Core, Elements (JSON-RPC), LND (gRPC)
 - **Frontend**: React, Vite, Electron (em migração)
 - **Swap Provider**: boltz-backend (self-hosted)
 

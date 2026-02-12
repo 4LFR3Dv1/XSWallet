@@ -259,4 +259,44 @@ CREATE TABLE IF NOT EXISTS app_config (
     value TEXT NOT NULL,
     updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
 );
+
+-- =============================================================================
+-- WALLET_ADDRESSES - Endereços derivados (BTC/Liquid)
+-- =============================================================================
+CREATE TABLE IF NOT EXISTS wallet_addresses (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    chain TEXT NOT NULL CHECK(chain IN ('btc', 'liquid')),
+    address TEXT NOT NULL UNIQUE,          -- endereço exibido (Liquid = confidential)
+    address_plain TEXT,                    -- Liquid: endereço unconfidential (bech32), BTC: NULL
+    blinding_pubkey TEXT,                  -- Liquid: pubkey hex (opcional)
+    derivation_path TEXT NOT NULL,
+    account_index INTEGER NOT NULL,
+    change_index INTEGER NOT NULL,
+    address_index INTEGER NOT NULL,
+    label TEXT,
+    used INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+    updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_wallet_addresses_chain ON wallet_addresses(chain);
+CREATE INDEX IF NOT EXISTS idx_wallet_addresses_used ON wallet_addresses(chain, used);
+
+-- =============================================================================
+-- WALLET_TRANSACTIONS - Histórico básico (send/receive)
+-- =============================================================================
+CREATE TABLE IF NOT EXISTS wallet_transactions (
+    txid TEXT NOT NULL,
+    chain TEXT NOT NULL CHECK(chain IN ('btc', 'liquid')),
+    direction TEXT NOT NULL CHECK(direction IN ('in', 'out')),
+    amount_sat INTEGER NOT NULL,          -- entrada positiva, saida negativa
+    fee_sat INTEGER,
+    confirmations INTEGER,
+    label TEXT,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+    updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+    PRIMARY KEY (txid, chain, direction)
+);
+
+CREATE INDEX IF NOT EXISTS idx_wallet_transactions_chain ON wallet_transactions(chain);
 `

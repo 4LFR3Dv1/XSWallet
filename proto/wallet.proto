@@ -37,6 +37,7 @@ service WalletService {
   
   // Transactions
   rpc ListTransactions(ListTransactionsRequest) returns (ListTransactionsResponse);
+  rpc SendOnchain(SendOnchainRequest) returns (SendOnchainResponse);
   
   // Streaming
   rpc WatchBalances(WatchBalancesRequest) returns (stream BalanceUpdate);
@@ -236,4 +237,24 @@ message Transaction {
   google.protobuf.Timestamp timestamp = 6;
   string label = 7;
   string swap_id = 8;              // Se relacionado a swap
+}
+
+// =============================================================================
+// SEND ON-CHAIN
+// =============================================================================
+
+message SendOnchainRequest {
+  Chain chain = 1;
+  string address = 2;
+  uint64 amount_sat = 3;
+  uint64 fee_rate_sat_vb = 4;      // Opcional (sat/vB)
+  bool subtract_fee = 5;           // Se true, desconta fee do amount
+  string label = 6;
+}
+
+message SendOnchainResponse {
+  bool success = 1;
+  string txid = 2;
+  uint64 fee_sat = 3;
+  string error_message = 4;
 }

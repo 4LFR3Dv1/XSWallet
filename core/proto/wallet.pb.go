@@ -1806,6 +1806,158 @@ func (x *Transaction) GetSwapId() string {
 	return ""
 }
 
+type SendOnchainRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Chain         Chain                  `protobuf:"varint,1,opt,name=chain,proto3,enum=xswallet.Chain" json:"chain,omitempty"`
+	Address       string                 `protobuf:"bytes,2,opt,name=address,proto3" json:"address,omitempty"`
+	AmountSat     uint64                 `protobuf:"varint,3,opt,name=amount_sat,json=amountSat,proto3" json:"amount_sat,omitempty"`
+	FeeRateSatVb  uint64                 `protobuf:"varint,4,opt,name=fee_rate_sat_vb,json=feeRateSatVb,proto3" json:"fee_rate_sat_vb,omitempty"` // Opcional (sat/vB)
+	SubtractFee   bool                   `protobuf:"varint,5,opt,name=subtract_fee,json=subtractFee,proto3" json:"subtract_fee,omitempty"`        // Se true, desconta fee do amount
+	Label         string                 `protobuf:"bytes,6,opt,name=label,proto3" json:"label,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SendOnchainRequest) Reset() {
+	*x = SendOnchainRequest{}
+	mi := &file_wallet_proto_msgTypes[30]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SendOnchainRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SendOnchainRequest) ProtoMessage() {}
+
+func (x *SendOnchainRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_wallet_proto_msgTypes[30]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SendOnchainRequest.ProtoReflect.Descriptor instead.
+func (*SendOnchainRequest) Descriptor() ([]byte, []int) {
+	return file_wallet_proto_rawDescGZIP(), []int{30}
+}
+
+func (x *SendOnchainRequest) GetChain() Chain {
+	if x != nil {
+		return x.Chain
+	}
+	return Chain_CHAIN_UNSPECIFIED
+}
+
+func (x *SendOnchainRequest) GetAddress() string {
+	if x != nil {
+		return x.Address
+	}
+	return ""
+}
+
+func (x *SendOnchainRequest) GetAmountSat() uint64 {
+	if x != nil {
+		return x.AmountSat
+	}
+	return 0
+}
+
+func (x *SendOnchainRequest) GetFeeRateSatVb() uint64 {
+	if x != nil {
+		return x.FeeRateSatVb
+	}
+	return 0
+}
+
+func (x *SendOnchainRequest) GetSubtractFee() bool {
+	if x != nil {
+		return x.SubtractFee
+	}
+	return false
+}
+
+func (x *SendOnchainRequest) GetLabel() string {
+	if x != nil {
+		return x.Label
+	}
+	return ""
+}
+
+type SendOnchainResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	Txid          string                 `protobuf:"bytes,2,opt,name=txid,proto3" json:"txid,omitempty"`
+	FeeSat        uint64                 `protobuf:"varint,3,opt,name=fee_sat,json=feeSat,proto3" json:"fee_sat,omitempty"`
+	ErrorMessage  string                 `protobuf:"bytes,4,opt,name=error_message,json=errorMessage,proto3" json:"error_message,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SendOnchainResponse) Reset() {
+	*x = SendOnchainResponse{}
+	mi := &file_wallet_proto_msgTypes[31]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SendOnchainResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SendOnchainResponse) ProtoMessage() {}
+
+func (x *SendOnchainResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_wallet_proto_msgTypes[31]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SendOnchainResponse.ProtoReflect.Descriptor instead.
+func (*SendOnchainResponse) Descriptor() ([]byte, []int) {
+	return file_wallet_proto_rawDescGZIP(), []int{31}
+}
+
+func (x *SendOnchainResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
+func (x *SendOnchainResponse) GetTxid() string {
+	if x != nil {
+		return x.Txid
+	}
+	return ""
+}
+
+func (x *SendOnchainResponse) GetFeeSat() uint64 {
+	if x != nil {
+		return x.FeeSat
+	}
+	return 0
+}
+
+func (x *SendOnchainResponse) GetErrorMessage() string {
+	if x != nil {
+		return x.ErrorMessage
+	}
+	return ""
+}
+
 var File_wallet_proto protoreflect.FileDescriptor
 
 const file_wallet_proto_rawDesc = "" +
@@ -1934,7 +2086,20 @@ const file_wallet_proto_rawDesc = "" +
 	"\rconfirmations\x18\x05 \x01(\x05R\rconfirmations\x128\n" +
 	"\ttimestamp\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\ttimestamp\x12\x14\n" +
 	"\x05label\x18\a \x01(\tR\x05label\x12\x17\n" +
-	"\aswap_id\x18\b \x01(\tR\x06swapId2\x86\b\n" +
+	"\aswap_id\x18\b \x01(\tR\x06swapId\"\xd4\x01\n" +
+	"\x12SendOnchainRequest\x12%\n" +
+	"\x05chain\x18\x01 \x01(\x0e2\x0f.xswallet.ChainR\x05chain\x12\x18\n" +
+	"\aaddress\x18\x02 \x01(\tR\aaddress\x12\x1d\n" +
+	"\n" +
+	"amount_sat\x18\x03 \x01(\x04R\tamountSat\x12%\n" +
+	"\x0ffee_rate_sat_vb\x18\x04 \x01(\x04R\ffeeRateSatVb\x12!\n" +
+	"\fsubtract_fee\x18\x05 \x01(\bR\vsubtractFee\x12\x14\n" +
+	"\x05label\x18\x06 \x01(\tR\x05label\"\x81\x01\n" +
+	"\x13SendOnchainResponse\x12\x18\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x12\n" +
+	"\x04txid\x18\x02 \x01(\tR\x04txid\x12\x17\n" +
+	"\afee_sat\x18\x03 \x01(\x04R\x06feeSat\x12#\n" +
+	"\rerror_message\x18\x04 \x01(\tR\ferrorMessage2\xd2\b\n" +
 	"\rWalletService\x12V\n" +
 	"\x0fInitializeVault\x12 .xswallet.InitializeVaultRequest\x1a!.xswallet.InitializeVaultResponse\x12J\n" +
 	"\vUnlockVault\x12\x1c.xswallet.UnlockVaultRequest\x1a\x1d.xswallet.UnlockVaultResponse\x12D\n" +
@@ -1949,6 +2114,7 @@ const file_wallet_proto_rawDesc = "" +
 	"\rListAddresses\x12\x1e.xswallet.ListAddressesRequest\x1a\x1f.xswallet.ListAddressesResponse\x12D\n" +
 	"\tListUtxos\x12\x1a.xswallet.ListUtxosRequest\x1a\x1b.xswallet.ListUtxosResponse\x12Y\n" +
 	"\x10ListTransactions\x12!.xswallet.ListTransactionsRequest\x1a\".xswallet.ListTransactionsResponse\x12J\n" +
+	"\vSendOnchain\x12\x1c.xswallet.SendOnchainRequest\x1a\x1d.xswallet.SendOnchainResponse\x12J\n" +
 	"\rWatchBalances\x12\x1e.xswallet.WatchBalancesRequest\x1a\x17.xswallet.BalanceUpdate0\x01B#Z!github.com/xs-wallet/xscore/protob\x06proto3"
 
 var (
@@ -1964,7 +2130,7 @@ func file_wallet_proto_rawDescGZIP() []byte {
 }
 
 var file_wallet_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_wallet_proto_msgTypes = make([]protoimpl.MessageInfo, 30)
+var file_wallet_proto_msgTypes = make([]protoimpl.MessageInfo, 32)
 var file_wallet_proto_goTypes = []any{
 	(VaultStatus_State)(0),            // 0: xswallet.VaultStatus.State
 	(*InitializeVaultRequest)(nil),    // 1: xswallet.InitializeVaultRequest
@@ -1997,66 +2163,71 @@ var file_wallet_proto_goTypes = []any{
 	(*ListTransactionsRequest)(nil),   // 28: xswallet.ListTransactionsRequest
 	(*ListTransactionsResponse)(nil),  // 29: xswallet.ListTransactionsResponse
 	(*Transaction)(nil),               // 30: xswallet.Transaction
-	(*timestamppb.Timestamp)(nil),     // 31: google.protobuf.Timestamp
-	(Chain)(0),                        // 32: xswallet.Chain
+	(*SendOnchainRequest)(nil),        // 31: xswallet.SendOnchainRequest
+	(*SendOnchainResponse)(nil),       // 32: xswallet.SendOnchainResponse
+	(*timestamppb.Timestamp)(nil),     // 33: google.protobuf.Timestamp
+	(Chain)(0),                        // 34: xswallet.Chain
 }
 var file_wallet_proto_depIdxs = []int32{
 	2,  // 0: xswallet.InitializeVaultRequest.generate:type_name -> xswallet.GenerateNewSeed
 	3,  // 1: xswallet.InitializeVaultRequest.import:type_name -> xswallet.ImportExistingSeed
 	0,  // 2: xswallet.VaultStatus.state:type_name -> xswallet.VaultStatus.State
-	31, // 3: xswallet.VaultStatus.lockout_until:type_name -> google.protobuf.Timestamp
-	31, // 4: xswallet.BackupStatus.last_backup_at:type_name -> google.protobuf.Timestamp
-	31, // 5: xswallet.MarkBackupCompleteRequest.backup_timestamp:type_name -> google.protobuf.Timestamp
-	32, // 6: xswallet.GetBalanceRequest.chain:type_name -> xswallet.Chain
-	32, // 7: xswallet.BalanceResponse.chain:type_name -> xswallet.Chain
+	33, // 3: xswallet.VaultStatus.lockout_until:type_name -> google.protobuf.Timestamp
+	33, // 4: xswallet.BackupStatus.last_backup_at:type_name -> google.protobuf.Timestamp
+	33, // 5: xswallet.MarkBackupCompleteRequest.backup_timestamp:type_name -> google.protobuf.Timestamp
+	34, // 6: xswallet.GetBalanceRequest.chain:type_name -> xswallet.Chain
+	34, // 7: xswallet.BalanceResponse.chain:type_name -> xswallet.Chain
 	15, // 8: xswallet.AllBalancesResponse.btc:type_name -> xswallet.BalanceResponse
 	15, // 9: xswallet.AllBalancesResponse.liquid:type_name -> xswallet.BalanceResponse
 	15, // 10: xswallet.AllBalancesResponse.ln:type_name -> xswallet.BalanceResponse
-	32, // 11: xswallet.BalanceUpdate.chain:type_name -> xswallet.Chain
+	34, // 11: xswallet.BalanceUpdate.chain:type_name -> xswallet.Chain
 	15, // 12: xswallet.BalanceUpdate.balance:type_name -> xswallet.BalanceResponse
-	31, // 13: xswallet.BalanceUpdate.timestamp:type_name -> google.protobuf.Timestamp
-	32, // 14: xswallet.GetNewAddressRequest.chain:type_name -> xswallet.Chain
-	32, // 15: xswallet.AddressResponse.chain:type_name -> xswallet.Chain
-	32, // 16: xswallet.ListAddressesRequest.chain:type_name -> xswallet.Chain
+	33, // 13: xswallet.BalanceUpdate.timestamp:type_name -> google.protobuf.Timestamp
+	34, // 14: xswallet.GetNewAddressRequest.chain:type_name -> xswallet.Chain
+	34, // 15: xswallet.AddressResponse.chain:type_name -> xswallet.Chain
+	34, // 16: xswallet.ListAddressesRequest.chain:type_name -> xswallet.Chain
 	24, // 17: xswallet.ListAddressesResponse.addresses:type_name -> xswallet.AddressInfo
-	32, // 18: xswallet.AddressInfo.chain:type_name -> xswallet.Chain
-	32, // 19: xswallet.ListUtxosRequest.chain:type_name -> xswallet.Chain
+	34, // 18: xswallet.AddressInfo.chain:type_name -> xswallet.Chain
+	34, // 19: xswallet.ListUtxosRequest.chain:type_name -> xswallet.Chain
 	27, // 20: xswallet.ListUtxosResponse.utxos:type_name -> xswallet.Utxo
-	32, // 21: xswallet.ListTransactionsRequest.chain:type_name -> xswallet.Chain
+	34, // 21: xswallet.ListTransactionsRequest.chain:type_name -> xswallet.Chain
 	30, // 22: xswallet.ListTransactionsResponse.transactions:type_name -> xswallet.Transaction
-	32, // 23: xswallet.Transaction.chain:type_name -> xswallet.Chain
-	31, // 24: xswallet.Transaction.timestamp:type_name -> google.protobuf.Timestamp
-	1,  // 25: xswallet.WalletService.InitializeVault:input_type -> xswallet.InitializeVaultRequest
-	5,  // 26: xswallet.WalletService.UnlockVault:input_type -> xswallet.UnlockVaultRequest
-	7,  // 27: xswallet.WalletService.LockVault:input_type -> xswallet.LockVaultRequest
-	9,  // 28: xswallet.WalletService.GetVaultStatus:input_type -> xswallet.GetVaultStatusRequest
-	11, // 29: xswallet.WalletService.GetBackupStatus:input_type -> xswallet.GetBackupStatusRequest
-	13, // 30: xswallet.WalletService.MarkBackupComplete:input_type -> xswallet.MarkBackupCompleteRequest
-	14, // 31: xswallet.WalletService.GetBalance:input_type -> xswallet.GetBalanceRequest
-	16, // 32: xswallet.WalletService.GetAllBalances:input_type -> xswallet.GetAllBalancesRequest
-	20, // 33: xswallet.WalletService.GetNewAddress:input_type -> xswallet.GetNewAddressRequest
-	22, // 34: xswallet.WalletService.ListAddresses:input_type -> xswallet.ListAddressesRequest
-	25, // 35: xswallet.WalletService.ListUtxos:input_type -> xswallet.ListUtxosRequest
-	28, // 36: xswallet.WalletService.ListTransactions:input_type -> xswallet.ListTransactionsRequest
-	18, // 37: xswallet.WalletService.WatchBalances:input_type -> xswallet.WatchBalancesRequest
-	4,  // 38: xswallet.WalletService.InitializeVault:output_type -> xswallet.InitializeVaultResponse
-	6,  // 39: xswallet.WalletService.UnlockVault:output_type -> xswallet.UnlockVaultResponse
-	8,  // 40: xswallet.WalletService.LockVault:output_type -> xswallet.LockVaultResponse
-	10, // 41: xswallet.WalletService.GetVaultStatus:output_type -> xswallet.VaultStatus
-	12, // 42: xswallet.WalletService.GetBackupStatus:output_type -> xswallet.BackupStatus
-	12, // 43: xswallet.WalletService.MarkBackupComplete:output_type -> xswallet.BackupStatus
-	15, // 44: xswallet.WalletService.GetBalance:output_type -> xswallet.BalanceResponse
-	17, // 45: xswallet.WalletService.GetAllBalances:output_type -> xswallet.AllBalancesResponse
-	21, // 46: xswallet.WalletService.GetNewAddress:output_type -> xswallet.AddressResponse
-	23, // 47: xswallet.WalletService.ListAddresses:output_type -> xswallet.ListAddressesResponse
-	26, // 48: xswallet.WalletService.ListUtxos:output_type -> xswallet.ListUtxosResponse
-	29, // 49: xswallet.WalletService.ListTransactions:output_type -> xswallet.ListTransactionsResponse
-	19, // 50: xswallet.WalletService.WatchBalances:output_type -> xswallet.BalanceUpdate
-	38, // [38:51] is the sub-list for method output_type
-	25, // [25:38] is the sub-list for method input_type
-	25, // [25:25] is the sub-list for extension type_name
-	25, // [25:25] is the sub-list for extension extendee
-	0,  // [0:25] is the sub-list for field type_name
+	34, // 23: xswallet.Transaction.chain:type_name -> xswallet.Chain
+	33, // 24: xswallet.Transaction.timestamp:type_name -> google.protobuf.Timestamp
+	34, // 25: xswallet.SendOnchainRequest.chain:type_name -> xswallet.Chain
+	1,  // 26: xswallet.WalletService.InitializeVault:input_type -> xswallet.InitializeVaultRequest
+	5,  // 27: xswallet.WalletService.UnlockVault:input_type -> xswallet.UnlockVaultRequest
+	7,  // 28: xswallet.WalletService.LockVault:input_type -> xswallet.LockVaultRequest
+	9,  // 29: xswallet.WalletService.GetVaultStatus:input_type -> xswallet.GetVaultStatusRequest
+	11, // 30: xswallet.WalletService.GetBackupStatus:input_type -> xswallet.GetBackupStatusRequest
+	13, // 31: xswallet.WalletService.MarkBackupComplete:input_type -> xswallet.MarkBackupCompleteRequest
+	14, // 32: xswallet.WalletService.GetBalance:input_type -> xswallet.GetBalanceRequest
+	16, // 33: xswallet.WalletService.GetAllBalances:input_type -> xswallet.GetAllBalancesRequest
+	20, // 34: xswallet.WalletService.GetNewAddress:input_type -> xswallet.GetNewAddressRequest
+	22, // 35: xswallet.WalletService.ListAddresses:input_type -> xswallet.ListAddressesRequest
+	25, // 36: xswallet.WalletService.ListUtxos:input_type -> xswallet.ListUtxosRequest
+	28, // 37: xswallet.WalletService.ListTransactions:input_type -> xswallet.ListTransactionsRequest
+	31, // 38: xswallet.WalletService.SendOnchain:input_type -> xswallet.SendOnchainRequest
+	18, // 39: xswallet.WalletService.WatchBalances:input_type -> xswallet.WatchBalancesRequest
+	4,  // 40: xswallet.WalletService.InitializeVault:output_type -> xswallet.InitializeVaultResponse
+	6,  // 41: xswallet.WalletService.UnlockVault:output_type -> xswallet.UnlockVaultResponse
+	8,  // 42: xswallet.WalletService.LockVault:output_type -> xswallet.LockVaultResponse
+	10, // 43: xswallet.WalletService.GetVaultStatus:output_type -> xswallet.VaultStatus
+	12, // 44: xswallet.WalletService.GetBackupStatus:output_type -> xswallet.BackupStatus
+	12, // 45: xswallet.WalletService.MarkBackupComplete:output_type -> xswallet.BackupStatus
+	15, // 46: xswallet.WalletService.GetBalance:output_type -> xswallet.BalanceResponse
+	17, // 47: xswallet.WalletService.GetAllBalances:output_type -> xswallet.AllBalancesResponse
+	21, // 48: xswallet.WalletService.GetNewAddress:output_type -> xswallet.AddressResponse
+	23, // 49: xswallet.WalletService.ListAddresses:output_type -> xswallet.ListAddressesResponse
+	26, // 50: xswallet.WalletService.ListUtxos:output_type -> xswallet.ListUtxosResponse
+	29, // 51: xswallet.WalletService.ListTransactions:output_type -> xswallet.ListTransactionsResponse
+	32, // 52: xswallet.WalletService.SendOnchain:output_type -> xswallet.SendOnchainResponse
+	19, // 53: xswallet.WalletService.WatchBalances:output_type -> xswallet.BalanceUpdate
+	40, // [40:54] is the sub-list for method output_type
+	26, // [26:40] is the sub-list for method input_type
+	26, // [26:26] is the sub-list for extension type_name
+	26, // [26:26] is the sub-list for extension extendee
+	0,  // [0:26] is the sub-list for field type_name
 }
 
 func init() { file_wallet_proto_init() }
@@ -2075,7 +2246,7 @@ func file_wallet_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_wallet_proto_rawDesc), len(file_wallet_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   30,
+			NumMessages:   32,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
