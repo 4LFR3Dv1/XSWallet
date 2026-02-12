@@ -77,12 +77,46 @@ docker compose -f test/regtest/docker-compose.yml up -d
 ```
 Para mainnet/testnet, rode `bitcoind` e `elementsd` e ajuste as credenciais no config JSON do `xscore`.
 
+### 0.1 Configuração (mainnet/testnet)
+Exemplo mínimo de `config.json` para on-chain (BTC + Liquid). Ajuste paths/credenciais conforme seu ambiente:
+```json
+{
+  "network": "mainnet",
+  "data_dir": "C:\\\\Users\\\\seu-usuario\\\\.xs-wallet",
+  "db_path": "C:\\\\Users\\\\seu-usuario\\\\.xs-wallet\\\\xs-wallet.db",
+  "bitcoind": {
+    "enabled": true,
+    "host": "127.0.0.1",
+    "port": 8332,
+    "user": "rpcuser",
+    "password": "rpcpass"
+  },
+  "elementsd": {
+    "enabled": true,
+    "host": "127.0.0.1",
+    "port": 7041,
+    "user": "elements",
+    "password": "elements_dev_pass_2026"
+  },
+  "lnd": {
+    "enabled": false
+  }
+}
+```
+Para testnet, ajuste `network` para `"testnet"` e a porta do `bitcoind` para `18332`.
+Se o JSON tiver `network`, ele sobrescreve o valor passado em `--network`.
+
 ### 1. Go Core
 ```bash
 cd core
 go build ./cmd/xscore
 ./xscore.exe --network=regtest --port=9735
 ```
+Para mainnet/testnet com config JSON:
+```bash
+./xscore.exe --config C:\path\config.json --port=9735
+```
+Se preferir sem JSON, use apenas `--network` e ajuste o `data_dir` com `--datadir`.
 
 ### 2. API Bridge (dev only)
 ```bash
@@ -96,6 +130,14 @@ Ajuste `GRPC_HOST` se o `xscore` estiver em outro host/porta.
 cd frontend
 npm install && npm run dev
 ```
+
+### 4. Teste on-chain via frontend (mainnet/testnet)
+1. Suba `bitcoind`, `elementsd`, `xscore`, `api-bridge` e `frontend`.
+2. Crie a carteira, salve o mnemônico e destrave com o PIN.
+3. Gere um endereço BTC e envie uma pequena quantia; aguarde confirmações.
+4. Gere um endereço Liquid (confidential) e envie L-BTC; aguarde confirmações.
+5. Verifique saldo e UTXOs na tela.
+6. Use o formulário de envio para testar `Send` em BTC e em Liquid; confira o TXID retornado.
 
 ## 📅 Roadmap (10 semanas)
 
