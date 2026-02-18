@@ -3,7 +3,6 @@ package e2e
 import (
 	"context"
 	"os"
-	"os/exec"
 	"testing"
 	"time"
 
@@ -31,10 +30,13 @@ func TestCrashRecovery(t *testing.T) {
 	}
 
 	// Create a swap in COMMIT_STARTED state
-	engine := swap.NewEngine(database)
+	engine := swap.NewEngine(database, e2eTestVault{})
 	swp, err := engine.Create(ctx, swap.KindSubmarine, "regtest", 0)
 	if err != nil {
 		t.Fatalf("Failed to create swap: %v", err)
+	}
+	if _, err := database.ExecContext(ctx, `UPDATE swaps SET locked_intent = ? WHERE id = ?`, "{}", swp.ID); err != nil {
+		t.Fatalf("Failed to set locked_intent: %v", err)
 	}
 
 	// Transition to LOCKED
@@ -82,7 +84,7 @@ func TestCrashRecovery(t *testing.T) {
 	btcClient := bitcoin.NewClient("http://127.0.0.1:18443", "rpcuser", "rpcpass")
 
 	// Create new engine and watcher
-	engine = swap.NewEngine(database)
+	engine = swap.NewEngine(database, e2eTestVault{})
 	watcherInstance := watcher.NewWatcher(database, btcClient, engine)
 
 	// Run reconciliation (this is what happens on boot)

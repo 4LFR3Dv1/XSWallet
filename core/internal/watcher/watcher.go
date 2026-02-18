@@ -3,6 +3,7 @@ package watcher
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"sync"
 	"time"
@@ -186,6 +187,17 @@ func (w *Watcher) reconcileSwap(ctx context.Context, s *swap.Swap) error {
 		return nil
 	}
 
+	// Dedupe by external evidence to avoid replaying the same reconcile stimulus.
+	eventKey := buildReconcileEventKey(s, facts, action, newState)
+	done, _, err := w.engine.CheckIdempotency(ctx, s.ID, eventKey)
+	if err != nil {
+		return err
+	}
+	if done {
+		log.Printf("Swap %s: skipping duplicated reconcile event (%s)", s.ID, eventKey)
+		return nil
+	}
+
 	// Execute action
 	switch action {
 	case swap.ActionTransitionToWaiting, swap.ActionTransitionToCompleted, swap.ActionTransitionToFailed:
@@ -197,6 +209,9 @@ func (w *Watcher) reconcileSwap(ctx context.Context, s *swap.Swap) error {
 			}
 			return err
 		}
+		if err := w.engine.RecordOperation(ctx, s.ID, eventKey, string(newState)); err != nil {
+			return err
+		}
 		log.Printf("Swap %s: %s -> %s (reconcile)", s.ID, s.State, newState)
 
 	case swap.ActionPrepareRefund:
@@ -204,6 +219,11 @@ func (w *Watcher) reconcileSwap(ctx context.Context, s *swap.Swap) error {
 		_, err := w.engine.Transition(ctx, s.ID, s.Version, newState, "timeout_approaching", nil)
 		if err != nil && err != swap.ErrConcurrentModification {
 			return err
+		}
+		if err == nil {
+			if recErr := w.engine.RecordOperation(ctx, s.ID, eventKey, string(newState)); recErr != nil {
+				return recErr
+			}
 		}
 		log.Printf("Swap %s: preparing refund (timeout approaching)", s.ID)
 
@@ -214,10 +234,50 @@ func (w *Watcher) reconcileSwap(ctx context.Context, s *swap.Swap) error {
 		if err != nil && err != swap.ErrConcurrentModification {
 			return err
 		}
+		if err == nil {
+			if recErr := w.engine.RecordOperation(ctx, s.ID, eventKey, string(swap.StateRefunding)); recErr != nil {
+				return recErr
+			}
+		}
 		log.Printf("Swap %s: broadcasting refund", s.ID)
 	}
 
 	return nil
+}
+
+func buildReconcileEventKey(s *swap.Swap, facts swap.Facts, action swap.Action, newState swap.State) string {
+	return fmt.Sprintf(
+		"reconcile:%s:%s->%s:tx=%s:ps=%s:h=%d:ta=%t:tr=%t:ls=%t:lc=%t",
+		actionName(action),
+		s.State,
+		newState,
+		s.LockupTxid,
+		facts.ProviderStatus,
+		facts.CurrentHeight,
+		facts.TimeoutApproaching,
+		facts.TimeoutReached,
+		facts.LockupSeen,
+		facts.LockupConfirmed,
+	)
+}
+
+func actionName(a swap.Action) string {
+	switch a {
+	case swap.ActionWaitForLockup:
+		return "wait_for_lockup"
+	case swap.ActionTransitionToWaiting:
+		return "to_waiting"
+	case swap.ActionTransitionToCompleted:
+		return "to_completed"
+	case swap.ActionTransitionToFailed:
+		return "to_failed"
+	case swap.ActionPrepareRefund:
+		return "prepare_refund"
+	case swap.ActionBroadcastRefund:
+		return "broadcast_refund"
+	default:
+		return "none"
+	}
 }
 
 // listActiveSwaps returns all non-terminal swaps

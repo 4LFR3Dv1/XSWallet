@@ -155,6 +155,7 @@ npm install && npm run dev
 - **Especificação Técnica**: [`docs/XS_Wallet_Especificacao_Tecnica_v2.html`](docs/XS_Wallet_Especificacao_Tecnica_v2.html)
 - **Status vs Spec**: [`docs/STATUS_ESPECIFICACAO_XS_WALLET.md`](docs/STATUS_ESPECIFICACAO_XS_WALLET.md)
 - **Plano de Implementação**: [`docs/PLANO_IMPLEMENTACAO_v0.2.md`](docs/PLANO_IMPLEMENTACAO_v0.2.md)
+- **Checklist E2E Swap Pipeline**: [`docs/XS_Wallet_Checklist_E2E_Swap.html`](docs/XS_Wallet_Checklist_E2E_Swap.html)
 
 ## ⚠️ Notas Importantes
 

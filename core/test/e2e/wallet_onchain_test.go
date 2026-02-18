@@ -130,6 +130,9 @@ func TestWalletOnchainLiquid(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetNewAddress Liquid failed: %v", err)
 	}
+	if addrResp.Address == "" {
+		t.Fatalf("expected non-empty confidential liquid address")
+	}
 
 	plainAddr := lookupLiquidPlainAddress(t, database)
 

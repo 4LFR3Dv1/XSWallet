@@ -3,10 +3,10 @@ package e2e
 import (
 	"context"
 	"testing"
-	"time"
 
 	"github.com/xs-wallet/xscore/internal/adapters/bitcoin"
 	"github.com/xs-wallet/xscore/internal/db"
+	"github.com/xs-wallet/xscore/internal/provider"
 	"github.com/xs-wallet/xscore/internal/provider/mock"
 	"github.com/xs-wallet/xscore/internal/swap"
 	"github.com/xs-wallet/xscore/internal/vault"
@@ -52,16 +52,16 @@ func TestSubmarineE2E(t *testing.T) {
 	t.Logf("Bitcoin height: %d", height)
 
 	// Setup provider
-	provider := mock.NewMockProvider()
+	mockProvider := mock.NewMockProvider()
 
 	// Setup swap engine
-	engine := swap.NewEngine(database)
+	engine := swap.NewEngine(database, e2eTestVault{})
 
 	// Setup submarine orchestrator
-	submarine := swap.NewSubmarineOrchestrator(engine, database, provider)
+	submarine := swap.NewSubmarineOrchestrator(engine, database, mockProvider)
 
 	// Step 1: Create quote
-	quoteService := swap.NewQuoteService(database, provider)
+	quoteService := swap.NewQuoteService(database, mockProvider)
 	quote, err := quoteService.CreateQuote(ctx, provider.QuoteRequest{
 		Kind:      provider.SwapKindSubmarine,
 		FromChain: provider.ChainBTC,

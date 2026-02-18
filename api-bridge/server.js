@@ -80,39 +80,14 @@ const xswallet = protoDescriptor.xswallet;
 let swapClient, walletClient, nodeClient;
 let grpcHealthy = false;
 
-// Session store (in-memory for now)
-let currentSessionId = null;
-
-// Helper to create gRPC metadata with auth
-function createAuthMetadata() {
-    const metadata = new grpc.Metadata();
-    if (currentSessionId) {
-        metadata.add('authorization', `Bearer ${currentSessionId}`);
-    }
-    return metadata;
-}
-
-// Helper to create gRPC metadata from request header (production-ready)
+// Helper to create gRPC metadata from request header
 function createAuthMetadataFromReq(req) {
     const metadata = new grpc.Metadata();
     const auth = req.headers['authorization'];
-    if (auth) {
+    if (typeof auth === 'string' && auth.trim().startsWith('Bearer ')) {
         metadata.add('authorization', auth);
-    } else if (currentSessionId) {
-        metadata.add('authorization', `Bearer ${currentSessionId}`);
     }
     return metadata;
-}
-
-// Helper to make authenticated gRPC calls
-function grpcCallWithAuth(client, method, request, deadline) {
-    return new Promise((resolve, reject) => {
-        const metadata = createAuthMetadata();
-        client[method](request, metadata, { deadline }, (err, response) => {
-            if (err) reject(err);
-            else resolve(response);
-        });
-    });
 }
 
 function initGrpcClients() {
@@ -144,6 +119,13 @@ function initGrpcClients() {
     }
 }
 
+function setClientsForTest(clients = {}) {
+    if (clients.swapClient) swapClient = clients.swapClient;
+    if (clients.walletClient) walletClient = clients.walletClient;
+    if (clients.nodeClient) nodeClient = clients.nodeClient;
+    if (typeof clients.grpcHealthy === 'boolean') grpcHealthy = clients.grpcHealthy;
+}
+
 function checkGrpcHealth() {
     if (!walletClient) {
         grpcHealthy = false;
@@ -160,7 +142,10 @@ function checkGrpcHealth() {
 }
 
 // Check health every 30 seconds
-setInterval(checkGrpcHealth, 30000);
+const healthInterval = setInterval(checkGrpcHealth, 30000);
+if (typeof healthInterval.unref === 'function') {
+    healthInterval.unref();
+}
 
 // ============================================================================
 // ERROR HANDLING
@@ -203,11 +188,24 @@ function handleGrpcError(err, res, requestId) {
     errorResponse(res, `GRPC_${codeMap}`, err.details || err.message, {}, requestId);
 }
 
+function requireAuthMetadata(req, res) {
+    const metadata = createAuthMetadataFromReq(req);
+    const auth = req.headers['authorization'];
+    if (typeof auth !== 'string' || !auth.trim().startsWith('Bearer ')) {
+        errorResponse(res, 'GRPC_UNAUTHENTICATED', 'Missing or invalid Authorization header', {}, req.id);
+        return null;
+    }
+    return metadata;
+}
+
 // ============================================================================
 // SCHEMA NORMALIZATION (gRPC → Flask format)
 // ============================================================================
 
 function normalizeSwap(grpcSwap) {
+    if (!grpcSwap || !grpcSwap.id) {
+        throw new Error('invalid swap payload');
+    }
     return {
         id: grpcSwap.id,
         from_chain: grpcSwap.from_chain || 'L-BTC',
@@ -365,7 +363,10 @@ app.get('/api/v1/events/recent', (req, res) => {
 
 // Generate new wallet (InitializeVault with generate)
 app.post('/api/v1/wallet/generate', (req, res) => {
-    const { word_count = 24, pin = 'default-pin' } = req.body;
+    const { word_count = 24, pin } = req.body;
+    if (typeof pin !== 'string' || pin.length < 8) {
+        return errorResponse(res, 'GRPC_INVALID_ARGUMENT', 'PIN must be at least 8 characters', {}, req.id);
+    }
     const deadline = new Date(Date.now() + CONFIG.GRPC_DEADLINE_MS.create);
 
     walletClient.InitializeVault({
@@ -395,12 +396,6 @@ app.post('/api/v1/wallet/unlock', (req, res) => {
     walletClient.UnlockVault({ pin }, { deadline }, (err, response) => {
         if (err) return handleGrpcError(err, res, req.id);
 
-        // Store session for subsequent calls
-        if (response.success && response.session_id) {
-            currentSessionId = response.session_id;
-            log('info', 'Session stored', { requestId: req.id });
-        }
-
         log('info', 'Vault unlocked', { requestId: req.id });
         res.json({
             success: response.success,
@@ -413,14 +408,12 @@ app.post('/api/v1/wallet/unlock', (req, res) => {
 // Lock vault
 app.post('/api/v1/wallet/lock', (req, res) => {
     const deadline = new Date(Date.now() + CONFIG.GRPC_DEADLINE_MS.create);
-    const metadata = createAuthMetadata();
+    const metadata = requireAuthMetadata(req, res);
+    if (!metadata) return;
 
     walletClient.LockVault({}, metadata, { deadline }, (err, response) => {
         if (err) return handleGrpcError(err, res, req.id);
-
-        // Clear session
-        currentSessionId = null;
-        log('info', 'Vault locked, session cleared', { requestId: req.id });
+        log('info', 'Vault locked', { requestId: req.id });
 
         res.json({
             success: true,
@@ -453,7 +446,8 @@ app.get('/api/v1/wallet/status', (req, res) => {
 app.post('/api/v1/wallet/derive', (req, res) => {
     const { chain = 'CHAIN_BTC', label = '' } = req.body;
     const deadline = new Date(Date.now() + CONFIG.GRPC_DEADLINE_MS.create);
-    const metadata = createAuthMetadata();
+    const metadata = requireAuthMetadata(req, res);
+    if (!metadata) return;
 
     walletClient.GetNewAddress({ chain, label }, metadata, { deadline }, (err, response) => {
         if (err) return handleGrpcError(err, res, req.id);
@@ -484,7 +478,8 @@ app.post('/api/v1/wallet/validate', (req, res) => {
 // Get all balances
 app.get('/api/v1/wallet/balances', (req, res) => {
     const deadline = new Date(Date.now() + CONFIG.GRPC_DEADLINE_MS.list);
-    const metadata = createAuthMetadata();
+    const metadata = requireAuthMetadata(req, res);
+    if (!metadata) return;
 
     walletClient.GetAllBalances({}, metadata, { deadline }, (err, response) => {
         if (err) return handleGrpcError(err, res, req.id);
@@ -507,7 +502,8 @@ app.post('/api/v1/wallet/send', (req, res) => {
     }
 
     const deadline = new Date(Date.now() + CONFIG.GRPC_DEADLINE_MS.create);
-    const metadata = createAuthMetadataFromReq(req);
+    const metadata = requireAuthMetadata(req, res);
+    if (!metadata) return;
 
     walletClient.SendOnchain({
         chain,
@@ -684,7 +680,8 @@ app.post('/api/v1/htlc/decode', (req, res) => {
 // GET /api/v1/swaps - List all swaps
 app.get('/api/v1/swaps', (req, res) => {
     const deadline = new Date(Date.now() + CONFIG.GRPC_DEADLINE_MS.list);
-    const metadata = createAuthMetadata();
+    const metadata = requireAuthMetadata(req, res);
+    if (!metadata) return;
 
     swapClient.ListSwaps({}, metadata, { deadline }, (err, response) => {
         if (err) return handleGrpcError(err, res, req.id);
@@ -706,7 +703,8 @@ app.post('/api/v1/swaps', (req, res) => {
     }
 
     const deadline = new Date(Date.now() + CONFIG.GRPC_DEADLINE_MS.create);
-    const metadata = createAuthMetadata();
+    const metadata = requireAuthMetadata(req, res);
+    if (!metadata) return;
 
     // Map chain names to proto enum
     const chainMap = {
@@ -777,12 +775,13 @@ app.post('/api/v1/swaps', (req, res) => {
 // GET /api/v1/swaps/:id - Get swap details
 app.get('/api/v1/swaps/:id', (req, res) => {
     const deadline = new Date(Date.now() + CONFIG.GRPC_DEADLINE_MS.list);
-    const metadata = createAuthMetadata();
+    const metadata = requireAuthMetadata(req, res);
+    if (!metadata) return;
 
     swapClient.GetSwap({ swap_id: req.params.id }, metadata, { deadline }, (err, response) => {
         if (err) return handleGrpcError(err, res, req.id);
 
-        const swap = normalizeSwap(response.swap);
+        const swap = normalizeSwap(response.swap ?? response);
         res.json(swap);
     });
 });
@@ -791,7 +790,8 @@ app.get('/api/v1/swaps/:id', (req, res) => {
 app.post('/api/v1/swaps/:id/check', (req, res) => {
     const swapId = req.params.id;
     const deadline = new Date(Date.now() + CONFIG.GRPC_DEADLINE_MS.commit);
-    const metadata = createAuthMetadata();
+    const metadata = requireAuthMetadata(req, res);
+    if (!metadata) return;
 
     // Get current swap state
     swapClient.GetSwap({ swap_id: swapId }, metadata, { deadline }, (err, getResp) => {
@@ -802,13 +802,13 @@ app.post('/api/v1/swaps/:id/check', (req, res) => {
         // State machine: advance to next step
         if (currentState === 'STATE_OPEN' || currentState === 'SWAP_STATE_OPEN') {
             // Lock the swap
-            swapClient.LockSwap({ swap_id: swapId }, metadata, { deadline }, (err, lockResp) => {
+            swapClient.LockSwap({ swap_id: swapId, expected_version: getResp.version }, metadata, { deadline }, (err, lockResp) => {
                 if (err) return handleGrpcError(err, res, req.id);
                 res.json({ status: 'locked', swap: normalizeSwap(lockResp.swap ?? lockResp) });
             });
         } else if (currentState === 'STATE_LOCKED' || currentState === 'SWAP_STATE_LOCKED') {
             // Commit (fund HTLC)
-            swapClient.CommitSwap({ swap_id: swapId }, metadata, { deadline }, (err, commitResp) => {
+            swapClient.CommitSwap({ swap_id: swapId, expected_version: getResp.version }, metadata, { deadline }, (err, commitResp) => {
                 if (err) return handleGrpcError(err, res, req.id);
                 res.json({ status: 'committed', swap: normalizeSwap(commitResp.swap ?? commitResp) });
             });
@@ -834,30 +834,6 @@ app.post('/api/v1/swaps/:id/refund', (req, res) => {
     errorResponse(res, 'GRPC_UNIMPLEMENTED', 'Refund not implemented', {
         reason: 'Refund logic not yet implemented in core',
     }, req.id);
-});
-
-// ============================================================================
-// WALLET ENDPOINTS (bonus)
-// ============================================================================
-
-app.post('/api/v1/wallet/unlock', (req, res) => {
-    const { pin } = req.body;
-    if (!pin) {
-        return errorResponse(res, 'GRPC_INVALID_ARGUMENT', 'PIN required', {}, req.id);
-    }
-
-    const deadline = new Date(Date.now() + CONFIG.GRPC_DEADLINE_MS.create);
-    walletClient.UnlockVault({ pin }, { deadline }, (err, response) => {
-        if (err) return handleGrpcError(err, res, req.id);
-
-        // NEVER log session_id or sensitive data
-        log('info', 'Vault unlocked', { requestId: req.id });
-
-        res.json({
-            session_id: response.session_id,
-            expires_at: response.expires_at,
-        });
-    });
 });
 
 // ============================================================================
@@ -888,18 +864,33 @@ app.post('/api/v1/vault/lock', (req, res) => {
 // SERVER STARTUP
 // ============================================================================
 
-initGrpcClients();
-
-app.listen(CONFIG.PORT, () => {
-    log('info', `API Bridge started`, {
-        port: CONFIG.PORT,
-        grpc_host: CONFIG.GRPC_HOST,
-        env: process.env.NODE_ENV || 'development',
+function start() {
+    initGrpcClients();
+    return app.listen(CONFIG.PORT, () => {
+        log('info', `API Bridge started`, {
+            port: CONFIG.PORT,
+            grpc_host: CONFIG.GRPC_HOST,
+            env: process.env.NODE_ENV || 'development',
+        });
     });
-});
+}
+
+if (require.main === module) {
+    start();
+}
 
 // Graceful shutdown
 process.on('SIGTERM', () => {
     log('info', 'SIGTERM received, shutting down gracefully');
     process.exit(0);
 });
+
+module.exports = {
+    app,
+    start,
+    _test: {
+        setClientsForTest,
+        normalizeSwap,
+        requireAuthMetadata,
+    },
+};

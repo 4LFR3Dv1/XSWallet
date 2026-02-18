@@ -40,10 +40,10 @@ type WalletService struct {
 // NewWalletService creates WalletService
 func NewWalletService(database *db.DB, cfg *config.Config, v *vault.Vault, btcClient *bitcoin.Client, liquidClient *liquid.Client) *WalletService {
 	return &WalletService{
-		db:    database,
-		cfg:   cfg,
-		vault: v,
-		btc:   btcClient,
+		db:     database,
+		cfg:    cfg,
+		vault:  v,
+		btc:    btcClient,
 		liquid: liquidClient,
 	}
 }
@@ -229,9 +229,18 @@ func (s *WalletService) GetBalance(ctx context.Context, req *pb.GetBalanceReques
 
 // GetAllBalances returns all balances
 func (s *WalletService) GetAllBalances(ctx context.Context, req *pb.GetAllBalancesRequest) (*pb.AllBalancesResponse, error) {
-	btc, _ := s.GetBalance(ctx, &pb.GetBalanceRequest{Chain: pb.Chain_CHAIN_BTC})
-	liquid, _ := s.GetBalance(ctx, &pb.GetBalanceRequest{Chain: pb.Chain_CHAIN_LIQUID})
-	ln, _ := s.GetBalance(ctx, &pb.GetBalanceRequest{Chain: pb.Chain_CHAIN_LN})
+	btc, err := s.GetBalance(ctx, &pb.GetBalanceRequest{Chain: pb.Chain_CHAIN_BTC})
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to get BTC balance: %v", err)
+	}
+	liquid, err := s.GetBalance(ctx, &pb.GetBalanceRequest{Chain: pb.Chain_CHAIN_LIQUID})
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to get Liquid balance: %v", err)
+	}
+	ln, err := s.GetBalance(ctx, &pb.GetBalanceRequest{Chain: pb.Chain_CHAIN_LN})
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to get LN balance: %v", err)
+	}
 
 	return &pb.AllBalancesResponse{
 		Btc:    btc,
@@ -383,12 +392,12 @@ func (s *WalletService) ListUtxos(ctx context.Context, req *pb.ListUtxosRequest)
 			}
 
 			utxos = append(utxos, &pb.Utxo{
-				Txid:             u.TxID,
-				Vout:             u.Vout,
-				AmountSat:        amountSat,
-				Address:          address,
-				Confirmations:    confirmations,
-				Reserved:         reserved,
+				Txid:              u.TxID,
+				Vout:              u.Vout,
+				AmountSat:         amountSat,
+				Address:           address,
+				Confirmations:     confirmations,
+				Reserved:          reserved,
 				ReservedForSwapId: reservation,
 			})
 		}
@@ -429,12 +438,12 @@ func (s *WalletService) ListUtxos(ctx context.Context, req *pb.ListUtxosRequest)
 			}
 
 			utxos = append(utxos, &pb.Utxo{
-				Txid:             u.TxID,
-				Vout:             u.Vout,
-				AmountSat:        amountSat,
-				Address:          u.Address,
-				Confirmations:    int32(u.Confirmations),
-				Reserved:         reserved,
+				Txid:              u.TxID,
+				Vout:              u.Vout,
+				AmountSat:         amountSat,
+				Address:           u.Address,
+				Confirmations:     int32(u.Confirmations),
+				Reserved:          reserved,
 				ReservedForSwapId: reservation,
 			})
 		}
@@ -751,7 +760,7 @@ func (s *WalletService) recordReceiveTransactions(ctx context.Context, chainKey 
 	}
 
 	type agg struct {
-		amount       int64
+		amount        int64
 		confirmations int32
 	}
 	aggMap := map[string]*agg{}

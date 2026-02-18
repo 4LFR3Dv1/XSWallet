@@ -4,6 +4,7 @@ package swap
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/chaincfg"
@@ -158,9 +159,9 @@ func (so *SubmarineOrchestrator) Commit(ctx context.Context, swapID string, vaul
 
 	for _, utxo := range selected {
 		_, err := tx.ExecContext(ctx, `
-			INSERT INTO utxo_reservations (txid, vout, swap_id, reserved_at)
-			VALUES (?, ?, ?, datetime('now'))
-		`, utxo.TxID, utxo.Vout, swapID)
+				INSERT INTO utxo_reservations (chain, txid, vout, swap_id)
+				VALUES ('btc', ?, ?, ?)
+			`, utxo.TxID, utxo.Vout, swapID)
 		if err != nil {
 			return nil, fmt.Errorf("failed to reserve UTXO: %w", err)
 		}
@@ -215,23 +216,51 @@ func (so *SubmarineOrchestrator) Commit(ctx context.Context, swapID string, vaul
 
 	// Record operation (idempotency)
 	_, err = tx.ExecContext(ctx, `
-		INSERT INTO swap_ops (swap_id, op_key, result, created_at)
-		VALUES (?, ?, ?, datetime('now'))
-	`, swapID, opKey, txid)
+			INSERT INTO swap_ops (swap_id, op_key, result, created_at)
+			VALUES (?, ?, ?, datetime('now'))
+		`, swapID, opKey, txid)
 	if err != nil {
 		return nil, err
 	}
 
-	// Commit transaction
+	// Transition to COMMIT_STARTED atomically with persisted commit evidence.
+	valid := false
+	for _, s := range ValidTransitions[swap.State] {
+		if s == StateCommitStarted {
+			valid = true
+			break
+		}
+	}
+	if !valid {
+		return nil, ErrInvalidTransition
+	}
+
+	now := time.Now().UTC().Format(time.RFC3339Nano)
+	result, err := tx.ExecContext(ctx, `
+		UPDATE swaps
+		SET state = ?, version = version + 1, updated_at = ?
+		WHERE id = ? AND version = ?
+	`, StateCommitStarted, now, swapID, swap.Version)
+	if err != nil {
+		return nil, err
+	}
+	affected, _ := result.RowsAffected()
+	if affected == 0 {
+		return nil, ErrConcurrentModification
+	}
+
+	if err := so.engine.logEventTx(ctx, tx, swapID, string(swap.State), string(StateCommitStarted), "commit", map[string]interface{}{
+		"txid":   txid,
+		"vbytes": fundingTx.SerializeSize(),
+	}); err != nil {
+		return nil, err
+	}
+
 	if err := tx.Commit(); err != nil {
 		return nil, err
 	}
 
-	// Transition to COMMIT_STARTED
-	return so.engine.Transition(ctx, swapID, swap.Version, StateCommitStarted, "commit", map[string]interface{}{
-		"txid":   txid,
-		"vbytes": fundingTx.SerializeSize(),
-	})
+	return so.engine.Get(ctx, swapID)
 }
 
 // ApplyProviderUpdate handles updates from the provider

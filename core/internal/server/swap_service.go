@@ -3,6 +3,9 @@ package server
 
 import (
 	"context"
+	"database/sql"
+	"errors"
+	"strings"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -93,6 +96,12 @@ func (s *SwapService) LockSwap(ctx context.Context, req *pb.LockSwapRequest) (*p
 		if err == swap.ErrConcurrentModification {
 			return nil, status.Error(codes.Aborted, "concurrent modification")
 		}
+		if errors.Is(err, swap.ErrInvalidTransition) {
+			return nil, status.Error(codes.FailedPrecondition, "invalid transition")
+		}
+		if isSwapNotFoundError(err) {
+			return nil, status.Error(codes.NotFound, "swap not found")
+		}
 		return nil, status.Errorf(codes.Internal, "failed to lock swap: %v", err)
 	}
 	return swapToProto(swp), nil
@@ -100,17 +109,20 @@ func (s *SwapService) LockSwap(ctx context.Context, req *pb.LockSwapRequest) (*p
 
 // CommitSwap broadcasts the funding transaction
 func (s *SwapService) CommitSwap(ctx context.Context, req *pb.CommitSwapRequest) (*pb.SwapSnapshot, error) {
-	// For MVP, we pass nil for vault and btcClient - in full implementation these would be wired
-	// The actual commit logic handles the mock case
-	swp, err := s.engine.Get(ctx, req.SwapId)
-	if err != nil {
-		return nil, status.Errorf(codes.NotFound, "swap not found: %v", err)
+	if req.ExpectedVersion == 0 {
+		return nil, status.Error(codes.InvalidArgument, "expected_version is required")
 	}
 
-	// For now, just transition to COMMIT_STARTED state
-	// Full vault/btc integration would happen here
-	swp, err = s.engine.Transition(ctx, req.SwapId, swp.Version, swap.StateCommitStarted, "commit", nil)
+	// For now, commit transitions to COMMIT_STARTED.
+	// Full vault/btc funding integration will be wired here.
+	swp, err := s.engine.Transition(ctx, req.SwapId, int64(req.ExpectedVersion), swap.StateCommitStarted, "commit", nil)
 	if err != nil {
+		if err == swap.ErrConcurrentModification {
+			return nil, status.Error(codes.Aborted, "concurrent modification")
+		}
+		if errors.Is(err, swap.ErrInvalidTransition) {
+			return nil, status.Error(codes.FailedPrecondition, "invalid transition")
+		}
 		return nil, status.Errorf(codes.Internal, "failed to commit swap: %v", err)
 	}
 	return swapToProto(swp), nil
@@ -312,4 +324,8 @@ func protoChainToProvider(c pb.Chain) provider.Chain {
 	default:
 		return provider.ChainBTC // fallback
 	}
+}
+
+func isSwapNotFoundError(err error) bool {
+	return err != nil && (strings.HasPrefix(err.Error(), "swap not found") || errors.Is(err, sql.ErrNoRows))
 }

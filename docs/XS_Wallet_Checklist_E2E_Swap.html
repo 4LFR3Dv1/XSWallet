@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>XS Wallet - Checklist E2E Swap Pipeline</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+        :root {
+            --text: #1a1a1a;
+            --text-secondary: #4a4a4a;
+            --bg: #ffffff;
+            --border: #e5e5e5;
+            --accent: #2563eb;
+            --code-bg: #f5f5f5;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            font-size: 10pt;
+            line-height: 1.6;
+            color: var(--text);
+            background: var(--bg);
+            max-width: 210mm;
+            margin: 0 auto;
+            padding: 20mm;
+        }
+
+        h1 {
+            font-size: 20pt;
+            font-weight: 700;
+            margin: 24pt 0 12pt;
+            border-bottom: 2px solid var(--text);
+            padding-bottom: 6pt;
+        }
+
+        h2 {
+            font-size: 14pt;
+            font-weight: 600;
+            margin: 18pt 0 8pt;
+            color: var(--text);
+        }
+
+        h3 {
+            font-size: 11pt;
+            font-weight: 600;
+            margin: 12pt 0 6pt;
+        }
+
+        p {
+            margin-bottom: 8pt;
+            text-align: justify;
+        }
+
+        ul,
+        ol {
+            margin: 8pt 0 12pt 18pt;
+        }
+
+        li {
+            margin-bottom: 5pt;
+        }
+
+        .cover {
+            text-align: center;
+            page-break-after: always;
+            padding-top: 100pt;
+        }
+
+        .cover h1 {
+            font-size: 32pt;
+            border: none;
+            margin-bottom: 8pt;
+        }
+
+        .cover .subtitle {
+            font-size: 14pt;
+            color: var(--text-secondary);
+            margin-bottom: 40pt;
+        }
+
+        .cover .meta {
+            margin-top: 60pt;
+        }
+
+        .cover .meta table {
+            margin: 0 auto;
+            text-align: left;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 12pt 0;
+            font-size: 9pt;
+        }
+
+        th,
+        td {
+            border: 1px solid var(--border);
+            padding: 6pt 8pt;
+            text-align: left;
+            vertical-align: top;
+        }
+
+        th {
+            background: #f0f0f0;
+            font-weight: 600;
+        }
+
+        .caption {
+            font-size: 9pt;
+            font-style: italic;
+            color: var(--text-secondary);
+            text-align: center;
+            margin: 4pt 0 16pt;
+        }
+
+        code {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 8pt;
+            background: var(--code-bg);
+            padding: 2pt 4pt;
+            border-radius: 2pt;
+        }
+
+        pre {
+            background: var(--code-bg);
+            padding: 12pt;
+            border-radius: 4pt;
+            overflow-x: auto;
+            margin: 8pt 0;
+            font-size: 8pt;
+            line-height: 1.4;
+        }
+
+        pre code {
+            background: none;
+            padding: 0;
+        }
+
+        .note {
+            background: #fef3c7;
+            border-left: 3px solid #f59e0b;
+            padding: 8pt 12pt;
+            margin: 12pt 0;
+            font-size: 9pt;
+        }
+
+        .note.success {
+            background: #d1fae5;
+            border-color: var(--success);
+        }
+
+        .note.danger {
+            background: #fee2e2;
+            border-color: var(--danger);
+        }
+
+        .page-break {
+            page-break-before: always;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 2pt 6pt;
+            border-radius: 3pt;
+            font-size: 8pt;
+            font-weight: 600;
+        }
+
+        .badge.done {
+            background: #d1fae5;
+            color: var(--success);
+        }
+
+        .badge.wip {
+            background: #fef3c7;
+            color: var(--warning);
+        }
+
+        .badge.pending {
+            background: #e5e5e5;
+            color: var(--text-secondary);
+        }
+
+        @media print {
+            body {
+                padding: 15mm;
+            }
+
+            .page-break {
+                page-break-before: always;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="cover">
+        <h1>XS WALLET</h1>
+        <div class="subtitle">Checklist Técnico: Fechamento do Pipeline de Swaps E2E</div>
+        <p>Submarine Swap como fluxo canônico</p>
+
+        <div class="meta">
+            <table>
+                <tr>
+                    <th>Documento</th>
+                    <td>Checklist E2E Swap Pipeline</td>
+                </tr>
+                <tr>
+                    <th>Versão</th>
+                    <td>1.0.0</td>
+                </tr>
+                <tr>
+                    <th>Projeto</th>
+                    <td>XS Wallet v0.2.x</td>
+                </tr>
+                <tr>
+                    <th>Data</th>
+                    <td>17 Fevereiro 2026</td>
+                </tr>
+                <tr>
+                    <th>Escopo</th>
+                    <td>Core + Provider + Watcher + Testes E2E</td>
+                </tr>
+                <tr>
+                    <th>Fluxo alvo</th>
+                    <td><code>Quote → Create → Lock → Commit → Reconcile → Completed/Failed</code></td>
+                </tr>
+            </table>
+        </div>
+    </div>
+
+    <div class="page-break">
+        <h1>1. Objetivo e Critério de Pronto</h1>
+
+        <h2>1.1 Objetivo</h2>
+        <p>Fechar o pipeline de swaps ponta a ponta com comportamento determinístico, idempotente e recuperável após
+            crash, priorizando o fluxo Submarine como base antes da expansão para Reverse e Chain.</p>
+
+        <h2>1.2 Definition of Done (DoD)</h2>
+        <table>
+            <tr>
+                <th>Critério</th>
+                <th>Resultado esperado</th>
+                <th>Status</th>
+            </tr>
+            <tr>
+                <td>Estados do swap</td>
+                <td>Transições válidas, sem saltos inválidos, com CAS por versão</td>
+                <td><span class="badge done">Concluído (core)</span></td>
+            </tr>
+            <tr>
+                <td>Idempotência de commit/reconcile</td>
+                <td>Reexecução não duplica broadcast nem side effects</td>
+                <td><span class="badge wip">Parcial</span></td>
+            </tr>
+            <tr>
+                <td>Crash recovery</td>
+                <td>Reinicio retoma swaps ativos sem corrupção de estado</td>
+                <td><span class="badge done">Concluído (baseline)</span></td>
+            </tr>
+            <tr>
+                <td>Pipeline E2E Submarine</td>
+                <td>Teste canônico verde em regtest</td>
+                <td><span class="badge pending">Pendente</span></td>
+            </tr>
+            <tr>
+                <td>Suite principal</td>
+                <td><code>go test ./...</code> verde</td>
+                <td><span class="badge done">Concluído</span></td>
+            </tr>
+        </table>
+        <div class="caption">Tabela 1.1: Critérios de pronto para fechamento E2E</div>
+
+        <h2>1.3 Invariantes de Encerramento (Obrigatórias)</h2>
+        <table>
+            <tr>
+                <th>ID</th>
+                <th>Invariante</th>
+                <th>Status atual</th>
+            </tr>
+            <tr>
+                <td><strong>I1</strong></td>
+                <td>Broadcast único por swap/lockup: para um <code>swap_id</code>, no máximo 1 operação
+                    <code>broadcast_lockup</code> efetivada (mesmo com retry/crash).
+                </td>
+                <td><span class="badge wip">Parcial</span></td>
+            </tr>
+            <tr>
+                <td><strong>I2</strong></td>
+                <td>Transição final única: <code>completed/failed</code> só pode ser atingido uma vez; reconciles
+                    repetidos não geram novos eventos finais.</td>
+                <td><span class="badge wip">Parcial</span></td>
+            </tr>
+        </table>
+        <div class="caption">Tabela 1.2: Invariantes para remover ambiguidade de "Parcial"</div>
+    </div>
+
+    <div class="page-break">
+        <h1>2. Checklist por Componente</h1>
+
+        <h2>2.1 Swap Service (<code>core/internal/server/swap_service.go</code>)</h2>
+        <ul>
+            <li><span class="badge wip">Parcial</span> Exigir <code>expected_version</code> em <code>LockSwap</code> e
+                <code>CommitSwap</code>.<br>Commit exige explicitamente; Lock usa versão recebida, mas sem validação
+                explícita de ausência.
+            </li>
+            <li><span class="badge done">Concluído</span> Mapear erro de concorrência para
+                <code>codes.Aborted</code>.
+            </li>
+            <li><span class="badge done">Concluído</span> Mapear transição inválida para
+                <code>codes.FailedPrecondition</code>.<br>Implementado em Commit e Lock.
+            </li>
+            <li><span class="badge pending">Pendente</span> Garantir persistência de dados de commit (ex.:
+                <code>lockup_txid</code>) quando aplicável.
+            </li>
+            <li><span class="badge done">Concluído</span> Garantir snapshot consistente após cada mutação.</li>
+        </ul>
+
+        <h2>2.2 Orquestrador Submarine (<code>core/internal/swap/submarine.go</code>)</h2>
+        <ul>
+            <li><span class="badge wip">Parcial</span> Cobrir fluxo completo:
+                <code>CreateFromQuote → Lock → Commit</code>.<br>API existe, mas fluxo real ainda parcial no serviço
+                principal.
+            </li>
+            <li><span class="badge done">Concluído</span> Preencher <code>locked_intent</code> antes da transição para
+                <code>locked</code>.
+            </li>
+            <li><span class="badge done">Concluído</span> Usar idempotência antes de operações de efeito externo
+                (broadcast/pagamento).</li>
+            <li><span class="badge done">Concluído</span> Retornar erro explícito e rastreável para falhas de
+                provider/adapters.</li>
+        </ul>
+
+        <h2>2.3 Engine e Estado (<code>core/internal/swap/engine.go</code>)</h2>
+        <ul>
+            <li><span class="badge done">Concluído</span> Todas as transições válidas devem registrar evento em
+                <code>swap_events</code>.
+            </li>
+            <li><span class="badge done">Concluído</span> Incremento de <code>version</code> em toda mutação de
+                estado.</li>
+            <li><span class="badge wip">Parcial</span> Cobrir transições inválidas com testes negativos.</li>
+            <li><span class="badge done">Concluído</span> Garantir API de idempotência (<code>swap_ops</code>) para
+                operações críticas.</li>
+        </ul>
+
+        <h2>2.4 Watcher/Reconcile (<code>core/internal/watcher/watcher.go</code>)</h2>
+        <ul>
+            <li><span class="badge done">Concluído</span> Reconcile de swaps ativos no boot e em ciclo periódico.</li>
+            <li><span class="badge wip">Parcial</span> Avançar estado de forma determinística com base em evidência
+                on-chain/provider.
+                <br>Hoje usa facts internos com status de provider simplificado.
+            </li>
+            <li><span class="badge wip">Parcial</span> Evitar transição duplicada para mesmo evento
+                (idempotência).<br>Dedupe por <code>event_key</code> implementado no reconcile; pendente ampliar
+                evidências externas completas (provider/LN).</li>
+            <li><span class="badge done">Concluído</span> Logging operacional com <code>swap_id</code>, estado
+                anterior e próximo.</li>
+        </ul>
+    </div>
+
+    <div class="page-break">
+        <h1>3. Checklist de Testes</h1>
+
+        <h2>3.1 Unit e Integration</h2>
+        <ul>
+            <li><span class="badge done">Concluído</span> Teste de <code>CommitSwap</code> cobrindo:
+                missing <code>expected_version</code>, stale version e fluxo válido.</li>
+            <li><span class="badge wip">Parcial</span> Testes de transição inválida no engine.</li>
+            <li><span class="badge done">Concluído</span> Teste de idempotência
+                (<code>RecordOperation/CheckIdempotency</code>).</li>
+        </ul>
+
+        <h2>3.2 E2E Canônico (<code>core/test/e2e/submarine_test.go</code>)</h2>
+        <p><span class="badge wip">Parcial</span> O teste atual cobre <code>quote/create/lock</code> e ainda não
+            executa commit + confirmação + conclusão.</p>
+        <p><strong>Asserts canônicos obrigatórios para fechar o pipeline:</strong></p>
+        <ul>
+            <li><strong>A1</strong> - <code>swap_events</code> monotônicos e sem transição inválida.</li>
+            <li><strong>A2</strong> - <code>version</code> monotônica e consistente com mutações.</li>
+            <li><strong>A3</strong> - rodar <code>ReconcileAllActiveSwaps</code> duas vezes e garantir no-op na segunda
+                execução (sem eventos/operações novas).</li>
+        </ul>
+        <ol>
+            <li>Criar quote com parâmetros válidos.</li>
+            <li>Criar swap a partir do quote.</li>
+            <li>Executar lock com controle de versão.</li>
+            <li>Executar commit.</li>
+            <li>Forçar confirmação em regtest (blocos).</li>
+            <li>Executar reconcile.</li>
+            <li>Validar estado final e invariantes (<code>version</code>, <code>events</code>,
+                <code>lockup_txid</code>).
+            </li>
+        </ol>
+
+        <h2>3.4 Blocker de Persistência de Commit</h2>
+        <div class="note danger">
+            <strong>Blocker:</strong> persistência durável de dados de commit (ex.: <code>lockup_txid</code> e
+            evidências associadas) no mesmo ponto de verdade do swap é requisito para reconcile confiável.
+        </div>
+
+        <h2>3.3 Crash Recovery (<code>core/test/e2e/crash_recovery_test.go</code>)</h2>
+        <p><span class="badge done">Concluído</span> Cobertura funcional existente para retomada após crash e validação
+            de idempotência.</p>
+        <ol>
+            <li>Interromper após <code>commit_started</code>.</li>
+            <li>Reiniciar core/db/watcher.</li>
+            <li>Rodar <code>ReconcileAllActiveSwaps</code>.</li>
+            <li>Validar continuidade sem duplicidade de operação.</li>
+        </ol>
+
+        <div class="note">
+            <strong>Nota operacional:</strong> testes E2E devem falhar por infraestrutura apenas quando
+            <code>bitcoind/elementsd</code> não estiverem acessíveis. Erros de compilação devem ser tratados como
+            regressão de código.
+        </div>
+    </div>
+
+    <div class="page-break">
+        <h1>4. Execução e Operação</h1>
+
+        <h2>4.1 Ambiente Regtest</h2>
+        <pre><code>cd XSWallet
+docker compose -f test/regtest/docker-compose.yml up -d</code></pre>
+
+        <h2>4.2 Comandos de Validação</h2>
+        <pre><code>cd XSWallet/core
+go test ./...
+go test ./test/e2e -count=1</code></pre>
+
+        <h2>4.3 Gate de Release Interno</h2>
+        <table>
+            <tr>
+                <th>Gate</th>
+                <th>Comando</th>
+                <th>Condição</th>
+            </tr>
+            <tr>
+                <td>Build/Test principal</td>
+                <td><code>go test ./...</code></td>
+                <td><span class="badge done">Concluído</span> Sem erros de build/test</td>
+            </tr>
+            <tr>
+                <td>E2E Submarine</td>
+                <td><code>go test ./test/e2e -count=1</code></td>
+                <td><span class="badge pending">Pendente</span> Fluxo completo verde em regtest</td>
+            </tr>
+            <tr>
+                <td>Bridge HTTP</td>
+                <td><code>cd api-bridge &amp;&amp; npm test</code></td>
+                <td><span class="badge done">Concluído</span> Autenticação e shape de swap validados</td>
+            </tr>
+        </table>
+        <div class="caption">Tabela 4.1: Gates mínimos de entrega técnica</div>
+
+        <div class="note success">
+            <strong>Resultado esperado:</strong> ao concluir este checklist, o pipeline Submarine E2E torna-se
+            referência estável para expansão de Reverse/Chain e integração final em Electron/IPC.
+        </div>
+    </div>
+</body>
+
+</html>
