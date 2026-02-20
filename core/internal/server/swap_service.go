@@ -6,10 +6,14 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"math"
 	"strings"
 	"time"
 
 	"github.com/btcsuite/btcd/btcec/v2"
+	"github.com/xs-wallet/xscore/internal/adapters/bitcoin"
+	"github.com/xs-wallet/xscore/internal/adapters/liquid"
+	"github.com/xs-wallet/xscore/internal/adapters/lnd"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -42,12 +46,14 @@ func NewSwapService(database *db.DB, cfg *config.Config, engine *swap.Engine, pr
 	if cfg != nil && cfg.Network != "" {
 		network = cfg.Network
 	}
+	submarine := swap.NewSubmarineOrchestrator(engine, database, prov)
+	submarine.SetNetwork(network)
 	return &SwapService{
 		db:        database,
 		cfg:       cfg,
 		engine:    engine,
 		provider:  prov,
-		submarine: swap.NewSubmarineOrchestrator(engine, database, prov),
+		submarine: submarine,
 		network:   network,
 	}
 }
@@ -107,12 +113,15 @@ func (s *SwapService) QuoteSwap(ctx context.Context, req *pb.QuoteSwapRequest) (
 
 // CreateSwap creates a new swap from a quote
 func (s *SwapService) CreateSwap(ctx context.Context, req *pb.CreateSwapRequest) (*pb.SwapSnapshot, error) {
+	if err := s.ensureSwapExecutionReady(ctx); err != nil {
+		return nil, err
+	}
 	swp, err := s.createSwapFromQuote(ctx, req.QuoteId)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to create swap: %v", err)
 	}
 
-	return swapToProto(swp), nil
+	return s.swapToProto(swp), nil
 }
 
 func (s *SwapService) createSwapFromQuote(ctx context.Context, quoteID string) (*swap.Swap, error) {
@@ -127,7 +136,7 @@ func (s *SwapService) createSwapFromQuote(ctx context.Context, quoteID string) (
 		return s.submarine.CreateFromQuote(ctx, quoteID)
 	case provider.SwapKindReverse, provider.SwapKindChain:
 		swapKind := providerKindToSwapKind(quote.Kind)
-		swp, err := s.engine.Create(ctx, swapKind, "regtest", 0)
+		swp, err := s.engine.Create(ctx, swapKind, s.network, 0)
 		if err != nil {
 			return nil, err
 		}
@@ -185,11 +194,14 @@ func (s *SwapService) LockSwap(ctx context.Context, req *pb.LockSwapRequest) (*p
 		}
 		return nil, status.Errorf(codes.Internal, "failed to lock swap: %v", err)
 	}
-	return swapToProto(swp), nil
+	return s.swapToProto(swp), nil
 }
 
 // CommitSwap broadcasts the funding transaction
 func (s *SwapService) CommitSwap(ctx context.Context, req *pb.CommitSwapRequest) (*pb.SwapSnapshot, error) {
+	if err := s.ensureSwapExecutionReady(ctx); err != nil {
+		return nil, err
+	}
 	if req.ExpectedVersion == 0 {
 		return nil, status.Error(codes.InvalidArgument, "expected_version is required")
 	}
@@ -224,7 +236,7 @@ func (s *SwapService) CommitSwap(ctx context.Context, req *pb.CommitSwapRequest)
 		}
 		return nil, status.Errorf(codes.Internal, "failed to commit swap: %v", err)
 	}
-	return swapToProto(swp), nil
+	return s.swapToProto(swp), nil
 }
 
 func (s *SwapService) commitProviderBackedSwap(ctx context.Context, current *swap.Swap, expectedVersion int64) (*swap.Swap, error) {
@@ -443,7 +455,7 @@ func (s *SwapService) GetSwap(ctx context.Context, req *pb.GetSwapRequest) (*pb.
 	if err != nil {
 		return nil, status.Errorf(codes.NotFound, "swap not found: %v", err)
 	}
-	return swapToProto(swp), nil
+	return s.swapToProto(swp), nil
 }
 
 // CancelSwap cancels a swap
@@ -452,7 +464,7 @@ func (s *SwapService) CancelSwap(ctx context.Context, req *pb.CancelSwapRequest)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to cancel swap: %v", err)
 	}
-	return swapToProto(swp), nil
+	return s.swapToProto(swp), nil
 }
 
 // ListSwaps lists swaps
@@ -490,7 +502,7 @@ func (s *SwapService) ListSwaps(ctx context.Context, req *pb.ListSwapsRequest) (
 			Kind:            kindStringToProto(kind),
 			State:           stateStringToProto(state),
 			Version:         uint64(version),
-			Network:         pb.Network_NETWORK_REGTEST,
+			Network:         networkStringToProto(env),
 			SwapKeyIndex:    uint32(swapKeyIndex),
 			PreimageHashHex: preimageHashHex,
 			LockupTxid:      lockupTxid,
@@ -585,17 +597,112 @@ func (s *SwapService) WatchAllSwaps(req *pb.WatchAllSwapsRequest, stream pb.Swap
 }
 
 // Helper: convert swap to proto
-func swapToProto(s *swap.Swap) *pb.SwapSnapshot {
+func (s *SwapService) swapToProto(swp *swap.Swap) *pb.SwapSnapshot {
 	return &pb.SwapSnapshot{
-		Id:              s.ID,
-		Kind:            kindToProto(s.Kind),
-		State:           stateToProto(s.State),
-		Version:         uint64(s.Version),
-		Network:         pb.Network_NETWORK_REGTEST,
-		SwapKeyIndex:    uint32(s.SwapKeyIndex),
-		PreimageHashHex: s.PreimageHashHex,
-		LockupTxid:      s.LockupTxid,
-		ErrorMessage:    s.ErrorMessage,
+		Id:              swp.ID,
+		Kind:            kindToProto(swp.Kind),
+		State:           stateToProto(swp.State),
+		Version:         uint64(swp.Version),
+		Network:         networkStringToProto(swp.Env),
+		SwapKeyIndex:    uint32(swp.SwapKeyIndex),
+		PreimageHashHex: swp.PreimageHashHex,
+		LockupTxid:      swp.LockupTxid,
+		ErrorMessage:    swp.ErrorMessage,
+	}
+}
+
+func networkStringToProto(network string) pb.Network {
+	switch strings.ToLower(strings.TrimSpace(network)) {
+	case "mainnet":
+		return pb.Network_NETWORK_MAINNET
+	case "testnet":
+		return pb.Network_NETWORK_TESTNET
+	default:
+		return pb.Network_NETWORK_REGTEST
+	}
+}
+
+func (s *SwapService) ensureSwapExecutionReady(ctx context.Context) error {
+	if s.cfg == nil {
+		return nil
+	}
+	if strings.EqualFold(strings.TrimSpace(s.network), "regtest") {
+		return nil
+	}
+
+	checkCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	if s.cfg.Bitcoind.Enabled {
+		url := fmt.Sprintf("http://%s:%d", s.cfg.Bitcoind.Host, s.cfg.Bitcoind.Port)
+		btc := bitcoin.NewClient(url, s.cfg.Bitcoind.User, s.cfg.Bitcoind.Password)
+		info, err := btc.GetBlockchainInfo(checkCtx)
+		if err != nil {
+			return status.Error(codes.FailedPrecondition, formatReason("RPC_UNAVAILABLE", fmt.Sprintf("bitcoind: %v", err)))
+		}
+		if !swapNetworkMatchesBTCChain(s.network, info.Chain) {
+			return status.Error(codes.FailedPrecondition, formatReason("NETWORK_MISMATCH", fmt.Sprintf("bitcoind_chain=%s expected=%s", info.Chain, s.network)))
+		}
+		if info.InitialBlockDownload || info.VerificationProgress < 0.999 {
+			return status.Error(codes.FailedPrecondition, formatReason("SYNCING", fmt.Sprintf("bitcoind progress=%.3f ibd=%t", info.VerificationProgress, info.InitialBlockDownload)))
+		}
+	}
+
+	if s.cfg.Elementsd.Enabled {
+		host := fmt.Sprintf("%s:%d", s.cfg.Elementsd.Host, s.cfg.Elementsd.Port)
+		liq := liquid.NewClient(liquid.Config{
+			Host:     host,
+			User:     s.cfg.Elementsd.User,
+			Password: s.cfg.Elementsd.Password,
+		})
+		info, err := liq.GetBlockchainInfo(checkCtx)
+		if err != nil {
+			return status.Error(codes.FailedPrecondition, formatReason("RPC_UNAVAILABLE", fmt.Sprintf("elementsd: %v", err)))
+		}
+		progress := math.Max(0, info.Progress)
+		if info.InitialBlockDownload || progress < 0.999 {
+			return status.Error(codes.FailedPrecondition, formatReason("SYNCING", fmt.Sprintf("elementsd progress=%.3f ibd=%t", progress, info.InitialBlockDownload)))
+		}
+	}
+
+	if s.cfg.LND.Enabled {
+		if strings.TrimSpace(s.cfg.LND.TLSCert) == "" || strings.TrimSpace(s.cfg.LND.Macaroon) == "" {
+			return status.Error(codes.FailedPrecondition, formatReason("SECRET_MISSING", "lnd tls.cert/macaroon not configured"))
+		}
+		host := fmt.Sprintf("%s:%d", s.cfg.LND.Host, s.cfg.LND.Port)
+		client, err := lnd.NewClient(lnd.Config{
+			Host:         host,
+			TLSCertPath:  s.cfg.LND.TLSCert,
+			MacaroonPath: s.cfg.LND.Macaroon,
+			Network:      s.cfg.Network,
+		})
+		if err != nil {
+			return status.Error(codes.FailedPrecondition, formatReason("RPC_UNAVAILABLE", fmt.Sprintf("lnd: %v", err)))
+		}
+		defer client.Close()
+
+		info, err := client.GetNodeInfo(checkCtx)
+		if err != nil {
+			return status.Error(codes.FailedPrecondition, formatReason("RPC_UNAVAILABLE", fmt.Sprintf("lnd getinfo: %v", err)))
+		}
+		if !info.SyncedToChain || !info.SyncedToGraph {
+			return status.Error(codes.FailedPrecondition, formatReason("SYNCING", fmt.Sprintf("lnd synced_to_chain=%t synced_to_graph=%t", info.SyncedToChain, info.SyncedToGraph)))
+		}
+	}
+
+	return nil
+}
+
+func swapNetworkMatchesBTCChain(network, chain string) bool {
+	n := strings.ToLower(strings.TrimSpace(network))
+	c := strings.ToLower(strings.TrimSpace(chain))
+	switch n {
+	case "mainnet":
+		return c == "main"
+	case "testnet":
+		return c == "test"
+	default:
+		return c == "regtest"
 	}
 }
 

@@ -6,6 +6,11 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
+	"net/url"
+	"strconv"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -13,6 +18,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
+	"github.com/xs-wallet/xscore/internal/config"
 	"github.com/xs-wallet/xscore/internal/provider"
 	"github.com/xs-wallet/xscore/internal/provider/mock"
 	"github.com/xs-wallet/xscore/internal/swap"
@@ -583,4 +589,123 @@ func TestGetSwapEventsReturnsRecordedTransitions(t *testing.T) {
 	if len(respAfter.Events) == 0 {
 		t.Fatalf("expected events after seq=%d", resp.Events[0].Seq)
 	}
+}
+
+func TestCreateSwapBlockedWhenBitcoindSyncing(t *testing.T) {
+	ctx := context.Background()
+	database := openServerTestDB(t)
+	engine := swap.NewEngine(database, commitTestVault{})
+	host, port, closeRPC := startBitcoindRPCStub(t, "test", 12, 1000, 0.2, true)
+	defer closeRPC()
+
+	cfg := &config.Config{
+		Network: "testnet",
+		Bitcoind: config.NodeConfig{
+			Enabled:  true,
+			Host:     host,
+			Port:     port,
+			User:     "rpcuser",
+			Password: "rpcpass",
+		},
+		Elementsd: config.NodeConfig{Enabled: false},
+		LND:       config.NodeConfig{Enabled: false},
+	}
+	service := NewSwapServiceWithSecrets(database, cfg, engine, mock.NewMockProvider(), commitTestVault{})
+
+	quote, err := service.QuoteSwap(ctx, &pb.QuoteSwapRequest{
+		Kind:      pb.SwapKind_SWAP_KIND_SUBMARINE,
+		FromChain: pb.Chain_CHAIN_BTC,
+		ToChain:   pb.Chain_CHAIN_LN,
+		AmountSat: 100000,
+		Params: &pb.QuoteSwapRequest_Submarine{
+			Submarine: &pb.SubmarineQuoteParams{Invoice: "lnbc1mock"},
+		},
+	})
+	if err != nil {
+		t.Fatalf("quote swap: %v", err)
+	}
+
+	_, err = service.CreateSwap(ctx, &pb.CreateSwapRequest{QuoteId: quote.QuoteId})
+	if status.Code(err) != codes.FailedPrecondition {
+		t.Fatalf("expected FailedPrecondition when node syncing, got %v (%v)", status.Code(err), err)
+	}
+	if !strings.Contains(err.Error(), "reason_code=SYNCING") {
+		t.Fatalf("expected reason_code=SYNCING, got %v", err)
+	}
+}
+
+func TestCreateSwapAllowedWhenBitcoindReady(t *testing.T) {
+	ctx := context.Background()
+	database := openServerTestDB(t)
+	engine := swap.NewEngine(database, commitTestVault{})
+	host, port, closeRPC := startBitcoindRPCStub(t, "test", 1000, 1000, 1.0, false)
+	defer closeRPC()
+
+	cfg := &config.Config{
+		Network: "testnet",
+		Bitcoind: config.NodeConfig{
+			Enabled:  true,
+			Host:     host,
+			Port:     port,
+			User:     "rpcuser",
+			Password: "rpcpass",
+		},
+		Elementsd: config.NodeConfig{Enabled: false},
+		LND:       config.NodeConfig{Enabled: false},
+	}
+	service := NewSwapServiceWithSecrets(database, cfg, engine, mock.NewMockProvider(), commitTestVault{})
+
+	quote, err := service.QuoteSwap(ctx, &pb.QuoteSwapRequest{
+		Kind:      pb.SwapKind_SWAP_KIND_SUBMARINE,
+		FromChain: pb.Chain_CHAIN_BTC,
+		ToChain:   pb.Chain_CHAIN_LN,
+		AmountSat: 100000,
+		Params: &pb.QuoteSwapRequest_Submarine{
+			Submarine: &pb.SubmarineQuoteParams{Invoice: "lnbc1mock"},
+		},
+	})
+	if err != nil {
+		t.Fatalf("quote swap: %v", err)
+	}
+
+	created, err := service.CreateSwap(ctx, &pb.CreateSwapRequest{QuoteId: quote.QuoteId})
+	if err != nil {
+		t.Fatalf("create swap: %v", err)
+	}
+	if created.State != pb.SwapState_SWAP_STATE_LOCKED {
+		t.Fatalf("expected LOCKED after CreateSwap, got %v", created.State)
+	}
+}
+
+func startBitcoindRPCStub(t *testing.T, chain string, blocks, headers int64, progress float64, ibd bool) (host string, port int, closeFn func()) {
+	t.Helper()
+
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var req struct {
+			Method string `json:"method"`
+		}
+		_ = json.NewDecoder(r.Body).Decode(&req)
+		w.Header().Set("Content-Type", "application/json")
+
+		switch req.Method {
+		case "getblockchaininfo":
+			_, _ = w.Write([]byte(fmt.Sprintf(`{"result":{"chain":"%s","blocks":%d,"headers":%d,"verificationprogress":%f,"initialblockdownload":%t},"error":null,"id":"xscore"}`, chain, blocks, headers, progress, ibd)))
+		case "getnetworkinfo":
+			_, _ = w.Write([]byte(`{"result":{"connections":8},"error":null,"id":"xscore"}`))
+		default:
+			_, _ = w.Write([]byte(`{"result":{},"error":null,"id":"xscore"}`))
+		}
+	})
+
+	srv := httptest.NewServer(handler)
+	u, err := url.Parse(srv.URL)
+	if err != nil {
+		t.Fatalf("parse stub url: %v", err)
+	}
+	p, err := strconv.Atoi(u.Port())
+	if err != nil {
+		t.Fatalf("parse stub port: %v", err)
+	}
+
+	return u.Hostname(), p, srv.Close
 }

@@ -85,6 +85,24 @@ const validateSwapCreate: Validator = (payload) => {
   if (typeof resolvedAmount !== "number" || resolvedAmount <= 0) {
     return { ok: false, reason: "amountSats must be a positive number" };
   }
+  const { invoice, destinationAddress, destination_address, payout_address } = payload as {
+    invoice?: unknown;
+    destinationAddress?: unknown;
+    destination_address?: unknown;
+    payout_address?: unknown;
+  };
+  const targetIsLn = String(resolvedTo).toLowerCase() === "ln";
+  const sourceIsLn = String(resolvedFrom).toLowerCase() === "ln";
+  const destination = destinationAddress ?? destination_address ?? payout_address;
+  if (targetIsLn) {
+    if (typeof invoice !== "string" || invoice.trim().length === 0) {
+      return { ok: false, reason: "invoice is required for submarine swaps" };
+    }
+  } else if (sourceIsLn || String(resolvedFrom).toLowerCase() !== String(resolvedTo).toLowerCase()) {
+    if (typeof destination !== "string" || destination.trim().length === 0) {
+      return { ok: false, reason: "destination address is required for reverse/chain swaps" };
+    }
+  }
   return { ok: true };
 };
 
@@ -252,6 +270,9 @@ export const IPC_CHANNEL_REGISTRY: readonly IpcChannelDefinition[] = [
         toChain?: string;
         amountSats?: number;
         invoice?: string;
+        destinationAddress?: string;
+        destination_address?: string;
+        payout_address?: string;
         from_chain?: string;
         to_chain?: string;
         amount_sats?: number;
@@ -261,7 +282,8 @@ export const IPC_CHANNEL_REGISTRY: readonly IpcChannelDefinition[] = [
         from_chain: request.from_chain ?? request.fromChain,
         to_chain: request.to_chain ?? request.toChain,
         amount_sats: request.amount_sats ?? request.amountSats,
-        invoice: request.invoice
+        invoice: request.invoice,
+        destination_address: request.destination_address ?? request.destinationAddress ?? request.payout_address
       };
 
       return ctx.callApiBridge<unknown>("/api/v1/swaps", {

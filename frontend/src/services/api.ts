@@ -202,6 +202,10 @@ export interface Swap {
     to_chain: string;
     amount_sats: number;
     htlc_address?: string;
+    lockup_address?: string;
+    claim_address?: string;
+    destination_address?: string;
+    invoice?: string;
     error_message?: string | null;
     preimage_hash?: string;
     created_at: string;
@@ -242,6 +246,19 @@ export interface Quote {
     expires_at: string;
 }
 
+export interface CreateSwapRequest {
+    from_chain: string;
+    to_chain: string;
+    amount_sats: number;
+    invoice?: string;
+    destination_address?: string;
+}
+
+function isUnimplementedStreamMessage(message: string): boolean {
+    const normalized = String(message || '').toLowerCase();
+    return normalized.includes('unimplemented') || normalized.includes('not implemented');
+}
+
 export async function watchAllSwaps(onUpdate: (swaps: Swap[]) => void): Promise<() => void> {
     if (canUseIpc() && window.xs?.onSwapWatchAll) {
         const unsubscribeEvent = window.xs.onSwapWatchAll((payload) => {
@@ -267,6 +284,7 @@ export async function watchAllSwaps(onUpdate: (swaps: Swap[]) => void): Promise<
     let lastSeq = 0;
     let reconnectDelayMs = 1000;
     let lastActivityAt = Date.now();
+    let disableStreamUntil = 0;
 
     const pollSnapshot = async () => {
         try {
@@ -327,6 +345,10 @@ export async function watchAllSwaps(onUpdate: (swaps: Swap[]) => void): Promise<
 
     const connect = () => {
         if (stopped) return;
+        if (Date.now() < disableStreamUntil) {
+            startFallback();
+            return;
+        }
         const token = currentAuthToken();
         const url = new URL(`${API_BASE}/swaps/events/stream`, window.location.origin);
         url.searchParams.set('from_seq', String(lastSeq));
@@ -359,12 +381,46 @@ export async function watchAllSwaps(onUpdate: (swaps: Swap[]) => void): Promise<
         stream.addEventListener('swap_event', onSwapEvent as EventListener);
         stream.addEventListener('ready', (() => markActivity()) as EventListener);
         stream.addEventListener('ping', (() => markActivity()) as EventListener);
+        stream.addEventListener('stream_error', ((event: MessageEvent) => {
+            markActivity();
+            try {
+                const payload = JSON.parse(String((event as MessageEvent).data || '{}')) as { message?: string };
+                if (isUnimplementedStreamMessage(payload.message || '')) {
+                    disableStreamUntil = Date.now() + (5 * 60 * 1000);
+                    try { stream?.close(); } catch { }
+                    stream = null;
+                    clearWatchdog();
+                    startFallback();
+                }
+            } catch {
+                // ignore custom error payload parsing errors
+            }
+        }) as EventListener);
+        // Backward compatibility for old bridge event name.
+        stream.addEventListener('error', ((event: MessageEvent) => {
+            markActivity();
+            try {
+                const payload = JSON.parse(String((event as MessageEvent).data || '{}')) as { message?: string };
+                if (isUnimplementedStreamMessage(payload.message || '')) {
+                    disableStreamUntil = Date.now() + (5 * 60 * 1000);
+                    try { stream?.close(); } catch { }
+                    stream = null;
+                    clearWatchdog();
+                    startFallback();
+                }
+            } catch {
+                // ignore custom error payload parsing errors
+            }
+        }) as EventListener);
         stream.onerror = () => {
             if (stopped) return;
             try { stream?.close(); } catch { }
             stream = null;
             clearWatchdog();
             startFallback();
+            if (Date.now() < disableStreamUntil) {
+                return;
+            }
             if (reconnectTimer == null) {
                 const jitter = Math.floor(Math.random() * 250);
                 reconnectTimer = window.setTimeout(() => {
@@ -430,6 +486,7 @@ export function watchSwapEvents(
     let lastSeq = fromSeq;
     let reconnectDelayMs = 1000;
     let lastActivityAt = Date.now();
+    let disableStreamUntil = 0;
 
     const markActivity = () => {
         lastActivityAt = Date.now();
@@ -444,6 +501,10 @@ export function watchSwapEvents(
 
     const connect = () => {
         if (stopped) return;
+        if (Date.now() < disableStreamUntil) {
+            onError?.('stream indisponível no backend; usando fallback por polling');
+            return;
+        }
         const token = currentAuthToken();
         const url = new URL(`${API_BASE}/swaps/${encodeURIComponent(id)}/events/stream`, window.location.origin);
         url.searchParams.set('from_seq', String(lastSeq));
@@ -487,12 +548,46 @@ export function watchSwapEvents(
         source.addEventListener('swap_event', handleSwapEvent as EventListener);
         source.addEventListener('ready', (() => markActivity()) as EventListener);
         source.addEventListener('ping', (() => markActivity()) as EventListener);
+        source.addEventListener('stream_error', ((event: MessageEvent) => {
+            markActivity();
+            try {
+                const payload = JSON.parse(String((event as MessageEvent).data || '{}')) as { message?: string };
+                if (isUnimplementedStreamMessage(payload.message || '')) {
+                    disableStreamUntil = Date.now() + (5 * 60 * 1000);
+                    onError?.('stream de eventos não implementado no backend; modo degradado');
+                    try { source?.close(); } catch { }
+                    source = null;
+                    clearWatchdog();
+                }
+            } catch {
+                // ignore custom error payload parsing errors
+            }
+        }) as EventListener);
+        // Backward compatibility for old bridge event name.
+        source.addEventListener('error', ((event: MessageEvent) => {
+            markActivity();
+            try {
+                const payload = JSON.parse(String((event as MessageEvent).data || '{}')) as { message?: string };
+                if (isUnimplementedStreamMessage(payload.message || '')) {
+                    disableStreamUntil = Date.now() + (5 * 60 * 1000);
+                    onError?.('stream de eventos não implementado no backend; modo degradado');
+                    try { source?.close(); } catch { }
+                    source = null;
+                    clearWatchdog();
+                }
+            } catch {
+                // ignore custom error payload parsing errors
+            }
+        }) as EventListener);
         source.onerror = () => {
             if (stopped) return;
             try { source?.close(); } catch { }
             source = null;
             clearWatchdog();
             onError?.('swap events stream disconnected');
+            if (Date.now() < disableStreamUntil) {
+                return;
+            }
             if (reconnectTimer == null) {
                 const jitter = Math.floor(Math.random() * 250);
                 reconnectTimer = window.setTimeout(() => {
@@ -520,7 +615,7 @@ export function watchSwapEvents(
     };
 }
 
-export async function createSwap(request: { from_chain: string; to_chain: string; amount_sats: number }): Promise<Swap> {
+export async function createSwap(request: CreateSwapRequest): Promise<Swap> {
     if (canUseIpc()) {
         return invokeIpc<Swap>('swap.create', request);
     }
@@ -553,6 +648,7 @@ export interface BitcoinInfo {
     bestblockhash: string;
     difficulty: number;
     synced: boolean;
+    rpc_port?: number;
 }
 
 export interface FeeEstimates {

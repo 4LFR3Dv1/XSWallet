@@ -21,6 +21,7 @@ type SubmarineOrchestrator struct {
 	db       *db.DB
 	provider provider.Provider
 	quotes   *QuoteService
+	network  string
 }
 
 // NewSubmarineOrchestrator creates a new submarine orchestrator
@@ -30,7 +31,16 @@ func NewSubmarineOrchestrator(engine *Engine, database *db.DB, prov provider.Pro
 		db:       database,
 		provider: prov,
 		quotes:   NewQuoteService(database, prov),
+		network:  "regtest",
 	}
+}
+
+// SetNetwork overrides the environment/network used when creating swaps.
+func (so *SubmarineOrchestrator) SetNetwork(network string) {
+	if network == "" {
+		return
+	}
+	so.network = network
 }
 
 // CreateFromQuote creates a submarine swap from an accepted quote
@@ -45,7 +55,7 @@ func (so *SubmarineOrchestrator) CreateFromQuote(ctx context.Context, quoteID st
 	}
 
 	// Create swap in OPEN state
-	swap, err := so.engine.Create(ctx, KindSubmarine, "regtest", 0)
+	swap, err := so.engine.Create(ctx, KindSubmarine, so.network, 0)
 	if err != nil {
 		return nil, err
 	}

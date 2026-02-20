@@ -10,6 +10,7 @@ import (
 	"math"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/btcsuite/btcd/btcutil"
@@ -21,20 +22,30 @@ import (
 
 	"github.com/xs-wallet/xscore/internal/adapters/bitcoin"
 	"github.com/xs-wallet/xscore/internal/adapters/liquid"
+	"github.com/xs-wallet/xscore/internal/adapters/lnd"
 	"github.com/xs-wallet/xscore/internal/config"
 	"github.com/xs-wallet/xscore/internal/db"
 	"github.com/xs-wallet/xscore/internal/vault"
 	pb "github.com/xs-wallet/xscore/proto"
 )
 
+type lndBalanceClient interface {
+	GetNodeInfo(context.Context) (*lnd.NodeInfo, error)
+	WalletBalance(context.Context) (int64, error)
+	ChannelBalance(context.Context) (int64, int64, error)
+	Close() error
+}
+
 // WalletService implements pb.WalletServiceServer
 type WalletService struct {
 	pb.UnimplementedWalletServiceServer
-	db     *db.DB
-	cfg    *config.Config
-	vault  *vault.Vault
-	btc    *bitcoin.Client
-	liquid *liquid.Client
+	db        *db.DB
+	cfg       *config.Config
+	vault     *vault.Vault
+	btc       *bitcoin.Client
+	liquid    *liquid.Client
+	newLND    func(lnd.Config) (lndBalanceClient, error)
+	btcScanMu sync.Mutex
 }
 
 // NewWalletService creates WalletService
@@ -45,6 +56,9 @@ func NewWalletService(database *db.DB, cfg *config.Config, v *vault.Vault, btcCl
 		vault:  v,
 		btc:    btcClient,
 		liquid: liquidClient,
+		newLND: func(cfg lnd.Config) (lndBalanceClient, error) {
+			return lnd.NewClient(cfg)
+		},
 	}
 }
 
@@ -186,12 +200,58 @@ func (s *WalletService) MarkBackupComplete(ctx context.Context, req *pb.MarkBack
 // GetBalance returns balance for a chain
 func (s *WalletService) GetBalance(ctx context.Context, req *pb.GetBalanceRequest) (*pb.BalanceResponse, error) {
 	if req.Chain == pb.Chain_CHAIN_LN {
+		if s.cfg == nil || !s.cfg.LND.Enabled {
+			return &pb.BalanceResponse{
+				Chain:          req.Chain,
+				ConfirmedSat:   0,
+				UnconfirmedSat: 0,
+				PendingSwapSat: 0,
+				TotalSat:       0,
+			}, nil
+		}
+		if strings.TrimSpace(s.cfg.LND.TLSCert) == "" || strings.TrimSpace(s.cfg.LND.Macaroon) == "" {
+			return nil, status.Error(codes.FailedPrecondition, formatReason(reasonSecretMissing, "lnd tls.cert/macaroon not configured"))
+		}
+
+		host := fmt.Sprintf("%s:%d", s.cfg.LND.Host, s.cfg.LND.Port)
+		ln, err := s.newLND(lnd.Config{
+			Host:         host,
+			TLSCertPath:  s.cfg.LND.TLSCert,
+			MacaroonPath: s.cfg.LND.Macaroon,
+			Network:      s.cfg.Network,
+		})
+		if err != nil {
+			return nil, status.Error(codes.FailedPrecondition, formatReason(reasonRPCUnavailable, err.Error()))
+		}
+		defer ln.Close()
+
+		info, err := ln.GetNodeInfo(ctx)
+		if err != nil {
+			return nil, status.Error(codes.FailedPrecondition, formatReason(reasonRPCUnavailable, err.Error()))
+		}
+		if !info.SyncedToChain || !info.SyncedToGraph {
+			return nil, status.Error(codes.FailedPrecondition, formatReason(reasonSyncing, fmt.Sprintf("lnd synced_to_chain=%t synced_to_graph=%t", info.SyncedToChain, info.SyncedToGraph)))
+		}
+
+		walletSat, err := ln.WalletBalance(ctx)
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "failed to get lnd wallet balance: %v", err)
+		}
+		localChanSat, _, err := ln.ChannelBalance(ctx)
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "failed to get lnd channel balance: %v", err)
+		}
+
+		total := walletSat + localChanSat
+		if total < 0 {
+			total = 0
+		}
 		return &pb.BalanceResponse{
 			Chain:          req.Chain,
-			ConfirmedSat:   0,
+			ConfirmedSat:   uint64(total),
 			UnconfirmedSat: 0,
 			PendingSwapSat: 0,
-			TotalSat:       0,
+			TotalSat:       uint64(total),
 		}, nil
 	}
 
@@ -231,15 +291,15 @@ func (s *WalletService) GetBalance(ctx context.Context, req *pb.GetBalanceReques
 func (s *WalletService) GetAllBalances(ctx context.Context, req *pb.GetAllBalancesRequest) (*pb.AllBalancesResponse, error) {
 	btc, err := s.GetBalance(ctx, &pb.GetBalanceRequest{Chain: pb.Chain_CHAIN_BTC})
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to get BTC balance: %v", err)
+		return nil, wrapBalanceErr("failed to get BTC balance", err)
 	}
 	liquid, err := s.GetBalance(ctx, &pb.GetBalanceRequest{Chain: pb.Chain_CHAIN_LIQUID})
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to get Liquid balance: %v", err)
+		return nil, wrapBalanceErr("failed to get Liquid balance", err)
 	}
 	ln, err := s.GetBalance(ctx, &pb.GetBalanceRequest{Chain: pb.Chain_CHAIN_LN})
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to get LN balance: %v", err)
+		return nil, wrapBalanceErr("failed to get LN balance", err)
 	}
 
 	return &pb.AllBalancesResponse{
@@ -247,6 +307,23 @@ func (s *WalletService) GetAllBalances(ctx context.Context, req *pb.GetAllBalanc
 		Liquid: liquid,
 		Ln:     ln,
 	}, nil
+}
+
+func wrapBalanceErr(prefix string, err error) error {
+	if err == nil {
+		return nil
+	}
+	if st, ok := status.FromError(err); ok {
+		return status.Error(st.Code(), fmt.Sprintf("%s: %s", prefix, st.Message()))
+	}
+	return status.Errorf(codes.Internal, "%s: %v", prefix, err)
+}
+
+func balanceFingerprint(b *pb.BalanceResponse) string {
+	if b == nil {
+		return "nil"
+	}
+	return fmt.Sprintf("%d:%d:%d:%d:%d", b.GetChain(), b.GetConfirmedSat(), b.GetUnconfirmedSat(), b.GetPendingSwapSat(), b.GetTotalSat())
 }
 
 // GetNewAddress generates a new address
@@ -353,11 +430,21 @@ func (s *WalletService) ListUtxos(ctx context.Context, req *pb.ListUtxosRequest)
 	switch chainKey {
 	case "btc":
 		addrList := make([]string, 0, len(addresses))
+		params := btcParamsFromConfig(s.cfg.Network)
 		for _, addr := range addresses {
-			addrList = append(addrList, addr.Address)
+			if isValidBTCAddressForNetwork(addr.Address, params) {
+				addrList = append(addrList, addr.Address)
+			}
+		}
+		if len(addrList) == 0 {
+			// Prevent scantxoutset failure when stale/mismatched-network addresses exist in DB.
+			return &pb.ListUtxosResponse{Utxos: []*pb.Utxo{}}, nil
 		}
 
+		// Bitcoin Core accepts only one scantxoutset at a time.
+		s.btcScanMu.Lock()
 		scan, err := s.btc.ScanTxOutSet(ctx, addrList)
+		s.btcScanMu.Unlock()
 		if err != nil {
 			return nil, status.Errorf(codes.Internal, "scantxoutset failed: %v", err)
 		}
@@ -382,7 +469,7 @@ func (s *WalletService) ListUtxos(ctx context.Context, req *pb.ListUtxosRequest)
 
 			address := u.Address
 			if address == "" && u.ScriptPubKey != "" {
-				if addr, err := scriptToAddress(u.ScriptPubKey, btcParamsFromConfig(s.cfg.Network)); err == nil {
+				if addr, err := scriptToAddress(u.ScriptPubKey, params); err == nil {
 					address = addr
 				}
 			}
@@ -558,7 +645,53 @@ func (s *WalletService) SendOnchain(ctx context.Context, req *pb.SendOnchainRequ
 
 // WatchBalances streams balance updates
 func (s *WalletService) WatchBalances(req *pb.WatchBalancesRequest, stream pb.WalletService_WatchBalancesServer) error {
-	return status.Error(codes.Unimplemented, "not implemented")
+	chains := []pb.Chain{
+		pb.Chain_CHAIN_BTC,
+		pb.Chain_CHAIN_LIQUID,
+		pb.Chain_CHAIN_LN,
+	}
+	lastByChain := map[pb.Chain]string{}
+
+	sendSnapshot := func(reason string, force bool) error {
+		for _, chain := range chains {
+			bal, err := s.GetBalance(stream.Context(), &pb.GetBalanceRequest{Chain: chain})
+			if err != nil {
+				// Keep stream alive on transient backend issues.
+				continue
+			}
+			fp := balanceFingerprint(bal)
+			if !force && lastByChain[chain] == fp {
+				continue
+			}
+			if err := stream.Send(&pb.BalanceUpdate{
+				Chain:     chain,
+				Balance:   bal,
+				Reason:    reason,
+				Timestamp: timestamppb.Now(),
+			}); err != nil {
+				return err
+			}
+			lastByChain[chain] = fp
+		}
+		return nil
+	}
+
+	if err := sendSnapshot("initial_snapshot", true); err != nil {
+		return err
+	}
+
+	ticker := time.NewTicker(10 * time.Second)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-stream.Context().Done():
+			return nil
+		case <-ticker.C:
+			if err := sendSnapshot("poll", false); err != nil {
+				return err
+			}
+		}
+	}
 }
 
 type storedAddress struct {
@@ -1163,6 +1296,17 @@ func btcCoinType(network vault.Network) uint32 {
 		return 0
 	}
 	return 1
+}
+
+func isValidBTCAddressForNetwork(address string, params *chaincfg.Params) bool {
+	if strings.TrimSpace(address) == "" {
+		return false
+	}
+	decoded, err := btcutil.DecodeAddress(address, params)
+	if err != nil {
+		return false
+	}
+	return decoded.IsForNet(params)
 }
 
 func nullIfEmpty(value string) interface{} {

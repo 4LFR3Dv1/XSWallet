@@ -208,7 +208,7 @@ export function useCreateSwap() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    const create = async (request: { from_chain: string; to_chain: string; amount_sats: number }) => {
+    const create = async (request: api.CreateSwapRequest) => {
         setLoading(true);
         setError(null);
         try {

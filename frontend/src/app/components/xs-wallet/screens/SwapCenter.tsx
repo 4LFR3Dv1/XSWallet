@@ -6,7 +6,7 @@ import { TerminalCard } from '../TerminalCard';
 import { StatusChip } from '../StatusChip';
 import { PrimaryButton, SecondaryButton } from '../PrimaryButton';
 import { useCheckSwap, useCreateSwap, useSwapEvents, useSwaps } from '@/services/hooks';
-import type { Swap } from '@/services/api';
+import type { CreateSwapRequest, Swap } from '@/services/api';
 
 type RoutePreset = {
   id: string;
@@ -108,15 +108,59 @@ function routeKind(route: RoutePreset): 'submarine' | 'reverse' | 'chain' {
   return 'submarine';
 }
 
+function requiresInvoice(kind: 'submarine' | 'reverse' | 'chain', route: RoutePreset): boolean {
+  return kind === 'submarine' && route.toChain === 'ln';
+}
+
+function requiresDestination(kind: 'submarine' | 'reverse' | 'chain'): boolean {
+  return kind === 'reverse' || kind === 'chain';
+}
+
+function destinationLabel(kind: 'submarine' | 'reverse' | 'chain', route: RoutePreset): string {
+  if (kind === 'reverse') {
+    return route.toChain === 'btc' ? 'BTC Destination Address' : 'Destination Address';
+  }
+  if (kind === 'chain') {
+    return route.toChain === 'liquid' ? 'Liquid Destination Address' : 'BTC Destination Address';
+  }
+  return 'Destination Address';
+}
+
+function validateCreateSwapForm(
+  route: RoutePreset,
+  selectedKind: 'submarine' | 'reverse' | 'chain',
+  amount: string,
+  invoice: string,
+  destinationAddress: string,
+): string[] {
+  const errors: string[] = [];
+  const amountSats = parseInt(amount, 10);
+  if (!Number.isFinite(amountSats) || amountSats <= 0) {
+    errors.push('Amount must be greater than zero.');
+  }
+  if (requiresInvoice(selectedKind, route) && !invoice.trim()) {
+    errors.push('Lightning Invoice is required for submarine swaps.');
+  }
+  if (requiresDestination(selectedKind) && !destinationAddress.trim()) {
+    errors.push('Destination address is required for reverse/chain swaps.');
+  }
+  return errors;
+}
+
 export function SwapCenter() {
   const [routeId, setRouteId] = useState(ROUTES[0].id);
   const [amount, setAmount] = useState('100000');
   const [invoice, setInvoice] = useState('');
+  const [destinationAddress, setDestinationAddress] = useState('');
   const [selectedSwapId, setSelectedSwapId] = useState<string | null>(null);
   const [focusedSwapId, setFocusedSwapId] = useState<string | null>(null);
 
   const route = useMemo(() => ROUTES.find((r) => r.id === routeId) || ROUTES[0], [routeId]);
   const selectedKind = routeKind(route);
+  const validationErrors = useMemo(
+    () => validateCreateSwapForm(route, selectedKind, amount, invoice, destinationAddress),
+    [route, selectedKind, amount, invoice, destinationAddress],
+  );
 
   const { swaps, loading: swapsLoading, refetch } = useSwaps();
   const { create, loading: creating, error: createError } = useCreateSwap();
@@ -128,19 +172,23 @@ export function SwapCenter() {
   const historySwaps = normalized.filter((s) => TERMINAL_STATES.has(s.state)).map((s) => s.swap);
 
   const handleCreateSwap = async () => {
+    if (validationErrors.length > 0) return;
     const amountSats = parseInt(amount, 10);
-    if (!Number.isFinite(amountSats) || amountSats <= 0) return;
 
-    const payload: { from_chain: string; to_chain: string; amount_sats: number; invoice?: string } = {
+    const payload: CreateSwapRequest = {
       from_chain: route.fromChain,
       to_chain: route.toChain,
       amount_sats: amountSats,
     };
-    if (selectedKind === 'submarine' && route.toChain === 'ln' && invoice.trim()) {
+    if (requiresInvoice(selectedKind, route) && invoice.trim()) {
       payload.invoice = invoice.trim();
+    }
+    if (requiresDestination(selectedKind) && destinationAddress.trim()) {
+      payload.destination_address = destinationAddress.trim();
     }
     await create(payload);
     setInvoice('');
+    setDestinationAddress('');
     await refetch();
   };
 
@@ -206,9 +254,9 @@ export function SwapCenter() {
                 />
               </div>
 
-              {selectedKind === 'submarine' && route.toChain === 'ln' && (
+              {requiresInvoice(selectedKind, route) && (
                 <div>
-                  <label className="text-sm text-[#9AA7B5] mb-2 block">Lightning Invoice (optional)</label>
+                  <label className="text-sm text-[#9AA7B5] mb-2 block">Lightning Invoice (required)</label>
                   <input
                     type="text"
                     value={invoice}
@@ -219,6 +267,39 @@ export function SwapCenter() {
                 </div>
               )}
 
+              {requiresDestination(selectedKind) && (
+                <div>
+                  <label className="text-sm text-[#9AA7B5] mb-2 block">{destinationLabel(selectedKind, route)} (required)</label>
+                  <input
+                    type="text"
+                    value={destinationAddress}
+                    onChange={(e) => setDestinationAddress(e.target.value)}
+                    placeholder={route.toChain === 'liquid' ? 'tlq1...' : 'bc1q...'}
+                    className="w-full px-4 py-3 bg-[#151B23] border border-[#242C36] rounded-xl text-[#E7EDF5] font-mono focus:outline-none focus:border-[#E7EDF5]/30 transition-colors"
+                  />
+                </div>
+              )}
+
+              {validationErrors.length > 0 && (
+                <div className="p-3 bg-[#EF4444]/10 border border-[#EF4444]/20 rounded-xl text-sm text-[#EF4444]">
+                  {validationErrors[0]}
+                </div>
+              )}
+
+              <div className="p-3 bg-[#0B0D10] border border-[#242C36] rounded-xl">
+                <div className="text-xs text-[#6C7A89] mb-2">Execution Preview</div>
+                <div className="text-xs text-[#9AA7B5] space-y-1 font-mono">
+                  <div>route: {route.fromChain.toUpperCase()} -&gt; {route.toChain.toUpperCase()} ({selectedKind})</div>
+                  <div>amount: {amount || '0'} sats</div>
+                  {requiresInvoice(selectedKind, route) && (
+                    <div>invoice: {invoice.trim() ? 'provided' : 'missing'}</div>
+                  )}
+                  {requiresDestination(selectedKind) && (
+                    <div>destination: {destinationAddress.trim() || 'missing'}</div>
+                  )}
+                </div>
+              </div>
+
               {(createError || checkError) && (
                 <div className="p-3 bg-[#EF4444]/10 border border-[#EF4444]/20 rounded-xl text-sm text-[#EF4444]">
                   {createError || checkError}
@@ -226,10 +307,10 @@ export function SwapCenter() {
               )}
 
               <div className="flex items-center gap-3">
-                <SecondaryButton className="flex-1" onClick={() => { setAmount('100000'); setInvoice(''); }}>
+                <SecondaryButton className="flex-1" onClick={() => { setAmount('100000'); setInvoice(''); setDestinationAddress(''); }}>
                   Reset
                 </SecondaryButton>
-                <PrimaryButton className="flex-1" onClick={handleCreateSwap} disabled={creating}>
+                <PrimaryButton className="flex-1" onClick={handleCreateSwap} disabled={creating || validationErrors.length > 0}>
                   {creating ? (
                     <div className="flex items-center gap-2">
                       <Loader2 size={16} className="animate-spin" />
@@ -280,11 +361,15 @@ export function SwapCenter() {
                         <span className="text-sm text-[#9AA7B5]">{swap.amount_sats.toLocaleString()} sats</span>
                         <span className="text-xs text-[#6C7A89] font-mono">{swap.id.slice(0, 12)}...</span>
                       </div>
-                      {swap.htlc_address && (
-                        <div className="mb-3 p-2 bg-[#0B0D10] rounded text-xs text-[#6C7A89] font-mono break-all">
-                          Lockup: {swap.htlc_address}
-                        </div>
-                      )}
+                      <div className="mb-3 p-2 bg-[#0B0D10] rounded text-xs text-[#6C7A89] font-mono space-y-1 break-all">
+                        {swap.lockup_address && <div>Funding: {swap.lockup_address}</div>}
+                        {swap.destination_address && <div>Destination: {swap.destination_address}</div>}
+                        {swap.claim_address && <div>Claim: {swap.claim_address}</div>}
+                        {swap.invoice && <div>Invoice: {swap.invoice.slice(0, 28)}...</div>}
+                        {!swap.lockup_address && !swap.destination_address && !swap.claim_address && !swap.invoice && (
+                          <div>No funding/settlement details yet.</div>
+                        )}
+                      </div>
                       <div className={`mb-3 text-xs ${state === 'failed' || state === 'canceled' || state === 'refunded' ? 'text-[#EF4444]' : 'text-[#9AA7B5]'}`}>
                         {message}
                       </div>

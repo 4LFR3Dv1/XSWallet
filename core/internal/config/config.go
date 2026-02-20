@@ -108,7 +108,17 @@ func Load(configPath, dataDir, network string) (*Config, error) {
 		},
 	}
 
-	// Ensure directories exist
+	// Load from file if exists
+	if configPath != "" {
+		data, err := os.ReadFile(configPath)
+		if err == nil {
+			if err := json.Unmarshal(data, cfg); err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	// Ensure directories exist after defaults and optional file overrides are applied.
 	dirs := []string{
 		cfg.DataDir,
 		cfg.Bitcoind.DataDir,
@@ -118,16 +128,6 @@ func Load(configPath, dataDir, network string) (*Config, error) {
 	for _, dir := range dirs {
 		if err := os.MkdirAll(dir, 0700); err != nil {
 			return nil, err
-		}
-	}
-
-	// Load from file if exists
-	if configPath != "" {
-		data, err := os.ReadFile(configPath)
-		if err == nil {
-			if err := json.Unmarshal(data, cfg); err != nil {
-				return nil, err
-			}
 		}
 	}
 

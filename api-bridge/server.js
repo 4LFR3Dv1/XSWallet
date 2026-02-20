@@ -5,6 +5,8 @@
 const express = require('express');
 const grpc = require('@grpc/grpc-js');
 const protoLoader = require('@grpc/proto-loader');
+const fs = require('fs');
+const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 
 const app = express();
@@ -75,6 +77,45 @@ const packageDef = protoLoader.loadSync(PROTO_FILES, {
 
 const protoDescriptor = grpc.loadPackageDefinition(packageDef);
 const xswallet = protoDescriptor.xswallet;
+
+// Optional direct LND client for payment/invoice APIs while WalletService gRPC contract
+// is being expanded. Requires explicit env vars.
+const LND_HOST = process.env.LND_HOST || '';
+const LND_TLS_CERT = process.env.LND_TLS_CERT || '';
+const LND_MACAROON = process.env.LND_MACAROON || '';
+const LND_PROTO_PATH = process.env.LND_PROTO_PATH || path.join(__dirname, '..', 'core', 'internal', 'adapters', 'lnd', 'proto', 'lnrpc', 'lightning.proto');
+let lndClient = null;
+
+function getLndClient() {
+    if (lndClient) return lndClient;
+    if (!LND_HOST || !LND_TLS_CERT || !LND_MACAROON) {
+        throw new Error('LND not configured (set LND_HOST, LND_TLS_CERT, LND_MACAROON)');
+    }
+    const cert = fs.readFileSync(LND_TLS_CERT);
+    const macaroonHex = fs.readFileSync(LND_MACAROON).toString('hex');
+    const lndPackageDef = protoLoader.loadSync(LND_PROTO_PATH, {
+        keepCase: true,
+        longs: String,
+        enums: String,
+        defaults: true,
+        oneofs: true,
+        includeDirs: [path.dirname(LND_PROTO_PATH)],
+    });
+    const lndProto = grpc.loadPackageDefinition(lndPackageDef);
+    const lnrpc = lndProto.lnrpc;
+    if (!lnrpc || !lnrpc.Lightning) {
+        throw new Error('lnrpc.Lightning not found in LND proto');
+    }
+    const sslCreds = grpc.credentials.createSsl(cert);
+    const macaroonCreds = grpc.credentials.createFromMetadataGenerator((_params, cb) => {
+        const metadata = new grpc.Metadata();
+        metadata.add('macaroon', macaroonHex);
+        cb(null, metadata);
+    });
+    const creds = grpc.credentials.combineChannelCredentials(sslCreds, macaroonCreds);
+    lndClient = new lnrpc.Lightning(LND_HOST, creds);
+    return lndClient;
+}
 
 // Clients
 let swapClient, walletClient, nodeClient;
@@ -255,7 +296,11 @@ function normalizeSwap(grpcSwap) {
         amount_sats: amountSat,
         amount_btc: amountSat / 100_000_000,
         state: normalizeState(grpcSwap.state),
-        htlc_address: grpcSwap.lockup_address || null,
+        htlc_address: grpcSwap.lockup_address || lockedIntent.lockup_address || null,
+        lockup_address: grpcSwap.lockup_address || lockedIntent.lockup_address || null,
+        claim_address: grpcSwap.claim_address || lockedIntent.claim_address || null,
+        destination_address: lockedIntent.payout_address || lockedIntent.claim_address || null,
+        invoice: lockedIntent.invoice || grpcSwap.invoice || null,
         payment_hash: grpcSwap.payment_hash || null,
         preimage: grpcSwap.preimage || null,
         funded_txid: grpcSwap.lockup_txid || null,
@@ -371,10 +416,7 @@ app.get('/api/v1/system/health', async (req, res) => {
 
     // Check bitcoind
     try {
-        const axios = require('axios');
-        await axios.post(BITCOIN_RPC_URL || 'http://rpcuser:rpcpass@localhost:18443', {
-            jsonrpc: '1.0', method: 'getblockchaininfo', params: []
-        }, { timeout: 2000 });
+        await bitcoinRPC('getblockchaininfo');
         bitcoindOk = true;
     } catch (e) { /* ignore */ }
 
@@ -407,15 +449,14 @@ app.get('/api/v1/system/health', async (req, res) => {
 
 app.get('/api/v1/system/status', async (req, res) => {
     let bitcoinBlocks = 0;
+    let bitcoinChain = 'unknown';
     let vaultState = 'unknown';
 
     // Get bitcoin block height
     try {
-        const axios = require('axios');
-        const resp = await axios.post(BITCOIN_RPC_URL || 'http://rpcuser:rpcpass@localhost:18443', {
-            jsonrpc: '1.0', method: 'getblockchaininfo', params: []
-        }, { timeout: 2000 });
-        bitcoinBlocks = resp.data.result?.blocks || 0;
+        const info = await bitcoinRPC('getblockchaininfo');
+        bitcoinBlocks = info?.blocks || 0;
+        bitcoinChain = info?.chain || 'unknown';
     } catch (e) { /* ignore */ }
 
     // Get vault status
@@ -435,14 +476,14 @@ app.get('/api/v1/system/status', async (req, res) => {
 
     res.json({
         version: '0.1.0',
-        network: 'regtest',
+        network: bitcoinChain,
         uptime_seconds: Math.floor(process.uptime()),
         grpc_connected: grpcHealthy,
         vault_state: vaultState,
         bitcoin_block_height: bitcoinBlocks,
         services: {
             xscore: { status: grpcHealthy ? 'running' : 'stopped', port: 9735 },
-            bitcoind: { status: bitcoinBlocks > 0 ? 'running' : 'stopped', port: 18443, blocks: bitcoinBlocks },
+            bitcoind: { status: bitcoinBlocks > 0 ? 'running' : 'stopped', port: bitcoinRPCPort(), blocks: bitcoinBlocks },
             boltz: { status: 'unknown', port: 9001 },
         },
     });
@@ -717,7 +758,17 @@ app.post('/api/v1/preimage/generate', (req, res) => {
 // BITCOIN ENDPOINTS (Real bitcoind RPC)
 // ============================================================================
 
-const BITCOIN_RPC_URL = process.env.BITCOIN_RPC_URL || 'http://rpcuser:rpcpass@localhost:18443';
+const BITCOIN_RPC_URL = process.env.BITCOIN_RPC_URL || 'http://xsrpc:troque_essa_senha@127.0.0.1:18332';
+
+function bitcoinRPCPort() {
+    try {
+        const url = new URL(BITCOIN_RPC_URL);
+        if (url.port) return Number(url.port);
+        return url.protocol === 'https:' ? 443 : 80;
+    } catch (_) {
+        return 18332;
+    }
+}
 
 async function bitcoinRPC(method, params = []) {
     const axios = require('axios');
@@ -745,6 +796,7 @@ app.get('/api/v1/bitcoin/info', async (req, res) => {
             mediantime: info.mediantime,
             verificationprogress: info.verificationprogress,
             pruned: info.pruned,
+            rpc_port: bitcoinRPCPort(),
         });
     } catch (err) {
         log('error', 'Bitcoin RPC failed', { error: err.message });
@@ -789,17 +841,142 @@ app.get('/api/v1/bitcoin/mempool', async (req, res) => {
 });
 
 app.get('/api/v1/lightning/info', (req, res) => {
-    res.json({
-        alias: 'xs-wallet-regtest',
-        pubkey: '02' + '0'.repeat(64),
-        num_active_channels: 0,
-        num_peers: 0,
-        synced_to_chain: true,
+    const deadline = new Date(Date.now() + CONFIG.GRPC_DEADLINE_MS.list);
+    const metadata = requireAuthMetadata(req, res);
+    if (!metadata) return;
+
+    nodeClient.GetNodeStatus({
+        node_type: 'NODE_TYPE_LND',
+    }, metadata, { deadline }, (err, response) => {
+        if (err) return handleGrpcError(err, res, req.id);
+
+        const state = normalizeNodeState(response.state);
+        const ready = state === 'running';
+        const message = response.error_message || '';
+        const syncedToChain = ready || message.includes('synced_to_chain=true');
+        const syncedToGraph = ready || message.includes('synced_to_graph=true');
+
+        res.json({
+            alias: '',
+            pubkey: '',
+            num_active_channels: 0,
+            num_peers: response.peer_count || 0,
+            synced_to_chain: syncedToChain,
+            synced_to_graph: syncedToGraph,
+            version: response.version || '',
+            state,
+            reason: message,
+        });
     });
 });
 
 app.get('/api/v1/lightning/balance', (req, res) => {
-    res.json({ balance_sat: 0, pending_open_sat: 0, pending_close_sat: 0 });
+    const deadline = new Date(Date.now() + CONFIG.GRPC_DEADLINE_MS.list);
+    const metadata = requireAuthMetadata(req, res);
+    if (!metadata) return;
+
+    walletClient.GetBalance({
+        chain: 'CHAIN_LN',
+    }, metadata, { deadline }, (err, response) => {
+        if (err) return handleGrpcError(err, res, req.id);
+
+        res.json({
+            balance_sat: Number(response.total_sat || 0),
+            confirmed_sat: Number(response.confirmed_sat || 0),
+            unconfirmed_sat: Number(response.unconfirmed_sat || 0),
+            pending_swap_sat: Number(response.pending_swap_sat || 0),
+            pending_open_sat: 0,
+            pending_close_sat: 0,
+        });
+    });
+});
+
+app.get('/api/v1/lightning/decode', (req, res) => {
+    const metadata = requireAuthMetadata(req, res);
+    if (!metadata) return;
+    const invoice = String(req.query.invoice || '').trim();
+    if (!invoice) {
+        return errorResponse(res, 'GRPC_INVALID_ARGUMENT', 'Missing invoice query param', {
+            required: ['invoice'],
+        }, req.id);
+    }
+    let client;
+    try {
+        client = getLndClient();
+    } catch (err) {
+        return errorResponse(res, 'GRPC_FAILED_PRECONDITION', err.message, {}, req.id);
+    }
+    client.DecodePayReq({ pay_req: invoice }, (err, response) => {
+        if (err) return handleGrpcError(err, res, req.id);
+        res.json({
+            payment_hash: response.payment_hash || '',
+            amount_sat: Number(response.num_satoshis || 0),
+            destination: response.destination || '',
+            description: response.description || '',
+            expiry: Number(response.expiry || 0),
+            timestamp: Number(response.timestamp || 0),
+        });
+    });
+});
+
+app.post('/api/v1/lightning/pay', (req, res) => {
+    const metadata = requireAuthMetadata(req, res);
+    if (!metadata) return;
+    const invoice = String(req.body?.invoice || '').trim();
+    if (!invoice) {
+        return errorResponse(res, 'GRPC_INVALID_ARGUMENT', 'Missing invoice in request body', {
+            required: ['invoice'],
+        }, req.id);
+    }
+    let client;
+    try {
+        client = getLndClient();
+    } catch (err) {
+        return errorResponse(res, 'GRPC_FAILED_PRECONDITION', err.message, {}, req.id);
+    }
+    client.SendPaymentSync({ payment_request: invoice }, (err, response) => {
+        if (err) return handleGrpcError(err, res, req.id);
+        if (response.payment_error) {
+            return errorResponse(res, 'GRPC_INTERNAL', response.payment_error, {}, req.id);
+        }
+        res.json({
+            success: true,
+            payment_hash: response.payment_hash ? Buffer.from(response.payment_hash).toString('hex') : '',
+            payment_preimage: response.payment_preimage ? Buffer.from(response.payment_preimage).toString('hex') : '',
+        });
+    });
+});
+
+app.post('/api/v1/lightning/invoice', (req, res) => {
+    const metadata = requireAuthMetadata(req, res);
+    if (!metadata) return;
+    const amountSat = Number(req.body?.amount_sat || 0);
+    const memo = String(req.body?.memo || '');
+    const expiry = Number(req.body?.expiry || 3600);
+    if (!Number.isFinite(amountSat) || amountSat <= 0) {
+        return errorResponse(res, 'GRPC_INVALID_ARGUMENT', 'amount_sat must be > 0', {}, req.id);
+    }
+    let client;
+    try {
+        client = getLndClient();
+    } catch (err) {
+        return errorResponse(res, 'GRPC_FAILED_PRECONDITION', err.message, {}, req.id);
+    }
+    client.AddInvoice({
+        value: amountSat,
+        memo,
+        expiry,
+    }, (err, response) => {
+        if (err) return handleGrpcError(err, res, req.id);
+        const paymentHashHex = response.r_hash ? Buffer.from(response.r_hash).toString('hex') : '';
+        res.json({
+            invoice: response.payment_request || '',
+            payment_hash: paymentHashHex,
+            amount_sat: amountSat,
+            memo,
+            expiry,
+        });
+    });
 });
 
 app.get('/api/v1/elements/info', (req, res) => {
@@ -876,7 +1053,14 @@ app.get('/api/v1/swaps', (req, res) => {
 // POST /api/v1/swaps - Create new swap
 // Semantic: Creates quote, accepts, and leaves in OPEN/LOCKED state
 app.post('/api/v1/swaps', (req, res) => {
-    const { from_chain, to_chain, amount_sats, invoice } = req.body;
+    const {
+        from_chain,
+        to_chain,
+        amount_sats,
+        invoice,
+        destination_address,
+        payout_address,
+    } = req.body;
 
     if (!from_chain || !to_chain || !amount_sats) {
         return errorResponse(res, 'GRPC_INVALID_ARGUMENT', 'Missing required fields', {
@@ -899,8 +1083,22 @@ app.post('/api/v1/swaps', (req, res) => {
     let swapKind = 'SWAP_KIND_SUBMARINE';
     if (from_chain === 'ln') {
         swapKind = 'SWAP_KIND_REVERSE';
-    } else if (from_chain === 'btc' && to_chain === 'liquid') {
+    } else if (
+        (from_chain === 'btc' && to_chain === 'liquid') ||
+        (from_chain === 'liquid' && to_chain === 'btc')
+    ) {
         swapKind = 'SWAP_KIND_CHAIN';
+    }
+    const payoutAddress = String(destination_address || payout_address || '').trim();
+    if (swapKind === 'SWAP_KIND_SUBMARINE' && !String(invoice || '').trim()) {
+        return errorResponse(res, 'GRPC_INVALID_ARGUMENT', 'Missing required field for submarine swap', {
+            required: ['invoice'],
+        }, req.id);
+    }
+    if ((swapKind === 'SWAP_KIND_REVERSE' || swapKind === 'SWAP_KIND_CHAIN') && !payoutAddress) {
+        return errorResponse(res, 'GRPC_INVALID_ARGUMENT', 'Missing required field for reverse/chain swap', {
+            required: ['destination_address'],
+        }, req.id);
     }
 
     // Step 1: Get Quote
@@ -914,6 +1112,12 @@ app.post('/api/v1/swaps', (req, res) => {
     // Add submarine params if invoice provided
     if (invoice && swapKind === 'SWAP_KIND_SUBMARINE') {
         quoteReq.submarine = { invoice };
+    }
+    if (payoutAddress && swapKind === 'SWAP_KIND_REVERSE') {
+        quoteReq.reverse = { payout_address: payoutAddress };
+    }
+    if (payoutAddress && swapKind === 'SWAP_KIND_CHAIN') {
+        quoteReq.chain = { payout_address: payoutAddress };
     }
 
     log('info', 'Requesting quote', { requestId: req.id, kind: swapKind });
@@ -1037,7 +1241,7 @@ app.get('/api/v1/swaps/:id/events/stream', (req, res) => {
     });
 
     stream.on('error', (err) => {
-        res.write(`event: error\ndata: ${JSON.stringify({ message: err?.details || err?.message || 'stream error' })}\n\n`);
+        res.write(`event: stream_error\ndata: ${JSON.stringify({ message: err?.details || err?.message || 'stream error' })}\n\n`);
         cleanup();
     });
 
@@ -1099,7 +1303,7 @@ app.get('/api/v1/swaps/events/stream', (req, res) => {
     });
 
     stream.on('error', (err) => {
-        res.write(`event: error\ndata: ${JSON.stringify({ message: err?.details || err?.message || 'stream error' })}\n\n`);
+        res.write(`event: stream_error\ndata: ${JSON.stringify({ message: err?.details || err?.message || 'stream error' })}\n\n`);
         cleanup();
     });
 

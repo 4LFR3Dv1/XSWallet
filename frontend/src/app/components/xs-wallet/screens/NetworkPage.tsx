@@ -53,7 +53,9 @@ export function NetworkPage() {
                         </div>
                         <div className="text-lg text-[#E7EDF5] mb-1">Bitcoin</div>
                         <div className="text-sm text-[#6C7A89]">
-                            {bitcoinInfo ? `Block ${bitcoinInfo.blocks.toLocaleString()}` : 'Port 18443'}
+                            {bitcoinInfo
+                                ? `Block ${bitcoinInfo.blocks.toLocaleString()} · RPC ${bitcoinInfo.rpc_port ?? 18332}`
+                                : 'RPC unavailable'}
                         </div>
                     </div>
 
