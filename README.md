@@ -79,12 +79,13 @@ docs/              especificação, status e planos
 - Go 1.24+
 - Node.js 20+
 - npm
-- Docker (para ambiente regtest)
-- (Opcional mainnet/testnet) `bitcoind`, `elementsd`, `lnd` instalados no host
+- `bitcoind` testnet no host (ou container equivalente) para execução real
+- (Opcional) `elementsd`, `lnd` instalados no host
+- Docker apenas para laboratório regtest
 
 ## Execução Local
 
-### Runtime único testnet (recomendado)
+### Runtime testnet único (recomendado)
 
 Para evitar conflito de portas/processos (múltiplos `xscore`/`api-bridge`), use o kit de runtime:
 
@@ -106,40 +107,31 @@ Observações:
 - É necessário ter o binário `bitcoind` instalado no host (`PATH`) ou adaptar o script para container.
 - Logs ficam em `XSWallet/.runtime/xscore.log` e `XSWallet/.runtime/api-bridge.log`.
 
-### 1) Subir ambiente regtest
-
-```bash
-docker compose -f test/regtest/docker-compose.yml up -d
-```
-
-### 2) Rodar core
+### Fluxo manual testnet (alternativa)
 
 ```bash
 cd core
-go build ./cmd/xscore
-go run ./cmd/xscore --network=regtest --port=9735
-```
-
-Com config explícita:
-
-```bash
 go run ./cmd/xscore --config ./config.local.testnet.pruned.json --network=testnet --port=9735
 ```
-
-### 3) Rodar API bridge
 
 ```bash
 cd api-bridge
 npm install
-npm start
+GRPC_HOST=127.0.0.1:9735 npm start
 ```
-
-### 4) Rodar frontend
 
 ```bash
 cd frontend
 npm install
 npm run dev
+```
+
+### Regtest (somente laboratório)
+
+```bash
+docker compose -f test/regtest/docker-compose.yml up -d
+cd core
+go run ./cmd/xscore --network=regtest --port=9735
 ```
 
 ## Configuração NodeManager (manifest canônico)
