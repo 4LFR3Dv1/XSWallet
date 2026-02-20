@@ -10,6 +10,12 @@ Carteira desktop self-custody com execução de atomic swaps entre BTC, Liquid e
 
 O projeto está em **pre-beta / MVP técnico avançado**: núcleo de carteira e swaps com backend funcional para desenvolvimento, validação operacional e integração com provider real (Boltz testnet), ainda com hardening final pendente para produção.
 
+Atualização de status em **2026-02-20**:
+- Runtime testnet único estabilizado (`xscore` + `api-bridge` + frontend) com foco em evitar conflitos de múltiplas instâncias.
+- Streams de swaps ativos no core (`GetSwapEvents`, `WatchSwap`, `WatchAllSwaps`) e consumidos pelo frontend via SSE com fallback por polling.
+- Erro histórico de reconexão em loop no SSE foi reduzido com evento custom `stream_error` no bridge.
+- Fluxos watcher `chain`/`reverse` avançam até `waiting_provider_broadcast` com assinatura MuSig2 parcial real.
+
 Principais capacidades atuais:
 - Carteira on-chain BTC + Liquid (confidential).
 - Vault com Argon2id + AES-256-GCM.
@@ -78,6 +84,28 @@ docs/              especificação, status e planos
 
 ## Execução Local
 
+### Runtime único testnet (recomendado)
+
+Para evitar conflito de portas/processos (múltiplos `xscore`/`api-bridge`), use o kit de runtime:
+
+```bash
+cd XSWallet
+scripts/runtime/start_testnet_runtime.sh
+scripts/runtime/health_testnet_runtime.sh
+```
+
+Parar tudo:
+
+```bash
+cd XSWallet
+scripts/runtime/stop_testnet_runtime.sh
+```
+
+Observações:
+- O runtime usa `bitcoind` em modo podado (`prune=550`) na porta `18332`.
+- É necessário ter o binário `bitcoind` instalado no host (`PATH`) ou adaptar o script para container.
+- Logs ficam em `XSWallet/.runtime/xscore.log` e `XSWallet/.runtime/api-bridge.log`.
+
 ### 1) Subir ambiente regtest
 
 ```bash
@@ -95,7 +123,7 @@ go run ./cmd/xscore --network=regtest --port=9735
 Com config explícita:
 
 ```bash
-go run ./cmd/xscore --config ./config.local.mainnet.pruned.json --network=mainnet --port=9735
+go run ./cmd/xscore --config ./config.local.testnet.pruned.json --network=testnet --port=9735
 ```
 
 ### 3) Rodar API bridge
@@ -184,7 +212,7 @@ Esses gates são bloqueadores para evolução de release backend.
 ## Próximos Focos
 
 - Fechar execução E2E real terminal contínua sem simulação para chain e reverse.
-- Hardening final de NodeManager/LND para produção.
+- Hardening final de NodeManager/LND para produção (runbook/checklist final).
 - Concluir migração frontend para caminho principal Electron/IPC.
 - Fechar checklist final de release com runbook operacional.
 

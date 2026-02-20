@@ -3,6 +3,14 @@
 Spec humano: `docs/XS_Wallet_Especificacao_Tecnica_v2.html`.
 Guia agente: `docs/AGENTS.md`.
 
+## Atualizacao rapida (2026-02-20)
+- O core expõe streams de swaps implementados (`GetSwapEvents`, `WatchSwap`, `WatchAllSwaps`) e o frontend já consome o stream global com fallback de polling.
+- O fluxo de execução watcher para `chain` e `reverse` já assina MuSig2 parcial real e atinge `waiting_provider_broadcast` em integração testnet.
+- O caminho pós-broadcast está endurecido: sucesso terminal por evidência de provider e caminho de refund separado.
+- `refunding -> completed` depende de evidência objetiva on-chain (`refund_txid` observado), reduzindo dependência de status textual.
+- NodeService está com health em níveis (`UP/READY/DEGRADED`), supervisor com backoff/circuit-breaker e gate `manifest vs runtime`.
+- Projeto permanece em pre-beta: forte para validação técnica/operacional, ainda sem fechamento de release produção.
+
 ## 1. Arquitetura (spec)
 - Frontend Electron + IPC -> Go Core (gRPC).
 - Go Core: swap engine, DB SQLite WAL, adapters, boltz client.
@@ -112,7 +120,7 @@ Estado atual:
 
 ## Gaps chave
 - Migrar para Electron/IPC.
-- Fechar fluxo de claim/refund final com broadcast de refund real e persistencia de `refund_txid` no caminho script-path.
+- Fechar fluxo de claim/refund final com broadcast de refund real em todos os caminhos e persistencia consistente de artefatos.
 - Completar adapter/flows de LND + Node Manager.
 - Endurecer streaming de swaps/events (latencia, backpressure e escalabilidade) no runtime de producao.
 - Alinhar scripts de build/lint/test do root com a estrutura atual do monorepo para CI consistente.

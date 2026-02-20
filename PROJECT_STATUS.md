@@ -26,6 +26,12 @@ Plan: `docs/PLANO_IMPLEMENTACAO_v0.2.md`.
 - NodeManager runtime: parcial funcional (`NodeService` com start/stop/restart/status/watch + supervisor + backoff/circuit-breaker + gate `manifest vs runtime`; download/verificação de binários ainda pendente).
 - Maturidade geral: **pre-beta / MVP tecnico avancado** (usavel para desenvolvimento e validacao, ainda nao pronto para release de producao).
 
+## Snapshot (2026-02-20)
+- Runtime testnet unificado e documentado (scripts start/stop/health).
+- Swap streams em produção de desenvolvimento: core gRPC + bridge SSE + fallback polling no frontend.
+- Erros de `Unimplemented` em stream são tratados com fallback degradado; bridge atualizado para usar evento `stream_error`.
+- Execução watcher com MuSig2 parcial real confirmada em chain/reverse até `waiting_provider_broadcast`.
+
 ## Operational status (today)
 - Core unit/integration tests: green.
 - Watcher: green com novos testes de restart/idempotencia do caminho `local_zero_builder`.
@@ -35,4 +41,6 @@ Plan: `docs/PLANO_IMPLEMENTACAO_v0.2.md`.
 - Root scripts (`package.json` do workspace): precisam alinhamento com a estrutura atual antes de uso como fonte unica de CI.
 
 ## Next focus
-- Phase 2 (swap protocol) per `docs/PLANO_IMPLEMENTACAO_v0.2.md`.
+- Fechar E2E real contínuo (sem simulação) até estados terminais de chain e reverse.
+- Completar hardening final de release: NodeManager/LND + runbook/checklist de produção.
+- Fechar caminho local de refund script-path do zero com validação de idempotência/restart.
