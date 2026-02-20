@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>XS Wallet - Plano Frontend Swap Center (PR1-PR4)</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+    :root {
+      --text: #1a1a1a;
+      --text-secondary: #4a4a4a;
+      --bg: #ffffff;
+      --border: #e5e5e5;
+      --code-bg: #f5f5f5;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --accent: #2563eb;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0 auto;
+      padding: 20mm;
+      max-width: 210mm;
+      font-family: 'Inter', -apple-system, sans-serif;
+      font-size: 10pt;
+      line-height: 1.6;
+      color: var(--text);
+      background: var(--bg);
+    }
+
+    h1 {
+      font-size: 20pt;
+      font-weight: 700;
+      margin: 24pt 0 12pt;
+      border-bottom: 2px solid var(--text);
+      padding-bottom: 6pt;
+    }
+
+    h2 {
+      font-size: 14pt;
+      font-weight: 600;
+      margin: 18pt 0 8pt;
+    }
+
+    h3 {
+      font-size: 11pt;
+      font-weight: 600;
+      margin: 12pt 0 6pt;
+    }
+
+    p { margin-bottom: 8pt; }
+
+    ul, ol { margin: 8pt 0 12pt 18pt; }
+
+    li { margin-bottom: 5pt; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12pt 0;
+      font-size: 9pt;
+    }
+
+    th, td {
+      border: 1px solid var(--border);
+      padding: 6pt 8pt;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: #f0f0f0;
+      font-weight: 600;
+    }
+
+    code {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 8pt;
+      background: var(--code-bg);
+      padding: 2pt 4pt;
+      border-radius: 2pt;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 2pt 6pt;
+      border-radius: 999px;
+      font-size: 8pt;
+      font-weight: 600;
+      color: #fff;
+      margin-right: 4pt;
+    }
+
+    .ready { background: var(--accent); }
+    .ok { background: var(--success); }
+    .warn { background: var(--warning); }
+  </style>
+</head>
+
+<body>
+  <h1>XS Wallet - Plano Frontend Swap Center (PR1-PR4)</h1>
+
+  <table>
+    <tr><th>Documento</th><td>Plano de evolução do Swap Center para operação real</td></tr>
+    <tr><th>Escopo</th><td>Formulário de criação, contrato de swap, funding/settlement, timeline e guard rails</td></tr>
+    <tr><th>Status alvo</th><td><span class="badge ready">Implementação sequencial</span> PR1 → PR4</td></tr>
+    <tr><th>Fonte canônica</th><td><code>docs/STATUS_ESPECIFICACAO_XS_WALLET.md</code></td></tr>
+  </table>
+
+  <h2>0. Atualização (20/02/2026)</h2>
+  <ul>
+    <li>Timeline por swap já está disponível via <code>/api/v1/swaps/:id/events</code> e stream SSE.</li>
+    <li>Formulário já exige <code>destination_address</code> para reverse/chain e <code>invoice</code> para submarine.</li>
+    <li>Resumo operacional no create flow já mostra route/amount/destination para reduzir erro humano.</li>
+    <li>Pendência principal no frontend: hardening final de UX de produção (wizard/guard rails finais) e acabamento de mensagens.</li>
+  </ul>
+
+  <h2>1. Problema Atual</h2>
+  <p>A tela de swap ainda não expõe todos os dados críticos para operação real. Hoje o usuário não consegue inferir com clareza:</p>
+  <ul>
+    <li>de onde os fundos saem (funding source),</li>
+    <li>para onde o resultado final vai (destination),</li>
+    <li>quais passos precisam ser executados manualmente (funding/pagamento invoice),</li>
+    <li>quais riscos e timeouts estão em jogo.</li>
+  </ul>
+
+  <h2>2. Princípios de UX/Produto</h2>
+  <ol>
+    <li>Todo swap precisa de destino explícito por tipo (<code>kind</code>).</li>
+    <li>Antes do submit, usuário deve ver um “contrato” de swap legível.</li>
+    <li>Após create, tela deve instruir o próximo passo operacional sem ambiguidade.</li>
+    <li>Timeline e detalhes devem servir para suporte/debug sem depender de CLI.</li>
+  </ol>
+
+  <h2>3. Plano por PR</h2>
+
+  <table>
+    <thead>
+      <tr><th>PR</th><th>Status</th><th>Resumo</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>PR1</td>
+        <td><span class="badge ok">Implementado</span></td>
+        <td>Campos obrigatórios por <code>kind</code>, validação e payload de <code>destination_address</code>/<code>invoice</code>.</td>
+      </tr>
+      <tr>
+        <td>PR2</td>
+        <td><span class="badge ok">Implementado</span></td>
+        <td>Preview de execução e exposição de funding/destination/claim no card ativo.</td>
+      </tr>
+      <tr>
+        <td>PR3</td>
+        <td><span class="badge warn">Implementado (parcial)</span></td>
+        <td>Detalhamento operacional completo por swap e timeline avançada.</td>
+      </tr>
+      <tr>
+        <td>PR4</td>
+        <td><span class="badge ready">Pendente</span></td>
+        <td>Wizard de confirmação e guard rails finais de produção.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>PR1 - Inputs críticos obrigatórios</h3>
+  <ul>
+    <li><strong>Objetivo:</strong> impedir criação de swap subespecificado.</li>
+    <li><strong>Mudanças:</strong>
+      <ul>
+        <li><code>submarine</code>: exigir <code>Lightning Invoice</code> (ou toggle explícito de invoice interna).</li>
+        <li><code>reverse</code> e <code>chain</code>: adicionar <code>Destination Address</code> obrigatório.</li>
+        <li>Validação por <code>kind</code> com mensagens acionáveis.</li>
+        <li>Botão <code>Create Swap</code> desabilitado quando faltar campo obrigatório.</li>
+      </ul>
+    </li>
+    <li><strong>Arquivos alvo:</strong>
+      <ul>
+        <li><code>frontend/src/app/components/xs-wallet/screens/SwapCenter.tsx</code></li>
+        <li><code>frontend/src/services/api.ts</code></li>
+        <li><code>frontend/src/services/hooks.ts</code></li>
+      </ul>
+    </li>
+  </ul>
+
+  <h3>PR2 - Contrato + Funding/Settlement visíveis</h3>
+  <ul>
+    <li><strong>Objetivo:</strong> mostrar claramente “o que vai acontecer” e “o que o usuário deve fazer agora”.</li>
+    <li><strong>Mudanças:</strong>
+      <ul>
+        <li>Bloco <code>Resumo do Contrato</code> antes do submit (route, amount, destination, timeout, fees).</li>
+        <li>Após create: painel <code>Funding Details</code> com <code>lockup_address</code>, amount, copy/QR.</li>
+        <li>Para reverse: painel <code>Invoice to Pay</code> com copy e estado.</li>
+      </ul>
+    </li>
+    <li><strong>Arquivos alvo:</strong>
+      <ul>
+        <li><code>frontend/src/app/components/xs-wallet/screens/SwapCenter.tsx</code></li>
+        <li><code>frontend/src/services/hooks.ts</code></li>
+      </ul>
+    </li>
+  </ul>
+
+  <h3>PR3 - Detalhes operacionais por swap</h3>
+  <ul>
+    <li><strong>Objetivo:</strong> tornar o card do swap autossuficiente para operação e suporte.</li>
+    <li><strong>Mudanças:</strong>
+      <ul>
+        <li>Painel <code>Settlement Details</code> (claim/refund destination, txids, timeout).</li>
+        <li>Timeline expandida com <code>trigger</code>, <code>state transition</code> e <code>details_json</code>.</li>
+        <li>Labels de estado em linguagem operacional (“Aguardando funding”, “Aguardando broadcast do provider”).</li>
+      </ul>
+    </li>
+    <li><strong>Arquivos alvo:</strong>
+      <ul>
+        <li><code>frontend/src/app/components/xs-wallet/screens/SwapCenter.tsx</code></li>
+        <li><code>frontend/src/services/api.ts</code></li>
+      </ul>
+    </li>
+  </ul>
+
+  <h3>PR4 - Wizard e guard rails de produção</h3>
+  <ul>
+    <li><strong>Objetivo:</strong> reduzir erro humano no fluxo real.</li>
+    <li><strong>Mudanças:</strong>
+      <ul>
+        <li>Wizard em 3 etapas: <code>Route/Amount</code> → <code>Destination</code> → <code>Review/Confirm</code>.</li>
+        <li>Guard rails: amount mínimo, chain mismatch, invoice inválida/expirada.</li>
+        <li>Mensagens de erro orientadas a ação corretiva.</li>
+      </ul>
+    </li>
+    <li><strong>Arquivos alvo:</strong>
+      <ul>
+        <li><code>frontend/src/app/components/xs-wallet/screens/SwapCenter.tsx</code></li>
+        <li><code>frontend/src/services/hooks.ts</code></li>
+        <li><code>frontend/src/services/api.ts</code></li>
+      </ul>
+    </li>
+  </ul>
+
+  <h2>4. Critérios de Aceite (globais)</h2>
+  <table>
+    <thead>
+      <tr><th>Critério</th><th>Esperado</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Destino obrigatório</td>
+        <td>Nenhum swap é criado sem destination explícito por <code>kind</code>.</td>
+      </tr>
+      <tr>
+        <td>Clareza operacional</td>
+        <td>Usuário vê sempre “funding agora” e “destino final” antes da confirmação.</td>
+      </tr>
+      <tr>
+        <td>Execução assistida</td>
+        <td>Card de swap contém dados suficientes para operar sem CLI.</td>
+      </tr>
+      <tr>
+        <td>Observabilidade</td>
+        <td>Timeline por swap com eventos reais e detalhes técnicos.</td>
+      </tr>
+      <tr>
+        <td>Consistência de estado</td>
+        <td>Sem estados “unknown” quando <code>locked_intent</code> já possui dados.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>5. Ordem de Execução Recomendada</h2>
+  <ol>
+    <li>PR1 (bloqueador funcional)</li>
+    <li>PR2 (usabilidade operacional)</li>
+    <li>PR3 (debug/suporte)</li>
+    <li>PR4 (hardening UX para produção)</li>
+  </ol>
+
+  <h2>6. Definição de Conclusão</h2>
+  <p>Plano concluído quando PR1-PR3 estiverem estáveis em produção de desenvolvimento e PR4 (wizard + guard rails finais) for fechado com validação manual em testnet.</p>
+
+</body>
+
+</html>

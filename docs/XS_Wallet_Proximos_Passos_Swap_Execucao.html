@@ -243,7 +243,7 @@
                 </tr>
                 <tr>
                     <th>Data</th>
-                    <td>19 Fevereiro 2026</td>
+                    <td>20 Fevereiro 2026</td>
                 </tr>
                 <tr>
                     <th>Referências canônicas</th>
@@ -258,6 +258,12 @@
     </div>
 
     <h1>1. Sumário Executivo</h1>
+    <div class="note success">
+        <strong>Atualização de progresso:</strong> execução real de chain/reverse no watcher já alcança
+        <code>waiting_provider_broadcast</code> com assinatura MuSig2 parcial real; streams de eventos
+        (<code>GetSwapEvents</code>, <code>WatchSwap</code>, <code>WatchAllSwaps</code>) estão ativos no core e consumidos no frontend.
+        O foco restante é fechamento do E2E full-real terminal contínuo sem simulação e hardening final de release.
+    </div>
     <p>Este documento detalha como implementar os próximos passos do pipeline de swaps para sair do estado parcial atual (lock concluído, execução final pendente) e chegar ao fluxo operacional de execução real para <strong>chain</strong> e <strong>reverse</strong>, com assinatura <strong>MuSig2</strong>, reconciliação idempotente e visibilidade completa por eventos.</p>
 
     <p>O plano está alinhado com a especificação e com o código existente, incluindo a evolução já entregue no serviço gRPC de swap events/streams.</p>

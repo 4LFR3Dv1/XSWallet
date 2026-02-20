@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>XS Wallet - Gate E2E Real Testnet</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+    :root {
+      --text: #1a1a1a;
+      --text-secondary: #4a4a4a;
+      --bg: #ffffff;
+      --border: #e5e5e5;
+      --code-bg: #f5f5f5;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0 auto;
+      padding: 20mm;
+      max-width: 210mm;
+      font-family: 'Inter', -apple-system, sans-serif;
+      font-size: 10pt;
+      line-height: 1.6;
+      color: var(--text);
+      background: var(--bg);
+    }
+
+    h1 {
+      font-size: 20pt;
+      font-weight: 700;
+      margin: 24pt 0 12pt;
+      border-bottom: 2px solid var(--text);
+      padding-bottom: 6pt;
+    }
+
+    h2 {
+      font-size: 14pt;
+      font-weight: 600;
+      margin: 18pt 0 8pt;
+    }
+
+    h3 {
+      font-size: 11pt;
+      font-weight: 600;
+      margin: 12pt 0 6pt;
+    }
+
+    p { margin-bottom: 8pt; }
+
+    ul, ol { margin: 8pt 0 12pt 18pt; }
+
+    li { margin-bottom: 5pt; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12pt 0;
+      font-size: 9pt;
+    }
+
+    th, td {
+      border: 1px solid var(--border);
+      padding: 6pt 8pt;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: #f0f0f0;
+      font-weight: 600;
+    }
+
+    code {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 8pt;
+      background: var(--code-bg);
+      padding: 2pt 4pt;
+      border-radius: 2pt;
+    }
+
+    pre {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 4pt;
+      padding: 12pt;
+      overflow-x: auto;
+      font-size: 8pt;
+      line-height: 1.45;
+      margin: 8pt 0 14pt;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 2pt 6pt;
+      border-radius: 999px;
+      font-size: 8pt;
+      font-weight: 600;
+      color: #fff;
+      margin-right: 4pt;
+    }
+
+    .pass { background: var(--success); }
+    .warn { background: var(--warning); }
+    .fail { background: var(--danger); }
+  </style>
+</head>
+
+<body>
+  <h1>XS Wallet - Gate E2E Real Testnet</h1>
+
+  <table>
+    <tr><th>Documento</th><td>Gate formal para execução E2E real contínua (sem simulação) em testnet</td></tr>
+    <tr><th>Escopo</th><td>Chain + Reverse, caminhos terminais de sucesso e refund, restart/idempotência</td></tr>
+    <tr><th>Status-alvo</th><td><span class="badge pass">PASS</span> para liberar release backend</td></tr>
+    <tr><th>Fonte canônica</th><td><code>docs/STATUS_ESPECIFICACAO_XS_WALLET.md</code></td></tr>
+  </table>
+
+  <h2>0. Snapshot atual (20/02/2026)</h2>
+  <ul>
+    <li>Integrações de execução watcher com <code>SIMULATE_TRIGGER</code> estão em PASS para chain e reverse até <code>waiting_provider_broadcast</code>.</li>
+    <li>Caminho com <code>SIMULATE_TERMINAL</code> também está em PASS para validar transições terminais e idempotência.</li>
+    <li>Gate full-real contínuo sem simulação segue pendente por requisito operacional de saldo testnet (funding/pagamento real).</li>
+    <li>Critério de refund terminal já exige evidência on-chain objetiva, não apenas status textual de provider.</li>
+  </ul>
+
+  <h2>1. Objetivo</h2>
+  <p>Garantir que os fluxos E2E reais do watcher em testnet atinjam estado terminal com evidências objetivas on-chain, sem uso de variáveis de simulação (<code>XS_BOLTZ_*_SIMULATE_*</code>).</p>
+
+  <h2>2. Pré-requisitos mínimos</h2>
+  <ul>
+    <li>Saldo testnet disponível para funding chain e pagamento reverse invoice.</li>
+    <li>Conectividade com Boltz testnet: <code>https://api.testnet.boltz.exchange</code>.</li>
+    <li>Core compilando e testes unitários verdes em <code>internal/server</code> e <code>internal/watcher</code>.</li>
+    <li>Operador com acesso a logs e consulta de <code>swap_events</code>.</li>
+  </ul>
+
+  <h2>3. Matriz formal de cenários (gate)</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Cenário</th>
+        <th>Entrada real obrigatória</th>
+        <th>Terminal esperado</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>C1</td>
+        <td>chain_success</td>
+        <td>Funding real do <code>lockup_address</code></td>
+        <td><code>completed</code></td>
+      </tr>
+      <tr>
+        <td>C2</td>
+        <td>chain_refund</td>
+        <td>Funding real + expiração/falha real de cooperação</td>
+        <td><code>refunding</code> e depois <code>completed</code> por evidência on-chain</td>
+      </tr>
+      <tr>
+        <td>R1</td>
+        <td>reverse_success</td>
+        <td>Pagamento real da invoice LN</td>
+        <td><code>completed</code></td>
+      </tr>
+      <tr>
+        <td>R2</td>
+        <td>reverse_refund</td>
+        <td>Pagamento real + caminho de refund real</td>
+        <td><code>refunding</code> e depois <code>completed</code> por evidência on-chain</td>
+      </tr>
+      <tr>
+        <td>C3</td>
+        <td>chain_restart_midflow</td>
+        <td>Restart watcher/core durante execução</td>
+        <td>Retomada sem broadcast duplicado e terminal correto</td>
+      </tr>
+      <tr>
+        <td>R3</td>
+        <td>reverse_restart_midflow</td>
+        <td>Restart watcher/core durante execução</td>
+        <td>Retomada sem broadcast duplicado e terminal correto</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>4. Comandos base (sem simulação)</h2>
+  <h3>4.1 Chain full-real</h3>
+  <pre><code>cd XSWallet/core
+XS_BOLTZ_CHAIN_EXEC_INTEGRATION=1 \
+XS_BOLTZ_CHAIN_EXEC_FULL_REAL=1 \
+XS_BOLTZ_API_URL=https://api.testnet.boltz.exchange \
+XS_BOLTZ_CHAIN_EXEC_WAIT_SECONDS=1800 \
+XS_BOLTZ_CHAIN_EXEC_POLL_SECONDS=10 \
+go test ./internal/watcher -run TestChainExecutionToWaitingProviderBroadcastIntegration -v -count=1</code></pre>
+
+  <h3>4.2 Reverse full-real</h3>
+  <pre><code>cd XSWallet/core
+XS_BOLTZ_REVERSE_EXEC_INTEGRATION=1 \
+XS_BOLTZ_REVERSE_EXEC_FULL_REAL=1 \
+XS_BOLTZ_API_URL=https://api.testnet.boltz.exchange \
+XS_BOLTZ_REVERSE_EXEC_WAIT_SECONDS=1800 \
+XS_BOLTZ_REVERSE_EXEC_POLL_SECONDS=10 \
+go test ./internal/watcher -run TestReverseExecutionToWaitingProviderBroadcastIntegration -v -count=1</code></pre>
+
+  <h3>4.3 Execução sequencial recomendada</h3>
+  <pre><code>cd XSWallet/core
+./test/e2e/run_boltz_full_real_terminal.sh</code></pre>
+
+  <h2>5. Evidências obrigatórias por cenário</h2>
+  <ul>
+    <li><code>swap_id</code> e <code>boltz_id</code> do caso.</li>
+    <li>Estado terminal atingido no tempo limite definido.</li>
+    <li><code>claim_txid</code> ou <code>refund_txid</code> quando aplicável.</li>
+    <li>Sequência de transições persistida em <code>swap_events</code>.</li>
+    <li>No cenário de restart: comprovação de ausência de broadcast duplicado.</li>
+  </ul>
+
+  <h2>6. Critério PASS / FAIL</h2>
+  <table>
+    <thead>
+      <tr><th>Regra</th><th>PASS</th><th>FAIL</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Terminal esperado</td>
+        <td>Estado final correto dentro do timeout</td>
+        <td>Timeout ou estado divergente</td>
+      </tr>
+      <tr>
+        <td>Evidência on-chain</td>
+        <td><code>claim_txid/refund_txid</code> presente e observável</td>
+        <td>TXID ausente ou não observável</td>
+      </tr>
+      <tr>
+        <td>Eventos de transição</td>
+        <td>Timeline coerente em <code>swap_events</code></td>
+        <td>Transição ausente/incoerente</td>
+      </tr>
+      <tr>
+        <td>Restart/idempotência</td>
+        <td>Retoma fluxo sem duplicidade de broadcast</td>
+        <td>Duplicidade, regressão ou travamento</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>7. Template de resultado (preencher por execução)</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Cenário</th>
+        <th>Resultado</th>
+        <th>swap_id</th>
+        <th>boltz_id</th>
+        <th>Estado final</th>
+        <th>claim_txid/refund_txid</th>
+        <th>Observações</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td>C1</td><td>PASS/FAIL</td><td></td><td></td><td></td><td></td><td></td></tr>
+      <tr><td>C2</td><td>PASS/FAIL</td><td></td><td></td><td></td><td></td><td></td></tr>
+      <tr><td>R1</td><td>PASS/FAIL</td><td></td><td></td><td></td><td></td><td></td></tr>
+      <tr><td>R2</td><td>PASS/FAIL</td><td></td><td></td><td></td><td></td><td></td></tr>
+      <tr><td>C3</td><td>PASS/FAIL</td><td></td><td></td><td></td><td></td><td></td></tr>
+      <tr><td>R3</td><td>PASS/FAIL</td><td></td><td></td><td></td><td></td><td></td></tr>
+    </tbody>
+  </table>
+
+  <h2>8. Regra de liberação</h2>
+  <p><strong>GO:</strong> todos os cenários da matriz em <span class="badge pass">PASS</span> com evidências completas.</p>
+  <p><strong>NO-GO:</strong> qualquer cenário em <span class="badge fail">FAIL</span> ou com evidência incompleta.</p>
+
+</body>
+
+</html>
