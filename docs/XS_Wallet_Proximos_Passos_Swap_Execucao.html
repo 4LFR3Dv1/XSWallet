@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>XS Wallet - Plano de Execução Real de Swaps (Chain/Reverse + MuSig2)</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+        :root {
+            --text: #1a1a1a;
+            --text-secondary: #4a4a4a;
+            --bg: #ffffff;
+            --border: #e5e5e5;
+            --accent: #2563eb;
+            --code-bg: #f5f5f5;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            font-size: 10pt;
+            line-height: 1.6;
+            color: var(--text);
+            background: var(--bg);
+            max-width: 210mm;
+            margin: 0 auto;
+            padding: 20mm;
+        }
+
+        h1 {
+            font-size: 20pt;
+            font-weight: 700;
+            margin: 24pt 0 12pt;
+            border-bottom: 2px solid var(--text);
+            padding-bottom: 6pt;
+        }
+
+        h2 {
+            font-size: 14pt;
+            font-weight: 600;
+            margin: 18pt 0 8pt;
+            color: var(--text);
+        }
+
+        h3 {
+            font-size: 11pt;
+            font-weight: 600;
+            margin: 12pt 0 6pt;
+        }
+
+        p {
+            margin-bottom: 8pt;
+            text-align: justify;
+        }
+
+        ul,
+        ol {
+            margin: 8pt 0 12pt 18pt;
+        }
+
+        li {
+            margin-bottom: 5pt;
+        }
+
+        .cover {
+            text-align: center;
+            page-break-after: always;
+            padding-top: 100pt;
+        }
+
+        .cover h1 {
+            font-size: 31pt;
+            border: none;
+            margin-bottom: 8pt;
+        }
+
+        .cover .subtitle {
+            font-size: 14pt;
+            color: var(--text-secondary);
+            margin-bottom: 24pt;
+        }
+
+        .cover .meta {
+            margin-top: 50pt;
+        }
+
+        .cover .meta table {
+            margin: 0 auto;
+            text-align: left;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 12pt 0;
+            font-size: 9pt;
+        }
+
+        th,
+        td {
+            border: 1px solid var(--border);
+            padding: 6pt 8pt;
+            text-align: left;
+            vertical-align: top;
+        }
+
+        th {
+            background: #f0f0f0;
+            font-weight: 600;
+        }
+
+        .caption {
+            font-size: 9pt;
+            font-style: italic;
+            color: var(--text-secondary);
+            text-align: center;
+            margin: 4pt 0 16pt;
+        }
+
+        code {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 8pt;
+            background: var(--code-bg);
+            padding: 2pt 4pt;
+            border-radius: 2pt;
+        }
+
+        pre {
+            background: var(--code-bg);
+            padding: 12pt;
+            border-radius: 4pt;
+            overflow-x: auto;
+            margin: 8pt 0;
+            font-size: 8pt;
+            line-height: 1.4;
+        }
+
+        pre code {
+            background: none;
+            padding: 0;
+        }
+
+        .note {
+            background: #fef3c7;
+            border-left: 3px solid #f59e0b;
+            padding: 8pt 12pt;
+            margin: 12pt 0;
+            font-size: 9pt;
+        }
+
+        .note.success {
+            background: #d1fae5;
+            border-color: var(--success);
+        }
+
+        .note.danger {
+            background: #fee2e2;
+            border-color: var(--danger);
+        }
+
+        .diagram {
+            background: #fafafa;
+            border: 1px solid var(--border);
+            border-radius: 4pt;
+            padding: 16pt;
+            margin: 12pt 0;
+            text-align: center;
+        }
+
+        .mermaid {
+            background: transparent !important;
+        }
+
+        .page-break {
+            page-break-before: always;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 2pt 6pt;
+            border-radius: 3pt;
+            font-size: 8pt;
+            font-weight: 600;
+        }
+
+        .badge.done {
+            background: #d1fae5;
+            color: var(--success);
+        }
+
+        .badge.wip {
+            background: #fef3c7;
+            color: var(--warning);
+        }
+
+        .badge.pending {
+            background: #e5e5e5;
+            color: var(--text-secondary);
+        }
+
+        @media print {
+            body {
+                padding: 15mm;
+            }
+
+            .page-break {
+                page-break-before: always;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- DOC-CURRENT-STATE -->
+    <div style="margin:12px 16px;padding:10px 12px;border:1px solid #d97706;background:#fffbeb;color:#78350f;font:14px/1.4 sans-serif;">
+        <strong>Estado atual do codigo (fonte canonica):</strong> consulte <code>docs/STATUS_ESPECIFICACAO_XS_WALLET.md</code>.
+        Este documento descreve execucao tecnica alvo com base no estado atual, evitando divergencia com o codigo.
+    </div>
+
+    <div class="cover">
+        <h1>XS WALLET</h1>
+        <div class="subtitle">Plano Completo de Execução Real de Swaps<br>Chain/Reverse + MuSig2 + Watcher/Reconcile</div>
+        <div class="meta">
+            <table>
+                <tr>
+                    <th>Documento</th>
+                    <td>Plano técnico de implementação contextualizado ao código atual</td>
+                </tr>
+                <tr>
+                    <th>Versão</th>
+                    <td>v1.0</td>
+                </tr>
+                <tr>
+                    <th>Data</th>
+                    <td>19 Fevereiro 2026</td>
+                </tr>
+                <tr>
+                    <th>Referências canônicas</th>
+                    <td><code>docs/XS_Wallet_Especificacao_Tecnica_v2.html</code>, <code>docs/STATUS_ESPECIFICACAO_XS_WALLET.md</code>, <code>docs/PLANO_IMPLEMENTACAO_v0.2.md</code></td>
+                </tr>
+                <tr>
+                    <th>Escopo</th>
+                    <td>Execução real após <code>locked</code>, assinatura MuSig2 e transições até broadcast/provider</td>
+                </tr>
+            </table>
+        </div>
+    </div>
+
+    <h1>1. Sumário Executivo</h1>
+    <p>Este documento detalha como implementar os próximos passos do pipeline de swaps para sair do estado parcial atual (lock concluído, execução final pendente) e chegar ao fluxo operacional de execução real para <strong>chain</strong> e <strong>reverse</strong>, com assinatura <strong>MuSig2</strong>, reconciliação idempotente e visibilidade completa por eventos.</p>
+
+    <p>O plano está alinhado com a especificação e com o código existente, incluindo a evolução já entregue no serviço gRPC de swap events/streams.</p>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Bloco</th>
+                <th>Status atual</th>
+                <th>Próximo alvo</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>Streaming de swaps</td>
+                <td><span class="badge done">Concluído</span></td>
+                <td>Hardening de latência/backpressure</td>
+            </tr>
+            <tr>
+                <td>Chain/Reverse create + lock</td>
+                <td><span class="badge done">Concluído</span></td>
+                <td>Hardening operacional e cobertura E2E sem simulação</td>
+            </tr>
+            <tr>
+                <td>MuSig2 partial signing</td>
+                <td><span class="badge done">Concluído</span></td>
+                <td>Fechar executor de claim/refund final para todos os caminhos</td>
+            </tr>
+            <tr>
+                <td>Watcher de execução</td>
+                <td><span class="badge wip">Parcial</span></td>
+                <td>Consolidar evidência on-chain de refund multi-chain e path final de fallback</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h1>2. Baseline Atual do Código</h1>
+    <h2>2.1 Itens já disponíveis</h2>
+    <ul>
+        <li><code>swap_events</code> persistidos e usados no streaming do <code>SwapService</code>.</li>
+        <li><code>GetSwapEvents</code>, <code>WatchSwap</code> e <code>WatchAllSwaps</code> implementados com incremento por <code>seq</code>.</li>
+        <li>Integrações reais com Boltz testnet para criação de chain e reverse com validação de schema.</li>
+        <li>Persistência de <code>locked_intent</code> e <code>boltz_raw</code> no fluxo de criação.</li>
+    </ul>
+
+    <h2>2.2 Lacunas que impedem execução completa</h2>
+    <ul>
+        <li>Evidência objetiva de refund ainda precisa ser expandida além de BTC (ex.: Liquid/LN quando aplicável).</li>
+        <li>Fallback script-path ainda exige fechamento de execução final completa (claim/refund) em todos os cenários.</li>
+        <li>Watcher já valida status autoritativo, mas falta hardening de backpressure/latência para produção contínua.</li>
+        <li>Frontend precisa finalizar histórico/eventos em tempo real por stream nativo (hoje base incremental por polling).</li>
+    </ul>
+
+    <div class="note">
+        <strong>Invariante de segurança:</strong> eventos WebSocket do provider são apenas trigger. Toda ação crítica precisa de validação por fonte autoritativa (status API + confirmação chain/LN), conforme especificação técnica v2.
+    </div>
+
+    <h1>3. Máquina de Estados Alvo para Execução</h1>
+    <p>Sequência alvo principal (chain):</p>
+
+    <div class="diagram">
+        <div class="mermaid">
+            stateDiagram-v2
+                [*] --> waiting_claim_details
+                waiting_claim_details --> signing_musig2_partial: start_signing
+                signing_musig2_partial --> sent_partial_to_provider: send_partial
+                sent_partial_to_provider --> waiting_provider_broadcast: await_broadcast
+                waiting_provider_broadcast --> completed: claim_confirmed
+                waiting_provider_broadcast --> fallback_script_ready: coop_failed
+                fallback_script_ready --> refunding: timeout_or_manual
+                refunding --> failed: refund_error
+        </div>
+    </div>
+    <p class="caption">Fluxo de execução cooperativa/fallback para chain, alinhado ao spec.</p>
+
+    <h2>3.1 Triggers e invariantes por estado</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Estado</th>
+                <th>Trigger de entrada</th>
+                <th>Ação</th>
+                <th>Validação obrigatória</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><code>waiting_claim_details</code></td>
+                <td>Lockup financiado / claim details disponíveis</td>
+                <td>Preparar sessão MuSig2</td>
+                <td>Campos completos em <code>locked_intent</code></td>
+            </tr>
+            <tr>
+                <td><code>signing_musig2_partial</code></td>
+                <td><code>start_signing</code></td>
+                <td>Gerar partial signature</td>
+                <td>Nonce/session válidos e sem reuso</td>
+            </tr>
+            <tr>
+                <td><code>sent_partial_to_provider</code></td>
+                <td>Envio HTTP com sucesso</td>
+                <td>Persistir resultado e op-id</td>
+                <td>Resposta provider consistente com swap_id</td>
+            </tr>
+            <tr>
+                <td><code>waiting_provider_broadcast</code></td>
+                <td>Ack provider / status compatível</td>
+                <td>Polling até broadcast/claim</td>
+                <td>Status remoto monotônico + deduplicado</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h1>4. Implementação Detalhada por Camada</h1>
+
+    <h2>4.1 Persistência (DB + locked_intent)</h2>
+    <h3>Objetivo</h3>
+    <p>Persistir dados suficientes para reexecutar assinatura/claim/refund após restart sem depender de memória de processo.</p>
+
+    <h3>Campos mínimos obrigatórios no <code>locked_intent</code></h3>
+    <ul>
+        <li><code>boltz_id</code>, <code>preimage_hash</code>, <code>swap_kind</code>.</li>
+        <li><code>lockup_details</code>: <code>lockupAddress</code>, <code>timeoutBlockHeight</code>, <code>serverPublicKey</code>, <code>swapTree</code>.</li>
+        <li><code>claim_details</code>: <code>lockupAddress</code>, <code>timeoutBlockHeight</code>, <code>blindingKey</code>, <code>serverPublicKey</code>, <code>swapTree</code>.</li>
+        <li><code>musig</code> (bloco reservado): sessão, nonce pública local, nonce agregada, estado da assinatura.</li>
+    </ul>
+
+    <h3>Arquivos foco</h3>
+    <ul>
+        <li><code>core/internal/swap/chain.go</code></li>
+        <li><code>core/internal/swap/reverse.go</code></li>
+        <li><code>core/internal/db/db.go</code></li>
+    </ul>
+
+    <h2>4.2 MuSig2 (assinatura parcial real)</h2>
+    <h3>Objetivo</h3>
+    <p>Trocar placeholders/mocks por fluxo real de assinatura com chave derivada do vault, nonce segura e sessão reidratável.</p>
+
+    <h3>Requisitos técnicos</h3>
+    <ul>
+        <li>Derivação de chave por <code>swap_key_index</code> com domínio de derivação dedicado.</li>
+        <li>Geração de nonce única por sessão; proibição explícita de reuso.</li>
+        <li>Persistência de identificador de sessão e material necessário para retomar assinatura sem reuso indevido.</li>
+        <li>Zero vazamento de secnonce em logs, eventos ou erros serializados.</li>
+    </ul>
+
+    <h3>Arquivos foco</h3>
+    <ul>
+        <li><code>core/internal/musig2/session.go</code></li>
+        <li><code>core/internal/vault/derivation.go</code></li>
+        <li><code>core/internal/swap/engine.go</code></li>
+    </ul>
+
+    <div class="note danger">
+        <strong>Risco crítico:</strong> reuso de nonce em MuSig2 compromete a chave privada. O fluxo deve falhar de forma segura se detectar sessão inconsistente/repetida.
+    </div>
+
+    <h2>4.3 Provider/Boltz (execução cooperativa)</h2>
+    <h3>Objetivo</h3>
+    <p>Garantir contrato de requisição/resposta real para envio de partials e leitura de status de execução.</p>
+
+    <h3>Ações</h3>
+    <ul>
+        <li>Formalizar structs de request/response para endpoints de coop signing e status.</li>
+        <li>Persistir payload bruto de resposta em <code>boltz_raw</code> para auditoria e debug forense.</li>
+        <li>Normalizar códigos/erros transientes vs terminais para estratégia de retry.</li>
+    </ul>
+
+    <h3>Arquivos foco</h3>
+    <ul>
+        <li><code>core/internal/boltz/boltz.go</code></li>
+        <li><code>core/internal/boltz/types.go</code></li>
+        <li><code>core/internal/provider/provider.go</code></li>
+    </ul>
+
+    <h2>4.4 Watcher/Reconcile (orquestração idempotente)</h2>
+    <h3>Objetivo</h3>
+    <p>Executar transições automáticas de forma segura, idempotente e recuperável após falha/restart.</p>
+
+    <h3>Ações</h3>
+    <ul>
+        <li>Mapear status normalizado do provider para triggers de transição no engine.</li>
+        <li>Aplicar CAS por versão em toda transição sensível.</li>
+        <li>Registrar em <code>swap_events</code> cada tentativa/sucesso/erro com <code>trigger</code> e detalhes úteis.</li>
+        <li>Backoff exponencial com teto + jitter para polling de status.</li>
+    </ul>
+
+    <h3>Arquivos foco</h3>
+    <ul>
+        <li><code>core/internal/watcher/watcher.go</code></li>
+        <li><code>core/internal/swap/engine.go</code></li>
+    </ul>
+
+    <h1>5. Contratos de Dados Recomendados</h1>
+    <h2>5.1 Esqueleto de <code>locked_intent</code> para chain</h2>
+    <pre><code>{
+  "version": 1,
+  "swap_kind": "chain",
+  "boltz_id": "...",
+  "preimage_hash": "...",
+  "lockup_details": {
+    "lockupAddress": "...",
+    "timeoutBlockHeight": 0,
+    "serverPublicKey": "...",
+    "swapTree": { "claimLeaf": {}, "refundLeaf": {} }
+  },
+  "claim_details": {
+    "lockupAddress": "...",
+    "timeoutBlockHeight": 0,
+    "blindingKey": "...",
+    "serverPublicKey": "...",
+    "swapTree": { "claimLeaf": {}, "refundLeaf": {} }
+  },
+  "musig": {
+    "session_id": "",
+    "local_pubnonce": "",
+    "agg_nonce": "",
+    "partial_sig": "",
+    "updated_at": ""
+  }
+}</code></pre>
+
+    <h2>5.2 Eventos mínimos em <code>swap_events</code></h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Trigger</th>
+                <th>from_state</th>
+                <th>to_state</th>
+                <th>details_json mínimo</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><code>start_signing</code></td>
+                <td><code>waiting_claim_details</code></td>
+                <td><code>signing_musig2_partial</code></td>
+                <td>motivo + status/provider snapshot</td>
+            </tr>
+            <tr>
+                <td><code>send_partial</code></td>
+                <td><code>signing_musig2_partial</code></td>
+                <td><code>sent_partial_to_provider</code></td>
+                <td>request_id/op_id + hash do payload</td>
+            </tr>
+            <tr>
+                <td><code>await_broadcast</code></td>
+                <td><code>sent_partial_to_provider</code></td>
+                <td><code>waiting_provider_broadcast</code></td>
+                <td>ack/status remoto normalizado</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h1>6. Plano de Entrega em Fases</h1>
+
+    <h2>6.1 Fase A - Persistência e contratos (curta)</h2>
+    <ol>
+        <li>Concluir formato versionado de <code>locked_intent</code> para chain/reverse.</li>
+        <li>Ajustar provider types para dados reais de execução cooperativa.</li>
+        <li>Adicionar testes unitários de serialização/compatibilidade.</li>
+    </ol>
+
+    <h2>6.2 Fase B - MuSig2 real</h2>
+    <ol>
+        <li>Implementar sessão real (derivação de chave + nonce + partial).</li>
+        <li>Persistir sessão e bloquear reuso de nonce por desenho.</li>
+        <li>Criar testes de regressão com falhas esperadas de sessão inválida.</li>
+    </ol>
+
+    <h2>6.3 Fase C - Watcher execução chain</h2>
+    <ol>
+        <li>Ligar gatilhos do provider aos estados de execução chain.</li>
+        <li>Avançar até <code>waiting_provider_broadcast</code> com idempotência.</li>
+        <li>Cobrir restart/replay no meio da execução.</li>
+    </ol>
+
+    <h2>6.4 Fase D - Reverse integração equivalente</h2>
+    <ol>
+        <li>Teste de integração real para schema reverse.</li>
+        <li>Persistência equivalente no intent e eventos.</li>
+        <li>Harmonizar caminhos comuns chain/reverse no executor.</li>
+    </ol>
+
+    <div class="page-break"></div>
+
+    <h1>7. Testes e Validação</h1>
+
+    <h2>7.1 Integrações alvo (testnet)</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Teste</th>
+                <th>Objetivo</th>
+                <th>Critério de aprovação</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><code>TestCreateChainIntegration</code></td>
+                <td>Validar schema real <code>POST /v2/swap/chain</code></td>
+                <td>Resposta parseada + detalhes completos persistíveis</td>
+            </tr>
+            <tr>
+                <td><code>TestCreateReverseIntegration</code></td>
+                <td>Validar schema real <code>POST /v2/swap/reverse</code></td>
+                <td>Invoice/swapTree/timeout corretos e estáveis</td>
+            </tr>
+            <tr>
+                <td><code>TestChainExecutionToWaitingProviderBroadcastIntegration</code></td>
+                <td>Fluxo de execução até <code>waiting_provider_broadcast</code></td>
+                <td>Transições completas e eventos coerentes</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h2>7.2 Cenários obrigatórios de robustez</h2>
+    <ul>
+        <li>Restart de processo entre <code>signing_musig2_partial</code> e <code>sent_partial_to_provider</code>.</li>
+        <li>Erro 5xx temporário do provider durante envio de partial.</li>
+        <li>Evento WS duplicado fora de ordem.</li>
+        <li>Timeout de espera para broadcast cooperativo (entrada em fallback).</li>
+    </ul>
+
+    <h2>7.3 Métricas de sucesso</h2>
+    <ul>
+        <li>0 transições inválidas em <code>swap_events</code> (monotonicidade por swap).</li>
+        <li>0 reuso de nonce detectado em suíte de testes + runtime guardrails.</li>
+        <li>Fluxo chain testnet repetível em execuções consecutivas com ids distintos.</li>
+        <li>Tempo médio até <code>waiting_provider_broadcast</code> dentro da janela operacional esperada.</li>
+    </ul>
+
+    <h1>8. Ajustes Necessários de Frontend</h1>
+    <h2>8.1 Estados que a UI deve suportar explicitamente</h2>
+    <ul>
+        <li><code>waiting_claim_details</code></li>
+        <li><code>signing_musig2_partial</code></li>
+        <li><code>sent_partial_to_provider</code></li>
+        <li><code>waiting_provider_broadcast</code></li>
+        <li><code>fallback_script_ready</code> / <code>refunding</code></li>
+    </ul>
+
+    <h2>8.2 Ações práticas</h2>
+    <ul>
+        <li>Remover mensagens genéricas e expor erro técnico normalizado com contexto da transição.</li>
+        <li>Atualizar Swap History para refletir estados intermediários e não apenas finalizados.</li>
+        <li>Evoluir consumo de eventos para stream nativo no frontend (além do incremental atual).</li>
+    </ul>
+
+    <h1>9. Riscos e Mitigações</h1>
+    <table>
+        <thead>
+            <tr>
+                <th>Risco</th>
+                <th>Impacto</th>
+                <th>Mitigação</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>Reuso de nonce MuSig2</td>
+                <td>Comprometimento criptográfico</td>
+                <td>Persistência de sessão + trava de unicidade + fail-fast</td>
+            </tr>
+            <tr>
+                <td>Divergência status local x provider</td>
+                <td>Transição incorreta</td>
+                <td>WS apenas trigger; validar status autoritativo antes de transição</td>
+            </tr>
+            <tr>
+                <td>Quebra por schema novo do provider</td>
+                <td>Falha de execução em runtime</td>
+                <td>Integração contínua testnet + <code>boltz_raw</code> persistido para diagnóstico</td>
+            </tr>
+            <tr>
+                <td>UI desatualizada de estados</td>
+                <td>Operação cega e suporte difícil</td>
+                <td>Atualizar mapeamento de estados + timeline de eventos</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h1>10. Definition of Done (DoD)</h1>
+    <ol>
+        <li>Chain e reverse executam até estado terminal com validação objetiva de evidência (claim/refund) sem simulação.</li>
+        <li>Refund script-path executa broadcast real e persistência completa de artefatos em todos os cenários suportados.</li>
+        <li>Reconcile é idempotente sob restart, sem duplicar operações nem quebrar versão CAS.</li>
+        <li><code>swap_events</code> registra integralmente o caminho de execução; streams refletem o mesmo histórico.</li>
+        <li>Frontend exibe estados/eventos em paridade com backend usando stream nativo e histórico completo.</li>
+    </ol>
+
+    <div class="note success">
+        <strong>Próxima ação recomendada:</strong> fechar evidência on-chain de refund multi-chain e execução final de fallback script-path, para sair de "parcial avançado" para "fluxo completo".
+    </div>
+
+    <script>
+        if (window.mermaid) {
+            window.mermaid.initialize({ startOnLoad: true, theme: 'default' });
+        }
+    </script>
+</body>
+
+</html>

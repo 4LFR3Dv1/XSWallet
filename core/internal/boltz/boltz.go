@@ -4,6 +4,7 @@ package boltz
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"sync"
 	"time"
@@ -21,11 +22,13 @@ type Provider struct {
 	config Config
 
 	// Cache de pares
-	mu         sync.RWMutex
-	subPairs   map[string]map[string]PairInfo
-	revPairs   map[string]map[string]PairInfo
-	subPairsAt time.Time
-	revPairsAt time.Time
+	mu           sync.RWMutex
+	subPairs     map[string]map[string]PairInfo
+	revPairs     map[string]map[string]PairInfo
+	chainPairs   map[string]map[string]PairInfo
+	subPairsAt   time.Time
+	revPairsAt   time.Time
+	chainPairsAt time.Time
 }
 
 // Config configuração do provider Boltz
@@ -63,11 +66,12 @@ func NewProvider(cfg Config) (*Provider, error) {
 	}
 
 	return &Provider{
-		client:   client,
-		ws:       ws,
-		config:   cfg,
-		subPairs: make(map[string]map[string]PairInfo),
-		revPairs: make(map[string]map[string]PairInfo),
+		client:     client,
+		ws:         ws,
+		config:     cfg,
+		subPairs:   make(map[string]map[string]PairInfo),
+		revPairs:   make(map[string]map[string]PairInfo),
+		chainPairs: make(map[string]map[string]PairInfo),
 	}, nil
 }
 
@@ -100,6 +104,15 @@ func (p *Provider) Quote(ctx context.Context, req provider.QuoteRequest) (*provi
 			pair, found = fromPairs[to]
 		}
 		p.mu.RUnlock()
+	case provider.SwapKindChain:
+		if err := p.refreshChainPairs(ctx); err != nil {
+			return nil, err
+		}
+		p.mu.RLock()
+		if fromPairs, ok := p.chainPairs[from]; ok {
+			pair, found = fromPairs[to]
+		}
+		p.mu.RUnlock()
 
 	default:
 		return nil, fmt.Errorf("swap kind não suportado: %s", req.Kind)
@@ -127,6 +140,7 @@ func (p *Provider) Quote(ctx context.Context, req provider.QuoteRequest) (*provi
 		FromChain:             req.FromChain,
 		ToChain:               req.ToChain,
 		AmountSat:             req.AmountSat,
+		Address:               req.Address,
 		ProviderFeeSat:        providerFee,
 		NetworkFeeSat:         networkFee,
 		TotalFeeSat:           providerFee + networkFee,
@@ -137,9 +151,94 @@ func (p *Provider) Quote(ctx context.Context, req provider.QuoteRequest) (*provi
 	}, nil
 }
 
-// Create implementa provider.Provider (stub - requer keys)
-func (p *Provider) Create(ctx context.Context, quoteID string) (*provider.CreateResponse, error) {
-	return nil, fmt.Errorf("use CreateSubmarine ou CreateReverse diretamente com keys")
+// Create implementa provider.Provider
+func (p *Provider) Create(ctx context.Context, req provider.CreateRequest) (*provider.CreateResponse, error) {
+	switch req.Kind {
+	case provider.SwapKindSubmarine:
+		resp, err := p.client.CreateSubmarine(ctx, SubmarineRequest{
+			From:            chainToBoltz(req.FromChain),
+			To:              chainToBoltz(req.ToChain),
+			Invoice:         req.Invoice,
+			PreimageHash:    req.PreimageHash,
+			RefundPublicKey: req.RefundPublicKey,
+			PairHash:        req.PairHash,
+			ReferralID:      req.ReferralID,
+		})
+		if err != nil {
+			return nil, err
+		}
+		return &provider.CreateResponse{
+			SwapID:             resp.ID,
+			BoltzID:            resp.ID,
+			LockupAddress:      resp.Address,
+			ExpectedAmount:     resp.ExpectedAmount,
+			TimeoutBlockHeight: int(resp.TimeoutBlockHeight),
+			ClaimPublicKey:     resp.ClaimPublicKey,
+		}, nil
+	case provider.SwapKindReverse:
+		resp, err := p.client.CreateReverse(ctx, ReverseRequest{
+			From:           chainToBoltz(req.FromChain),
+			To:             chainToBoltz(req.ToChain),
+			PreimageHash:   req.PreimageHash,
+			ClaimPublicKey: req.ClaimPublicKey,
+			InvoiceAmount:  req.AmountSat,
+			PairHash:       req.PairHash,
+			ReferralID:     req.ReferralID,
+			Address:        req.Address,
+		})
+		if err != nil {
+			return nil, err
+		}
+		rawResp, _ := json.Marshal(resp)
+		return &provider.CreateResponse{
+			SwapID:             resp.ID,
+			BoltzID:            resp.ID,
+			LockupAddress:      resp.LockupAddress,
+			ExpectedAmount:     resp.OnchainAmount,
+			TimeoutBlockHeight: int(resp.TimeoutBlockHeight),
+			RefundPublicKey:    resp.RefundPublicKey,
+			BoltzRaw:           rawResp,
+			ReverseDetails:     rawResp,
+		}, nil
+	case provider.SwapKindChain:
+		musigAgg := req.MusigPubkeyAgg
+		if musigAgg == "" {
+			musigAgg = req.ClaimPublicKey
+		}
+		resp, err := p.client.CreateChain(ctx, ChainRequest{
+			From:            chainToBoltz(req.FromChain),
+			To:              chainToBoltz(req.ToChain),
+			PreimageHash:    req.PreimageHash,
+			MusigPubkeyAgg:  musigAgg,
+			ClaimPublicKey:  req.ClaimPublicKey,
+			RefundPublicKey: req.RefundPublicKey,
+			FromAmount:      req.AmountSat,
+			UserLockAmount:  req.AmountSat,
+			Address:         req.Address,
+			ClaimAddress:    req.Address,
+			PairHash:        req.PairHash,
+			ReferralID:      req.ReferralID,
+		})
+		if err != nil {
+			return nil, err
+		}
+		rawResp, _ := json.Marshal(resp)
+		lockupDetails, _ := json.Marshal(resp.LockupDetails)
+		claimDetails, _ := json.Marshal(resp.ClaimDetails)
+		return &provider.CreateResponse{
+			SwapID:             resp.ID,
+			BoltzID:            resp.ID,
+			LockupAddress:      resp.EffectiveLockupAddress(),
+			ClaimAddress:       resp.ClaimAddress,
+			ExpectedAmount:     resp.EffectiveExpectedAmount(),
+			TimeoutBlockHeight: int(resp.EffectiveTimeoutBlockHeight()),
+			BoltzRaw:           rawResp,
+			LockupDetails:      lockupDetails,
+			ClaimDetails:       claimDetails,
+		}, nil
+	default:
+		return nil, fmt.Errorf("swap kind não suportado: %s", req.Kind)
+	}
 }
 
 // CreateSubmarineSwap cria um submarine swap
@@ -195,6 +294,11 @@ func (p *Provider) GetSwapStatus(ctx context.Context, swapID string) (string, er
 	return status.Status, nil
 }
 
+// GetSwapStatusInfo returns the full provider status payload, including transaction info.
+func (p *Provider) GetSwapStatusInfo(ctx context.Context, swapID string) (*SwapStatus, error) {
+	return p.client.GetSwapStatus(ctx, swapID)
+}
+
 // GetSubmarineClaimDetails obtém detalhes para cooperative claim
 func (p *Provider) GetSubmarineClaimDetails(ctx context.Context, swapID string) (*SubmarineClaimDetails, error) {
 	return p.client.GetSubmarineClaimDetails(ctx, swapID)
@@ -208,6 +312,16 @@ func (p *Provider) PostSubmarineClaim(ctx context.Context, swapID string, sig Pa
 // PostReverseClaim envia claim para reverse swap
 func (p *Provider) PostReverseClaim(ctx context.Context, swapID string, req ReverseClaimRequest) (*ReverseClaimResponse, error) {
 	return p.client.PostReverseClaim(ctx, swapID, req)
+}
+
+// GetChainClaimDetails obtém detalhes para claim de chain swap
+func (p *Provider) GetChainClaimDetails(ctx context.Context, swapID string) (*ChainClaimDetails, error) {
+	return p.client.GetChainClaimDetails(ctx, swapID)
+}
+
+// PostChainClaim envia partial signature para chain swap claim
+func (p *Provider) PostChainClaim(ctx context.Context, swapID string, sig PartialSignature, preimage string) error {
+	return p.client.PostChainClaim(ctx, swapID, sig, preimage)
 }
 
 // Close fecha o provider
@@ -266,6 +380,27 @@ func (p *Provider) refreshReversePairs(ctx context.Context) error {
 	p.mu.Lock()
 	p.revPairs = pairs
 	p.revPairsAt = time.Now()
+	p.mu.Unlock()
+
+	return nil
+}
+
+func (p *Provider) refreshChainPairs(ctx context.Context) error {
+	p.mu.RLock()
+	if time.Since(p.chainPairsAt) < pairCacheTTL {
+		p.mu.RUnlock()
+		return nil
+	}
+	p.mu.RUnlock()
+
+	pairs, err := p.client.GetChainPairs(ctx)
+	if err != nil {
+		return err
+	}
+
+	p.mu.Lock()
+	p.chainPairs = pairs
+	p.chainPairsAt = time.Now()
 	p.mu.Unlock()
 
 	return nil

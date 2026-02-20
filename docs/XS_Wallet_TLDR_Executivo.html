@@ -136,8 +136,13 @@
 </head>
 
 <body>
+<!-- DOC-CURRENT-STATE -->
+<div style="margin:12px 16px;padding:10px 12px;border:1px solid #d97706;background:#fffbeb;color:#78350f;font:14px/1.4 sans-serif;">
+<strong>Estado atual do codigo (fonte canonica):</strong> consulte <code>docs/STATUS_ESPECIFICACAO_XS_WALLET.md</code>.
+Este documento pode conter conteudo de alvo/planejamento (spec/roadmap) alem do estado ja implementado.
+</div>
     <h1> XS WALLET</h1>
-    <p class="subtitle">TL;DR Executivo • Plano de 11 Semanas • Janeiro 2026</p>
+    <p class="subtitle">TL;DR Executivo • Estado Atual + Plano • Fevereiro 2026</p>
 
     <!-- 1. OBJETIVO -->
     <div class="section">
@@ -145,9 +150,14 @@
         <p><strong>Carteira desktop self-custody</strong> com atomic swaps entre BTC, Liquid e Lightning Network.</p>
         <ul>
             <li>Princípios: <strong>Zero Trust</strong> + <strong>Crash Recovery</strong></li>
-            <li>Diferencial: Sem servidor central de custódia, preimages criptografadas, MuSig2 key-path claims</li>
+            <li>Diferencial: Sem servidor central de custódia, preimages criptografadas, base para MuSig2</li>
             <li>Target: Usuários técnicos que querem controle total sobre seus fundos</li>
         </ul>
+    </div>
+
+    <div class="section" style="border-color:#d97706;background:#fffbeb;">
+        <h2><span class="icon"></span> 1.1 Nível Atual</h2>
+        <p><strong>Pré-beta (MVP técnico avançado)</strong>: fluxo principal funcional (core + frontend), com pendências para produção em Node Manager runtime, hardening de streaming nativo e fechamento de claim/refund final em todos os caminhos.</p>
     </div>
 
     <!-- 2. ARQUITETURA -->
@@ -161,8 +171,8 @@
             </tr>
             <tr>
                 <td>Frontend</td>
-                <td>Electron + React</td>
-                <td>UI desktop, IPC seguro</td>
+                <td>React + Vite (HTTP) + Electron/IPC parcial</td>
+                <td>UI desktop, migração progressiva para IPC</td>
             </tr>
             <tr>
                 <td>Core</td>
@@ -264,19 +274,19 @@
     <!-- 5. PRÓXIMO MILESTONE -->
     <div class="section" style="border-color: var(--success); background: #ecfdf5;">
         <h2><span class="icon"></span> 5. Próximo Milestone</h2>
-        <p><span class="badge next">PHASE 1 → Semana 2</span></p>
-        <p><strong>Core Stable:</strong> DB schema migrado + vault unlock funcional com lockout</p>
+        <p><span class="badge next">Pré-beta Hardening</span></p>
+        <p><strong>Foco atual:</strong> fechar gaps de produção mantendo o fluxo já funcional</p>
         <ul>
-            <li>Schema SQLite unificado via migrations</li>
-            <li><code>QuoteSwap()</code> aceita todos os pares</li>
-            <li>Preimages criptografadas (AES-256-GCM)</li>
-            <li>PIN lockout: 10 tentativas → 30min lock</li>
+            <li>Alinhar scripts root de build/lint/test ao estado real do monorepo</li>
+            <li>Completar Node Manager runtime no core</li>
+            <li>Hardening de streaming de swaps (<code>WatchSwap</code>/<code>WatchAllSwaps</code>) para carga real</li>
+            <li>Fechar claim/refund final com evidência on-chain e fallback script-path completo</li>
         </ul>
     </div>
 
     <div class="footer">
         <strong>XS Wallet - TL;DR Executivo v1.0</strong><br>
-        Janeiro 2026 • Self-Custody • Zero Trust • Don't Trust, Verify
+        Fevereiro 2026 • Self-Custody • Zero Trust • Don't Trust, Verify
     </div>
 </body>
 

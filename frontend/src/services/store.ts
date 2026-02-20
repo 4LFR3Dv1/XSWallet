@@ -2,7 +2,6 @@
 // Global state for vault and app
 
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
 import * as api from './api';
 
 // ============================================================================
@@ -17,7 +16,7 @@ interface VaultState {
     // Actions
     checkStatus: () => Promise<void>;
     initVault: (pin: string) => Promise<api.InitVaultResponse>;
-    unlock: (pin: string) => Promise<boolean>;
+    unlock: (pin: string) => Promise<api.UnlockResponse>;
     lock: () => Promise<void>;
     clearMnemonic: () => void;
 }
@@ -30,9 +29,22 @@ export const useVaultStore = create<VaultState>()((set, get) => ({
     checkStatus: async () => {
         try {
             const data = await api.getVaultStatus();
+            const currentSessionId = get().sessionId;
+            if (data.state === 'unlocked' && !currentSessionId) {
+                api.setSessionAuthToken(null);
+                set({ status: 'locked' });
+                return;
+            }
+            if (data.state !== 'unlocked') {
+                api.setSessionAuthToken(null);
+                set({ status: data.state, sessionId: null });
+                return;
+            }
+            api.setSessionAuthToken(currentSessionId);
             set({ status: data.state });
         } catch (e) {
             // If API fails, assume locked
+            api.setSessionAuthToken(null);
             set({ status: 'locked' });
         }
     },
@@ -40,6 +52,7 @@ export const useVaultStore = create<VaultState>()((set, get) => ({
     initVault: async (pin: string) => {
         const result = await api.initVault({ action: 'generate', pin });
         if (result.success) {
+            api.setSessionAuthToken(result.session_id || null);
             set({
                 status: 'unlocked',
                 sessionId: result.session_id,
@@ -52,13 +65,14 @@ export const useVaultStore = create<VaultState>()((set, get) => ({
     unlock: async (pin: string) => {
         const result = await api.unlockVault(pin);
         if (result.success) {
+            api.setSessionAuthToken(result.session_id || null);
             set({
                 status: 'unlocked',
                 sessionId: result.session_id || null,
             });
-            return true;
+            return result;
         }
-        return false;
+        return result;
     },
 
     lock: async () => {
@@ -67,6 +81,7 @@ export const useVaultStore = create<VaultState>()((set, get) => ({
         } catch (e) {
             // Ignore errors
         }
+        api.setSessionAuthToken(null);
         set({ status: 'locked', sessionId: null });
     },
 

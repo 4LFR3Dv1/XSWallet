@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>XS Wallet - Roadmap Pré-Beta (Hardening, Restore, E2E, Release)</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+        :root {
+            --text: #1a1a1a;
+            --text-secondary: #4a4a4a;
+            --bg: #ffffff;
+            --border: #e5e5e5;
+            --accent: #2563eb;
+            --code-bg: #f5f5f5;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            font-size: 10pt;
+            line-height: 1.6;
+            color: var(--text);
+            background: var(--bg);
+            max-width: 210mm;
+            margin: 0 auto;
+            padding: 20mm;
+        }
+
+        h1 {
+            font-size: 20pt;
+            font-weight: 700;
+            margin: 24pt 0 12pt;
+            border-bottom: 2px solid var(--text);
+            padding-bottom: 6pt;
+        }
+
+        h2 {
+            font-size: 14pt;
+            font-weight: 600;
+            margin: 18pt 0 8pt;
+            color: var(--text);
+        }
+
+        h3 {
+            font-size: 11pt;
+            font-weight: 600;
+            margin: 12pt 0 6pt;
+        }
+
+        p {
+            margin-bottom: 8pt;
+            text-align: justify;
+        }
+
+        ul,
+        ol {
+            margin: 8pt 0 12pt 18pt;
+        }
+
+        li {
+            margin-bottom: 5pt;
+        }
+
+        .cover {
+            text-align: center;
+            page-break-after: always;
+            padding-top: 100pt;
+        }
+
+        .cover h1 {
+            font-size: 30pt;
+            border: none;
+            margin-bottom: 8pt;
+        }
+
+        .cover .subtitle {
+            font-size: 14pt;
+            color: var(--text-secondary);
+            margin-bottom: 40pt;
+        }
+
+        .cover .meta {
+            margin-top: 50pt;
+        }
+
+        .cover .meta table {
+            margin: 0 auto;
+            text-align: left;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 12pt 0;
+            font-size: 9pt;
+        }
+
+        th,
+        td {
+            border: 1px solid var(--border);
+            padding: 6pt 8pt;
+            text-align: left;
+            vertical-align: top;
+        }
+
+        th {
+            background: #f0f0f0;
+            font-weight: 600;
+        }
+
+        code {
+            font-family: 'JetBrains Mono', monospace;
+            background: var(--code-bg);
+            padding: 1pt 4pt;
+            border-radius: 3pt;
+            font-size: 8.5pt;
+        }
+
+        pre {
+            background: var(--code-bg);
+            border: 1px solid var(--border);
+            border-radius: 6pt;
+            padding: 10pt;
+            overflow-x: auto;
+            margin: 8pt 0 12pt;
+        }
+
+        pre code {
+            background: none;
+            padding: 0;
+        }
+
+        .note {
+            border-left: 4px solid var(--accent);
+            background: #f8fafc;
+            padding: 8pt 10pt;
+            margin: 10pt 0;
+            font-size: 9pt;
+        }
+
+        .note.warning {
+            border-left-color: var(--warning);
+            background: #fffbeb;
+        }
+
+        .note.danger {
+            border-left-color: var(--danger);
+            background: #fef2f2;
+        }
+
+        .note.success {
+            border-left-color: var(--success);
+            background: #ecfdf5;
+        }
+
+        .phase {
+            border: 1px solid var(--border);
+            border-radius: 8pt;
+            padding: 10pt;
+            margin: 10pt 0;
+        }
+    </style>
+</head>
+
+<body>
+<!-- DOC-CURRENT-STATE -->
+<div style="margin:12px 16px;padding:10px 12px;border:1px solid #d97706;background:#fffbeb;color:#78350f;font:14px/1.4 sans-serif;">
+<strong>Estado atual do codigo (fonte canonica):</strong> consulte <code>docs/STATUS_ESPECIFICACAO_XS_WALLET.md</code>.
+Este documento pode conter conteudo de alvo/planejamento (spec/roadmap) alem do estado ja implementado.
+</div>
+    <div class="cover">
+        <h1>XS WALLET</h1>
+        <div class="subtitle">Roadmap Pré-Beta: Hardening, Restore UI, E2E e Release Pipeline</div>
+
+        <div class="meta">
+            <table>
+                <tr>
+                    <th>Documento</th>
+                    <td>Plano de Evolução Pré-Beta</td>
+                </tr>
+                <tr>
+                    <th>Versão</th>
+                    <td>1.0.0</td>
+                </tr>
+                <tr>
+                    <th>Projeto</th>
+                    <td>XS Wallet v0.2.x</td>
+                </tr>
+                <tr>
+                    <th>Data</th>
+                    <td>19 Fevereiro 2026</td>
+                </tr>
+                <tr>
+                    <th>Escopo</th>
+                    <td>Segurança, fluxo de restauração, qualidade E2E e pipeline de release</td>
+                </tr>
+            </table>
+        </div>
+    </div>
+
+    <h1>1. Objetivo</h1>
+    <p>
+        Concluir os blocos críticos para elevar o XS Wallet do estágio de MVP avançado para pré-beta técnico,
+        com foco em segurança operacional, completude de fluxo de usuário e confiabilidade de entrega.
+    </p>
+
+    <h1>2. Escopo Macro</h1>
+    <ol>
+        <li>Hardening final de segurança.</li>
+        <li>Restore completo na UI (importação de carteira).</li>
+        <li>Suíte E2E ampla e estável.</li>
+        <li>Pipeline final de release com gates objetivos.</li>
+    </ol>
+
+    <h1>3. Fase 1 - Hardening Final de Segurança</h1>
+
+    <div class="phase">
+        <h2>3.1 Gestão de segredos e configuração</h2>
+        <ul>
+            <li>Remover placeholders e defaults inseguros de produção.</li>
+            <li>Padronizar <code>.env</code> por ambiente (<code>dev/stage/prod</code>).</li>
+            <li>Validar boot com fail-fast quando variável obrigatória faltar.</li>
+            <li>Documentar matriz de env vars no docs.</li>
+        </ul>
+    </div>
+
+    <div class="phase">
+        <h2>3.2 Sessão e autenticação</h2>
+        <ul>
+            <li>Garantir uso exclusivo de <code>session_id</code> real após <code>unlock</code>.</li>
+            <li>Invalidar sessão no lock/logout e em <code>not_unlocked</code>.</li>
+            <li>Padronizar resposta de erro <code>Unauthenticated</code> para UI.</li>
+            <li>Adicionar testes de expiração e sessão inválida.</li>
+        </ul>
+    </div>
+
+    <div class="phase">
+        <h2>3.3 IPC, bridge e superfície de ataque</h2>
+        <ul>
+            <li>Revisar whitelist de canais IPC e payload validators.</li>
+            <li>Remover qualquer fallback que simule sucesso sem backend.</li>
+            <li>Aplicar timeout e rate-limit consistentes por operação mutável.</li>
+            <li>Revisar CSP/CORS e headers de segurança.</li>
+        </ul>
+    </div>
+
+    <div class="note warning">
+        <strong>Risco principal:</strong> sessões inválidas causando comportamento inconsistente entre UI e backend.
+        Mitigação: contrato explícito de estado + testes de regressão de autenticação.
+    </div>
+
+    <h1>4. Fase 2 - Restore Completo na UI</h1>
+
+    <h2>4.1 Fluxo funcional esperado</h2>
+    <ol>
+        <li>Usuário escolhe <code>Restore Wallet</code>.</li>
+        <li>Informa mnemonic (12/24 palavras) com validação local de formato.</li>
+        <li>Define e confirma PIN (regras de segurança).</li>
+        <li>Frontend chama endpoint de restore/import no backend.</li>
+        <li>Em sucesso: segue para unlock/dashboard conforme estado retornado.</li>
+    </ol>
+
+    <h2>4.2 Requisitos técnicos</h2>
+    <ul>
+        <li>Estados explícitos de loading, erro e sucesso.</li>
+        <li>Mensagens de erro orientadas por causa real (mnemonic inválido, já existe wallet, etc.).</li>
+        <li>Proteção de rota para evitar dead-end e loops de navegação.</li>
+        <li>Paridade entre fluxo IPC e fallback HTTP.</li>
+    </ul>
+
+    <h2>4.3 Critérios de aceite do restore</h2>
+    <ul>
+        <li>Sem telas “coming soon” em caminho crítico.</li>
+        <li>Restore completo sem intervenção manual externa.</li>
+        <li>Session token válido após fluxo finalizado.</li>
+    </ul>
+
+    <h1>5. Fase 3 - Suíte E2E Ampla</h1>
+
+    <h2>5.1 Matriz mínima de cenários</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Categoria</th>
+                <th>Cenário</th>
+                <th>Resultado esperado</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>Onboarding</td>
+                <td>Primeira execução -> Create Wallet</td>
+                <td>Vault inicializado, mnemonic exibido, unlock funcional</td>
+            </tr>
+            <tr>
+                <td>Restore</td>
+                <td>Import por mnemonic válido</td>
+                <td>Wallet restaurada e sessão coerente</td>
+            </tr>
+            <tr>
+                <td>Auth</td>
+                <td>Token expirado/inválido</td>
+                <td>Redireciono seguro para unlock + mensagem clara</td>
+            </tr>
+            <tr>
+                <td>Wallet</td>
+                <td>Gerar endereço / visualizar histórico</td>
+                <td>Sem duplicação, dados consistentes por chain</td>
+            </tr>
+            <tr>
+                <td>Network</td>
+                <td>Status de serviços</td>
+                <td>mainnet/regtest exibido corretamente</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h2>5.2 Estratégia de execução</h2>
+    <ul>
+        <li>Camada de smoke em cada PR crítico.</li>
+        <li>Suite full em pipeline principal.</li>
+        <li>Coleta de artefatos: logs, traces e screenshots.</li>
+    </ul>
+
+    <h1>6. Fase 4 - Pipeline Final de Release</h1>
+
+    <h2>6.1 Pipeline alvo</h2>
+    <pre><code>lint -> unit -> build -> e2e-smoke -> e2e-full -> package -> sign -> release</code></pre>
+
+    <h2>6.2 Gates obrigatórios</h2>
+    <ul>
+        <li>Build Electron/Frontend 100% verde.</li>
+        <li>E2E crítico sem falhas intermitentes abertas.</li>
+        <li>Checklist de segurança concluído.</li>
+        <li>Versão/tag e release notes geradas.</li>
+    </ul>
+
+    <h2>6.3 Entregáveis de release</h2>
+    <ul>
+        <li>Artefatos assinados por plataforma.</li>
+        <li>Notas de versão com breaking changes.</li>
+        <li>Plano de rollback documentado.</li>
+    </ul>
+
+    <h1>7. Sequência Recomendada de Implementação</h1>
+    <ol>
+        <li>Hardening (segredos/sessão/IPC).</li>
+        <li>Restore UI completo.</li>
+        <li>E2E crítico e regressão de auth.</li>
+        <li>Pipeline de release e empacotamento final.</li>
+    </ol>
+
+    <div class="note success">
+        <strong>Definição de pronto (pré-beta):</strong> fluxo completo de create/restore/unlock estável,
+        segurança operacional validada, E2E crítico automatizado e pipeline de release reproduzível.
+    </div>
+
+    <h1>8. Checklist Executivo</h1>
+    <ol>
+        <li>[ ] Remover defaults inseguros e normalizar envs.</li>
+        <li>[ ] Fechar contrato de sessão entre Electron, frontend e bridge.</li>
+        <li>[ ] Implementar restore end-to-end na UI.</li>
+        <li>[ ] Cobrir cenários críticos com E2E.</li>
+        <li>[ ] Finalizar pipeline de release com gates.</li>
+    </ol>
+</body>
+
+</html>

@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>XS Wallet - Pré-requisitos para NodeManager Real</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+    :root {
+      --text: #111827;
+      --muted: #4b5563;
+      --border: #d1d5db;
+      --bg-soft: #f9fafb;
+      --ok: #059669;
+      --warn: #d97706;
+      --danger: #dc2626;
+      --accent: #2563eb;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0 auto;
+      padding: 20mm;
+      max-width: 210mm;
+      font-family: 'Inter', sans-serif;
+      color: var(--text);
+      line-height: 1.55;
+      font-size: 10pt;
+    }
+
+    h1 {
+      font-size: 20pt;
+      margin: 0 0 10pt;
+      border-bottom: 2px solid #111827;
+      padding-bottom: 6pt;
+    }
+
+    h2 {
+      margin-top: 16pt;
+      margin-bottom: 8pt;
+      font-size: 13pt;
+    }
+
+    p { margin: 6pt 0; }
+    ul, ol { margin: 6pt 0 10pt 18pt; }
+    li { margin-bottom: 4pt; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 10pt 0 14pt;
+      font-size: 9pt;
+    }
+
+    th, td {
+      border: 1px solid var(--border);
+      padding: 7pt 8pt;
+      vertical-align: top;
+      text-align: left;
+    }
+
+    th { background: var(--bg-soft); }
+
+    code {
+      font-family: 'JetBrains Mono', monospace;
+      background: #f3f4f6;
+      border-radius: 3pt;
+      padding: 1pt 4pt;
+      font-size: 8.5pt;
+    }
+
+    pre {
+      background: #f3f4f6;
+      border: 1px solid var(--border);
+      border-radius: 8pt;
+      padding: 10pt;
+      overflow-x: auto;
+      font-size: 8.5pt;
+      margin: 8pt 0 12pt;
+    }
+
+    .badge {
+      display: inline-block;
+      font-size: 8pt;
+      padding: 2pt 6pt;
+      border-radius: 999px;
+      border: 1px solid transparent;
+      font-weight: 600;
+    }
+
+    .required { background: #ecfdf5; color: var(--ok); border-color: #a7f3d0; }
+    .optional { background: #fffbeb; color: var(--warn); border-color: #fde68a; }
+    .blocker { background: #fef2f2; color: var(--danger); border-color: #fecaca; }
+
+    .note {
+      border-left: 4px solid var(--accent);
+      background: #eff6ff;
+      padding: 8pt 10pt;
+      margin: 10pt 0;
+      font-size: 9pt;
+    }
+
+    .meta td:first-child { width: 160px; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <h1>XS Wallet - Pré-requisitos para NodeManager Real</h1>
+
+  <table class="meta">
+    <tr><td>Documento</td><td>Pré-requisitos operacionais e técnicos para NodeManager real (sem stub)</td></tr>
+    <tr><td>Projeto</td><td>XS Wallet</td></tr>
+    <tr><td>Data</td><td>20 Fevereiro 2026</td></tr>
+    <tr><td>Escopo</td><td><code>bitcoind</code>, <code>elementsd</code>, <code>lnd</code>, saúde, ciclo de vida e release gate</td></tr>
+  </table>
+
+  <h2>1. Objetivo</h2>
+  <p>
+    Definir os pré-requisitos mínimos para operar o NodeManager em modo real de produção, cobrindo segurança,
+    conectividade, observabilidade e critérios de aceite de release.
+  </p>
+
+  <h2>2. Modelo de Health (UP / READY / DEGRADED)</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Nível</th>
+        <th>Definição</th>
+        <th>O que o NodeManager permite</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>UP</code></td>
+        <td>Processo responde RPC/gRPC.</td>
+        <td>Apenas status e diagnóstico básico. Não libera operações de swap.</td>
+      </tr>
+      <tr>
+        <td><code>READY</code></td>
+        <td>Responde e está operacional para fluxo de negócio (sync, chain e estado de wallet corretos).</td>
+        <td>Libera operações que dependem do node (swap/execução/tx).</td>
+      </tr>
+      <tr>
+        <td><code>DEGRADED</code></td>
+        <td>Responde, porém com restrição operacional (sync em progresso, peers baixos, backlog alto).</td>
+        <td>Permite consulta e manutenção; bloqueia criação/execução crítica.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>3. Matriz de Pré-requisitos</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Bloco</th>
+        <th>Requisito</th>
+        <th>Tipo</th>
+        <th>Critério objetivo</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Binários</td>
+        <td>Instalar versões fixas de <code>bitcoind</code>, <code>elementsd</code>, <code>lnd</code> (+ CLIs).</td>
+        <td><span class="badge required">Obrigatório</span></td>
+        <td>Comandos <code>--version</code> batem com versão documentada.</td>
+      </tr>
+      <tr>
+        <td>Diretórios</td>
+        <td>Data dir/log dir dedicados por rede e por node, com permissão mínima.</td>
+        <td><span class="badge required">Obrigatório</span></td>
+        <td>Processo inicia sem erro de permissão e grava logs.</td>
+      </tr>
+      <tr>
+        <td>Credenciais</td>
+        <td>RPC/gRPC credenciais em secret/env seguro; sem defaults inseguros.</td>
+        <td><span class="badge required">Obrigatório</span></td>
+        <td>Boot fail-fast quando variável obrigatória ausente.</td>
+      </tr>
+      <tr>
+        <td>Rede/Portas</td>
+        <td>Portas livres e firewall restrito; <strong>default obrigatório</strong> em localhost. Exceção apenas explícita e auditada.</td>
+        <td><span class="badge required">Obrigatório</span></td>
+        <td>Health-check conecta sem timeout em todos os serviços.</td>
+      </tr>
+      <tr>
+        <td>RPC bind allowlist</td>
+        <td>Rejeitar configuração insegura de RPC aberto (ex.: <code>0.0.0.0</code>) sem justificativa formal.</td>
+        <td><span class="badge required">Obrigatório</span></td>
+        <td><code>rpcbind=127.0.0.1</code> (ou socket local) e allowlist validada em boot.</td>
+      </tr>
+      <tr>
+        <td>LND TLS/Macaroon</td>
+        <td><code>tls.cert</code> e macaroon com escopo correto para operações exigidas.</td>
+        <td><span class="badge required">Obrigatório</span></td>
+        <td><code>lncli getinfo</code> e chamadas gRPC necessárias funcionando.</td>
+      </tr>
+      <tr>
+        <td>Permissão de segredos</td>
+        <td>Arquivos de segredo (<code>tls.cert</code>, macaroon, cookies) com permissão mínima.</td>
+        <td><span class="badge required">Obrigatório</span></td>
+        <td>NodeManager valida e falha se arquivo estiver world-readable/group-writable indevido.</td>
+      </tr>
+      <tr>
+        <td>Lifecycle</td>
+        <td>NodeService real com <code>start/stop/restart/status/watch</code> + política de restart robusta.</td>
+        <td><span class="badge required">Obrigatório</span></td>
+        <td>Transições estáveis: <code>stopped→starting→running</code> e retorno para <code>stopped</code>; sem loop infinito.</td>
+      </tr>
+      <tr>
+        <td>Backoff/Circuit breaker</td>
+        <td>Backoff exponencial com jitter, limite de tentativas por janela e diferenciação de erro transitório/hard.</td>
+        <td><span class="badge required">Obrigatório</span></td>
+        <td><code>ERROR_TRANSIENT</code> e <code>ERROR_HARD</code> com reason code persistido e auditável.</td>
+      </tr>
+      <tr>
+        <td>Persistência estado</td>
+        <td>Estado/erro operacional salvo para recuperação após restart.</td>
+        <td><span class="badge required">Obrigatório</span></td>
+        <td>Após restart da app, estado do node é reidratado corretamente.</td>
+      </tr>
+      <tr>
+        <td>Critérios READY objetivos</td>
+        <td>Critérios formais de sincronização para BTC/Elements/LND.</td>
+        <td><span class="badge required">Obrigatório</span></td>
+        <td>READY só quando checks por serviço forem satisfeitos; caso contrário <code>UP</code> ou <code>DEGRADED</code>.</td>
+      </tr>
+      <tr>
+        <td>Observabilidade</td>
+        <td>Logs estruturados + métricas mínimas de saúde/reconexão/latência.</td>
+        <td><span class="badge required">Obrigatório</span></td>
+        <td>Correlação por <code>node_id</code>/<code>request_id</code>/<code>reason_code</code>; diagnóstico em até 5 min.</td>
+      </tr>
+      <tr>
+        <td>Runbook</td>
+        <td>Procedimentos de incidente por serviço (BTC/Liquid/LND).</td>
+        <td><span class="badge required">Obrigatório</span></td>
+        <td>Operador consegue executar recovery sem intervenção de dev.</td>
+      </tr>
+      <tr>
+        <td>Manifest reproduzível</td>
+        <td>Manifest versionado de runtime (versões, portas, paths, modo e flags essenciais).</td>
+        <td><span class="badge required">Obrigatório</span></td>
+        <td>NodeManager valida <code>manifest vs runtime</code> no boot.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>4. Critérios objetivos de sincronização (READY)</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Serviço</th>
+        <th>Checks sugeridos</th>
+        <th>Regra READY</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>bitcoind</code></td>
+        <td><code>getblockchaininfo.initialblockdownload</code>, <code>verificationprogress</code>, chain esperada.</td>
+        <td><code>initialblockdownload=false</code> e <code>verificationprogress &gt;= X</code> (ex.: 0.999).</td>
+      </tr>
+      <tr>
+        <td><code>elementsd</code></td>
+        <td>equivalente de IBD/progress + chain/asset esperados.</td>
+        <td>fora de IBD, progresso acima do limiar e chain correta.</td>
+      </tr>
+      <tr>
+        <td><code>lnd</code></td>
+        <td><code>synced_to_chain</code>, <code>synced_to_graph</code>, wallet state.</td>
+        <td><code>synced_to_chain=true</code>, <code>synced_to_graph=true</code> e wallet operacional.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="note">
+    <strong>Nota:</strong> o valor de <code>X</code> pode começar conservador e ser endurecido por ambiente,
+    mas precisa estar definido no config de release (não implícito).
+  </div>
+
+  <h2>5. Configuração mínima por serviço</h2>
+  <ul>
+    <li><strong>bitcoind:</strong> <code>rpcuser/rpcpassword</code> ou cookie auth, <code>rpcbind=127.0.0.1</code> (ou socket), <code>rpcallowip</code> explícito, diretório e rede corretos.</li>
+    <li><strong>elementsd:</strong> RPC habilitado, credenciais válidas, chain de destino correta e critérios READY definidos.</li>
+    <li><strong>lnd:</strong> endpoint gRPC ativo, <code>tls.cert</code>, macaroon válido e relógio do host sincronizado.</li>
+  </ul>
+
+  <h2>6. Checklist de validação técnica</h2>
+  <ol>
+    <li>Validar binários e versões fixadas.</li>
+    <li>Subir cada node isoladamente e confirmar health-check.</li>
+    <li>Validar <code>start/stop/restart</code> via NodeService (sem intervenção manual).</li>
+    <li>Validar política de retry: backoff exponencial + jitter + limite por janela + circuit breaker.</li>
+    <li>Forçar falha controlada (porta ocupada/credencial inválida) e validar estado <code>error</code> + mensagem rastreável.</li>
+    <li>Reiniciar app e validar reidratação de estado operacional.</li>
+    <li>Validar permissões de segredos e bind seguro de RPC.</li>
+    <li>Validar manifest versionado contra runtime efetivo.</li>
+    <li>Executar suíte de integração de NodeService e gates de release.</li>
+  </ol>
+
+  <h2>7. Runbook padrão (diagnóstico em 2 minutos)</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Serviço</th>
+        <th>Sintoma</th>
+        <th>Triagem rápida (2–5 comandos)</th>
+        <th>Ação segura</th>
+        <th>Escalar quando</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>bitcoind/elementsd</td>
+        <td>RPC não responde, sync parado, peers zerados</td>
+        <td><code>getblockchaininfo</code>, <code>getnetworkinfo</code>, logs do processo</td>
+        <td>restart controlado, revisar credenciais/porta, validar datadir</td>
+        <td>corrupção de dados, erro recorrente após restart, fork/chain incorreta</td>
+      </tr>
+      <tr>
+        <td>lnd</td>
+        <td>gRPC não conecta, macaroon inválido, não sincroniza</td>
+        <td><code>lncli getinfo</code>, checar <code>tls.cert</code>/<code>macaroon</code>, logs</td>
+        <td>restart controlado, revalidar paths/permissões, reemitir credencial conforme processo</td>
+        <td>falha persistente de autenticação, risco de perda operacional, inconsistência de estado</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>8. Comandos de verificação (base)</h2>
+  <pre><code># Versões
+bitcoind --version
+elementsd --version
+lnd --version
+
+# Exemplos de saúde (ajustar paths/credenciais)
+bitcoin-cli -rpcuser="$BTC_RPC_USER" -rpcpassword="$BTC_RPC_PASS" getblockchaininfo
+elements-cli -rpcuser="$EL_RPC_USER" -rpcpassword="$EL_RPC_PASS" getblockchaininfo
+lncli --tlscertpath="$LND_TLS_CERT" --macaroonpath="$LND_MACAROON" getinfo
+
+# Testes backend (ajustar para suites finais do NodeService)
+cd XSWallet/core
+go test ./internal/server -count=1</code></pre>
+
+  <h2>9. Gate de ambiente reproduzível</h2>
+  <p>
+    Manter manifest versionado (ex.: <code>core/config/nodemanager.manifest.json</code>) com:
+    versões fixas, portas, paths, modo (<code>mainnet/testnet/regtest</code>) e flags essenciais.
+  </p>
+  <p>
+    Manter schema canônico em <code>core/config/nodemanager.manifest.schema.json</code> e validar em CI/release.
+  </p>
+  <p>
+    O NodeManager deve validar na inicialização: <code>manifest vs runtime</code>. Divergência crítica deve bloquear estado READY.
+  </p>
+  <p>
+    <strong>Gate obrigatório:</strong> manifest + schema válidos e teste automatizado aprovado:
+    <code>go test ./internal/server -run TestCanonicalNodeManagerManifestSchema -count=1</code>.
+  </p>
+
+  <h2>10. Release gate (produção)</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Gate</th>
+        <th>Status exigido</th>
+        <th>Bloqueia release?</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>NodeService lifecycle real</td>
+        <td>PASS</td>
+        <td><span class="badge blocker">Sim</span></td>
+      </tr>
+      <tr>
+        <td>LND adapter end-to-end mínimo</td>
+        <td>PASS</td>
+        <td><span class="badge blocker">Sim</span></td>
+      </tr>
+      <tr>
+        <td>Swaps E2E full-real (sem simulação)</td>
+        <td>PASS</td>
+        <td><span class="badge blocker">Sim</span></td>
+      </tr>
+      <tr>
+        <td>Checklist operacional/runbook</td>
+        <td>Publicado + validado</td>
+        <td><span class="badge blocker">Sim</span></td>
+      </tr>
+      <tr>
+        <td>Manifest reproduzível validado</td>
+        <td>PASS (arquivo + schema + teste)</td>
+        <td><span class="badge blocker">Sim</span></td>
+      </tr>
+      <tr>
+        <td>Métricas/dashboards</td>
+        <td>Disponível + reason codes</td>
+        <td><span class="badge required">Sim</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="note">
+    <strong>Próximo passo recomendado:</strong> implementar <code>NodeService</code> real com provider por tipo de node
+    (<code>bitcoind/elementsd/lnd</code>) e suíte de integração de lifecycle, antes de marcar release pre-beta como concluído.
+  </div>
+</body>
+</html>

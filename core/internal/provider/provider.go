@@ -3,6 +3,7 @@ package provider
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 )
 
@@ -11,8 +12,8 @@ type Provider interface {
 	// Quote requests a quote for a swap
 	Quote(ctx context.Context, req QuoteRequest) (*Quote, error)
 
-	// Create creates a swap from an accepted quote
-	Create(ctx context.Context, quoteID string) (*CreateResponse, error)
+	// Create creates a swap from a prepared intent
+	Create(ctx context.Context, req CreateRequest) (*CreateResponse, error)
 
 	// Subscribe returns a channel of updates for a swap
 	Subscribe(ctx context.Context, swapID string) (<-chan Update, func(), error)
@@ -51,12 +52,13 @@ type QuoteRequest struct {
 
 // Quote represents a provider quote
 type Quote struct {
-	QuoteID     string
-	Kind        SwapKind
-	FromChain   Chain
-	ToChain     Chain
-	AmountSat   int64
-	
+	QuoteID   string
+	Kind      SwapKind
+	FromChain Chain
+	ToChain   Chain
+	AmountSat int64
+	Address   string // Optional payout address from quote request
+
 	// Fees
 	ProviderFeeSat int64
 	NetworkFeeSat  int64
@@ -64,9 +66,9 @@ type Quote struct {
 	FeePercent     float64
 
 	// Provider data
-	LockupAddress   string
-	ClaimAddress    string
-	Invoice         string
+	LockupAddress string
+	ClaimAddress  string
+	Invoice       string
 
 	// Timeouts
 	UserTimeoutBlocks     int
@@ -76,17 +78,38 @@ type Quote struct {
 	ExpiresAt time.Time
 }
 
+// CreateRequest is a normalized swap creation payload used across providers.
+type CreateRequest struct {
+	QuoteID         string
+	Kind            SwapKind
+	FromChain       Chain
+	ToChain         Chain
+	AmountSat       int64
+	Invoice         string
+	Address         string
+	PreimageHash    string
+	MusigPubkeyAgg  string
+	ClaimPublicKey  string
+	RefundPublicKey string
+	PairHash        string
+	ReferralID      string
+}
+
 // CreateResponse is the response from creating a swap
 type CreateResponse struct {
-	SwapID           string
-	BoltzID          string
-	LockupAddress    string
-	ClaimAddress     string
-	ExpectedAmount   int64
+	SwapID             string
+	BoltzID            string
+	LockupAddress      string
+	ClaimAddress       string
+	ExpectedAmount     int64
 	TimeoutBlockHeight int
-	RedeemScript     string
-	ClaimPublicKey   string
-	RefundPublicKey  string
+	RedeemScript       string
+	ClaimPublicKey     string
+	RefundPublicKey    string
+	BoltzRaw           json.RawMessage
+	ReverseDetails     json.RawMessage
+	LockupDetails      json.RawMessage
+	ClaimDetails       json.RawMessage
 }
 
 // Update represents a swap status update
@@ -101,13 +124,13 @@ type Update struct {
 
 // Status constants
 const (
-	StatusCreated           = "swap.created"
-	StatusTransactionMempool = "transaction.mempool"
+	StatusCreated              = "swap.created"
+	StatusTransactionMempool   = "transaction.mempool"
 	StatusTransactionConfirmed = "transaction.confirmed"
-	StatusInvoiceSet        = "invoice.set"
-	StatusInvoicePending    = "invoice.pending"
-	StatusInvoicePaid       = "invoice.paid"
-	StatusCompleted         = "swap.completed"
-	StatusExpired           = "swap.expired"
-	StatusFailed            = "swap.failed"
+	StatusInvoiceSet           = "invoice.set"
+	StatusInvoicePending       = "invoice.pending"
+	StatusInvoicePaid          = "invoice.paid"
+	StatusCompleted            = "swap.completed"
+	StatusExpired              = "swap.expired"
+	StatusFailed               = "swap.failed"
 )

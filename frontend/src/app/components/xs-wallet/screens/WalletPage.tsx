@@ -9,9 +9,9 @@ import { useBalances, useNewAddress, useSendOnchain } from '@/services/hooks';
 export function WalletPage() {
     const [activeChain, setActiveChain] = useState<'btc' | 'liquid'>('btc');
     const { balances, loading: balancesLoading } = useBalances();
-    const { generate, loading: addressLoading, address } = useNewAddress();
+    const { generate, loading: addressLoading } = useNewAddress();
     const { send, loading: sendLoading, error: sendError, txid } = useSendOnchain();
-    const [addresses, setAddresses] = useState<Array<{ address: string; path: string }>>([]);
+    const [addresses, setAddresses] = useState<Array<{ chain: 'btc' | 'liquid'; address: string; path: string; createdAt?: number }>>([]);
     const [showSend, setShowSend] = useState(false);
     const [sendAddress, setSendAddress] = useState('');
     const [sendAmount, setSendAmount] = useState('');
@@ -20,7 +20,12 @@ export function WalletPage() {
     const handleGenerateAddress = async () => {
         const result = await generate(activeChain);
         if (result) {
-            setAddresses([...addresses, { address: result.address, path: result.derivation_path }]);
+            const createdAt = Date.now();
+            setAddresses((prev) => {
+                const exists = prev.some((entry) => entry.chain === activeChain && entry.address === result.address);
+                if (exists) return prev;
+                return [{ chain: activeChain, address: result.address, path: result.derivation_path, createdAt }, ...prev];
+            });
         }
     };
 
@@ -30,6 +35,11 @@ export function WalletPage() {
 
     const formatSats = (sats: number) => {
         return (sats / 100_000_000).toFixed(8);
+    };
+
+    const formatTimestamp = (ts?: number) => {
+        if (!ts) return 'Timestamp unavailable';
+        return new Date(ts).toLocaleString();
     };
 
     const handleSend = async () => {
@@ -52,6 +62,9 @@ export function WalletPage() {
     const balance = activeChain === 'btc'
         ? balances?.btc
         : balances?.liquid;
+    const chainAddresses = addresses.filter((entry) => entry.chain === activeChain);
+    const latestAddress = chainAddresses[0] ?? null;
+    const previousAddresses = chainAddresses.slice(1);
 
     return (
         <AppShell activePage="wallet" vaultLocked={false}>
@@ -116,23 +129,26 @@ export function WalletPage() {
                         }
                     >
                         <div className="space-y-3">
-                            {address && (
+                            {latestAddress && (
                                 <div className="p-3 bg-[#151B23] border border-[#10B981]/30 rounded-xl">
                                     <div className="flex items-center justify-between mb-1">
                                         <span className="text-xs text-[#10B981]">Latest</span>
-                                        <button onClick={() => copyToClipboard(address.address)} className="text-[#6C7A89] hover:text-[#E7EDF5]">
+                                        <button onClick={() => copyToClipboard(latestAddress.address)} className="text-[#6C7A89] hover:text-[#E7EDF5]">
                                             <Copy size={14} />
                                         </button>
                                     </div>
                                     <div className="text-sm text-[#E7EDF5] font-mono break-all">
-                                        {address.address}
+                                        {latestAddress.address}
                                     </div>
                                     <div className="text-xs text-[#6C7A89] mt-1">
-                                        {address.derivation_path}
+                                        {latestAddress.path}
+                                    </div>
+                                    <div className="text-xs text-[#6C7A89] mt-1">
+                                        Generated: {formatTimestamp(latestAddress.createdAt)}
                                     </div>
                                 </div>
                             )}
-                            {addresses.map((addr, i) => (
+                            {previousAddresses.map((addr, i) => (
                                 <div key={i} className="p-3 bg-[#151B23] border border-[#242C36] rounded-xl">
                                     <div className="flex items-center justify-between mb-1">
                                         <span className="text-xs text-[#6C7A89]">{addr.path}</span>
@@ -143,9 +159,12 @@ export function WalletPage() {
                                     <div className="text-sm text-[#E7EDF5] font-mono break-all">
                                         {addr.address}
                                     </div>
+                                    <div className="text-xs text-[#6C7A89] mt-1">
+                                        Generated: {formatTimestamp(addr.createdAt)}
+                                    </div>
                                 </div>
                             ))}
-                            {!address && addresses.length === 0 && (
+                            {!latestAddress && previousAddresses.length === 0 && (
                                 <div className="text-center py-8 text-[#6C7A89]">
                                     Click "New" to generate an address
                                 </div>
@@ -158,7 +177,10 @@ export function WalletPage() {
                         header={<h3 className="text-lg text-[#E7EDF5]">Actions</h3>}
                     >
                         <div className="space-y-3">
-                            <button className="w-full p-4 bg-[#10B981]/10 border border-[#10B981]/30 rounded-xl hover:bg-[#10B981]/20 transition-all text-left">
+                            <button
+                                className="w-full p-4 bg-[#10B981]/10 border border-[#10B981]/30 rounded-xl hover:bg-[#10B981]/20 transition-all text-left"
+                                onClick={handleGenerateAddress}
+                            >
                                 <div className="text-[#10B981] font-medium mb-1">Receive</div>
                                 <div className="text-sm text-[#6C7A89]">Generate address to receive funds</div>
                             </button>

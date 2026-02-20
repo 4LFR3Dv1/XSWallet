@@ -82,13 +82,13 @@ func (m MinerFeesAny) Total() int64 {
 // =============================================================================
 
 type SubmarineRequest struct {
-	From            string `json:"from"`                   // "BTC" ou "L-BTC"
-	To              string `json:"to"`                     // "BTC" (LN)
-	Invoice         string `json:"invoice,omitempty"`      // BOLT11 invoice
-	PreimageHash    string `json:"preimageHash,omitempty"` // Se invoice não for fornecida
-	RefundPublicKey string `json:"refundPublicKey"`        // Pubkey para refund
-	PairHash        string `json:"pairHash,omitempty"`     // Verificação de fee drift
-	ReferralID      string `json:"referralId,omitempty"`   // Tracking
+	From            string `json:"from"`                      // "BTC" ou "L-BTC"
+	To              string `json:"to"`                        // "BTC" (LN)
+	Invoice         string `json:"invoice,omitempty"`         // BOLT11 invoice
+	PreimageHash    string `json:"preimageHash,omitempty"`    // Se invoice não for fornecida
+	RefundPublicKey string `json:"refundPublicKey,omitempty"` // Pubkey para refund
+	PairHash        string `json:"pairHash,omitempty"`        // Verificação de fee drift
+	ReferralID      string `json:"referralId,omitempty"`      // Tracking
 }
 
 type SubmarineResponse struct {
@@ -119,12 +119,12 @@ type TreeLeaf struct {
 // =============================================================================
 
 type ReverseRequest struct {
-	From           string `json:"from"`                    // "BTC" (LN)
-	To             string `json:"to"`                      // "BTC" ou "L-BTC"
-	PreimageHash   string `json:"preimageHash"`            // SHA256(R), client-generated
-	ClaimPublicKey string `json:"claimPublicKey"`          // Para claimar on-chain
-	InvoiceAmount  int64  `json:"invoiceAmount,omitempty"` // Valor da invoice
-	OnchainAmount  int64  `json:"onchainAmount,omitempty"` // Valor on-chain
+	From           string `json:"from"`                     // "BTC" (LN)
+	To             string `json:"to"`                       // "BTC" ou "L-BTC"
+	PreimageHash   string `json:"preimageHash,omitempty"`   // SHA256(R), client-generated
+	ClaimPublicKey string `json:"claimPublicKey,omitempty"` // Para claimar on-chain
+	InvoiceAmount  int64  `json:"invoiceAmount,omitempty"`  // Valor da invoice
+	OnchainAmount  int64  `json:"onchainAmount,omitempty"`  // Valor on-chain
 	PairHash       string `json:"pairHash,omitempty"`
 	ReferralID     string `json:"referralId,omitempty"`
 	Address        string `json:"address,omitempty"` // BIP-21 direct payment
@@ -141,6 +141,77 @@ type ReverseResponse struct {
 	OnchainAmount      int64    `json:"onchainAmount"`
 	BlindingKey        string   `json:"blindingKey,omitempty"`
 	ReferralID         string   `json:"referralId,omitempty"`
+}
+
+// =============================================================================
+// CHAIN SWAP (POST /v2/swap/chain)
+// =============================================================================
+
+type ChainRequest struct {
+	From            string `json:"from"`                       // "BTC" ou "L-BTC"
+	To              string `json:"to"`                         // "BTC" ou "L-BTC"
+	PreimageHash    string `json:"preimageHash,omitempty"`     // SHA256(R)
+	MusigPubkeyAgg  string `json:"musig_pubkey_agg,omitempty"` // Legacy/alternate backend field name
+	ClaimPublicKey  string `json:"claimPublicKey,omitempty"`   // claim key path
+	RefundPublicKey string `json:"refundPublicKey,omitempty"`  // refund key path
+	FromAmount      int64  `json:"fromAmount,omitempty"`       // legacy/alternate field name
+	UserLockAmount  int64  `json:"userLockAmount,omitempty"`   // current docs/examples
+	ToAmount        int64  `json:"toAmount,omitempty"`
+	Address         string `json:"address,omitempty"`      // optional payout address
+	ClaimAddress    string `json:"claimAddress,omitempty"` // docs/examples use this key
+	PairHash        string `json:"pairHash,omitempty"`
+	ReferralID      string `json:"referralId,omitempty"`
+}
+
+type ChainResponse struct {
+	ID                 string            `json:"id"`
+	LockupAddress      string            `json:"lockupAddress"`
+	ClaimAddress       string            `json:"claimAddress,omitempty"`
+	TimeoutBlockHeight int64             `json:"timeoutBlockHeight"`
+	ExpectedAmount     int64             `json:"expectedAmount,omitempty"`
+	BlindingKey        string            `json:"blindingKey,omitempty"`
+	ReferralID         string            `json:"referralId,omitempty"`
+	LockupDetails      *ChainSwapDetails `json:"lockupDetails,omitempty"`
+	ClaimDetails       *ChainSwapDetails `json:"claimDetails,omitempty"`
+}
+
+type ChainSwapDetails struct {
+	LockupAddress      string   `json:"lockupAddress,omitempty"`
+	TimeoutBlockHeight int64    `json:"timeoutBlockHeight,omitempty"`
+	ExpectedAmount     int64    `json:"expectedAmount,omitempty"`
+	BlindingKey        string   `json:"blindingKey,omitempty"`
+	ServerPublicKey    string   `json:"serverPublicKey,omitempty"`
+	SwapTree           SwapTree `json:"swapTree,omitempty"`
+}
+
+func (r ChainResponse) EffectiveLockupAddress() string {
+	if r.LockupAddress != "" {
+		return r.LockupAddress
+	}
+	if r.LockupDetails != nil {
+		return r.LockupDetails.LockupAddress
+	}
+	return ""
+}
+
+func (r ChainResponse) EffectiveTimeoutBlockHeight() int64 {
+	if r.TimeoutBlockHeight > 0 {
+		return r.TimeoutBlockHeight
+	}
+	if r.LockupDetails != nil && r.LockupDetails.TimeoutBlockHeight > 0 {
+		return r.LockupDetails.TimeoutBlockHeight
+	}
+	return 0
+}
+
+func (r ChainResponse) EffectiveExpectedAmount() int64 {
+	if r.ExpectedAmount > 0 {
+		return r.ExpectedAmount
+	}
+	if r.LockupDetails != nil && r.LockupDetails.ExpectedAmount > 0 {
+		return r.LockupDetails.ExpectedAmount
+	}
+	return 0
 }
 
 // =============================================================================

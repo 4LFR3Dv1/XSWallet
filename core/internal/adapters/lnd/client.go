@@ -22,6 +22,15 @@ type Client struct {
 	network string
 }
 
+// NodeInfo exposes raw readiness signals for NodeService.
+type NodeInfo struct {
+	Version       string
+	NumPeers      int64
+	BlockHeight   int64
+	SyncedToChain bool
+	SyncedToGraph bool
+}
+
 // Config holds LND connection configuration
 type Config struct {
 	Host         string // e.g., "lnd:10009" or "localhost:10009"
@@ -86,6 +95,21 @@ func (c *Client) GetInfo(ctx context.Context) (*adapters.LNInfo, error) {
 		NumActiveChannels: int(resp.NumActiveChannels),
 		BlockHeight:       int64(resp.BlockHeight),
 		SyncedToChain:     resp.SyncedToChain,
+	}, nil
+}
+
+// GetNodeInfo returns raw LND node readiness information.
+func (c *Client) GetNodeInfo(ctx context.Context) (*NodeInfo, error) {
+	resp, err := c.client.GetInfo(ctx, &lnrpc.GetInfoRequest{})
+	if err != nil {
+		return nil, fmt.Errorf("GetInfo failed: %w", err)
+	}
+	return &NodeInfo{
+		Version:       resp.Version,
+		NumPeers:      int64(resp.NumPeers),
+		BlockHeight:   int64(resp.BlockHeight),
+		SyncedToChain: resp.SyncedToChain,
+		SyncedToGraph: resp.SyncedToGraph,
 	}, nil
 }
 

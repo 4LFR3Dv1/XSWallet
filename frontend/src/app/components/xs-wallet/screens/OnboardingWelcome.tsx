@@ -11,6 +11,8 @@ export function OnboardingWelcome() {
   const [loading, setLoading] = useState(false);
   const [checking, setChecking] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [pin, setPin] = useState('');
+  const [confirmPin, setConfirmPin] = useState('');
 
   // Check vault status on mount
   useEffect(() => {
@@ -21,21 +23,30 @@ export function OnboardingWelcome() {
     check();
   }, [checkStatus]);
 
-  // Redirect if vault already exists
+  // Redirect only when already unlocked. If locked, keep onboarding visible
+  // and let create/restore flow handle "already exists" explicitly.
   useEffect(() => {
     if (!checking) {
-      if (status === 'locked' || status === 'unlocked') {
-        navigate('/unlock');
+      if (status === 'unlocked') {
+        navigate('/');
       }
     }
   }, [checking, status, navigate]);
 
   const handleCreate = async () => {
+    if (pin.length < 8) {
+      setError('PIN must be at least 8 characters.');
+      return;
+    }
+    if (pin !== confirmPin) {
+      setError('PIN confirmation does not match.');
+      return;
+    }
+
     setLoading(true);
     setError(null);
     try {
-      // For now, use a default PIN - in production, navigate to PIN setup first
-      const result = await initVault('123456');
+      const result = await initVault(pin);
       if (result.success && result.mnemonic) {
         // Navigate to mnemonic display
         navigate('/onboarding/mnemonic', { state: { mnemonic: result.mnemonic } });
@@ -47,15 +58,11 @@ export function OnboardingWelcome() {
       if (e.message?.includes('already exists') || e.message?.includes('ALREADY_EXISTS')) {
         navigate('/unlock');
       } else {
-        setError('Failed to connect to wallet service. Make sure api-bridge is running.');
+        setError(e?.message || 'Failed to connect to wallet service. Make sure api-bridge is running.');
       }
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleRestore = () => {
-    navigate('/onboarding/mnemonic', { state: { restore: true } });
   };
 
   if (checking) {
@@ -92,6 +99,32 @@ export function OnboardingWelcome() {
               </div>
             )}
 
+            <div className="space-y-3">
+              <label className="text-sm text-[#9AA7B5] block">Choose PIN (min 8 chars)</label>
+              <input
+                type="password"
+                value={pin}
+                onChange={(e) => {
+                  setPin(e.target.value);
+                  setError(null);
+                }}
+                placeholder="Enter PIN"
+                className="w-full px-4 py-3 bg-[#151B23] border border-[#242C36] rounded-xl text-[#E7EDF5] focus:outline-none focus:border-[#E7EDF5]/30"
+                disabled={loading}
+              />
+              <input
+                type="password"
+                value={confirmPin}
+                onChange={(e) => {
+                  setConfirmPin(e.target.value);
+                  setError(null);
+                }}
+                placeholder="Confirm PIN"
+                className="w-full px-4 py-3 bg-[#151B23] border border-[#242C36] rounded-xl text-[#E7EDF5] focus:outline-none focus:border-[#E7EDF5]/30"
+                disabled={loading}
+              />
+            </div>
+
             <PrimaryButton fullWidth onClick={handleCreate} disabled={loading}>
               <div className="flex items-center justify-center gap-2">
                 {loading ? (
@@ -108,10 +141,10 @@ export function OnboardingWelcome() {
               </div>
             </PrimaryButton>
 
-            <SecondaryButton fullWidth onClick={handleRestore} disabled={loading}>
+            <SecondaryButton fullWidth disabled>
               <div className="flex items-center justify-center gap-2">
                 <Download size={20} />
-                <span>Restore Wallet</span>
+                <span>Restore Wallet (Coming Soon)</span>
               </div>
             </SecondaryButton>
 

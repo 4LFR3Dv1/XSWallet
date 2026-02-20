@@ -11,6 +11,7 @@ Production-ready HTTP → gRPC bridge with best practices.
 ✅ **Deadlines** - 5s list, 15s create, 30s commit  
 ✅ **Schema normalization** - gRPC → Flask format  
 ✅ **State machine** - `/check` advances swap through states  
+✅ **Bearer auth passthrough** - forwards `Authorization: Bearer` to gRPC metadata  
 
 ## Quick Start
 
@@ -131,10 +132,9 @@ JSON structured logs:
 ## Security Notes
 
 - Runs on `localhost` by default
-- No authentication (local use only)
+- Endpoints mutáveis e leitura sensível exigem `Authorization: Bearer <session_id>`
 - Never logs sensitive data (seeds, preimages, session IDs)
 - For production, add:
-  - Bearer token auth
   - HTTPS
   - Rate limiting
 
@@ -155,16 +155,17 @@ curl http://localhost:3000/api/v1/swaps
 
 - **Claim**: Not implemented (MuSig2 crypto missing in core)
 - **Refund**: Not implemented (logic missing in core)
-- Swaps work end-to-end, but Boltz handles claims
+- `NodeService` no core ainda é stub para start/stop/watch/download
+- Parte dos endpoints (`/lightning/*`, `/elements/info`, `/htlc/*`) é mock/dev-compat
 
 ## Architecture
 
 ```
-React DevDash (:5173)
+Frontend React/Vite (ou Electron renderer)
   ↓ HTTP
 API Bridge (:3000)
   ↓ gRPC
 xscore (:9735)
-  ↓ gRPC
+  ↓ HTTP/WS
 Boltz Backend (:9001)
 ```

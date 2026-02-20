@@ -25,6 +25,10 @@ func (commitTestVault) DecryptPreimage(b []byte) ([]byte, error) {
 	return bytes.TrimPrefix(b, []byte("enc:")), nil
 }
 
+func (commitTestVault) Seed() ([]byte, error) {
+	return bytes.Repeat([]byte{0x21}, 32), nil
+}
+
 func openServerTestDB(t *testing.T) *db.DB {
 	t.Helper()
 
@@ -46,7 +50,7 @@ func TestCommitSwapExpectedVersionHandling(t *testing.T) {
 	ctx := context.Background()
 	database := openServerTestDB(t)
 	engine := swap.NewEngine(database, commitTestVault{})
-	service := NewSwapService(database, nil, engine, mock.NewMockProvider())
+	service := NewSwapServiceWithSecrets(database, nil, engine, mock.NewMockProvider(), commitTestVault{})
 
 	created, err := engine.Create(ctx, swap.KindSubmarine, "regtest", 0)
 	if err != nil {

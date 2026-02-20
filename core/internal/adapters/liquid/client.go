@@ -40,12 +40,13 @@ func NewClient(cfg Config) *Client {
 
 // BlockchainInfo represents getblockchaininfo response
 type BlockchainInfo struct {
-	Chain         string  `json:"chain"`
-	Blocks        int64   `json:"blocks"`
-	Headers       int64   `json:"headers"`
-	BestBlockHash string  `json:"bestblockhash"`
-	Mediantime    int64   `json:"mediantime"`
-	Progress      float64 `json:"verificationprogress"`
+	Chain                string  `json:"chain"`
+	Blocks               int64   `json:"blocks"`
+	Headers              int64   `json:"headers"`
+	BestBlockHash        string  `json:"bestblockhash"`
+	Mediantime           int64   `json:"mediantime"`
+	Progress             float64 `json:"verificationprogress"`
+	InitialBlockDownload bool    `json:"initialblockdownload"`
 }
 
 // Transaction represents a transaction

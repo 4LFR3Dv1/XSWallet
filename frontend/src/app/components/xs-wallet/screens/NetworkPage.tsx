@@ -29,7 +29,7 @@ export function NetworkPage() {
                             </div>
                             <StatusChip
                                 label={health?.services.xscore === 'connected' ? 'Online' : 'Offline'}
-                                variant={health?.services.xscore === 'connected' ? 'green' : 'error'}
+                                variant={health?.services.xscore === 'connected' ? 'success' : 'error'}
                             />
                         </div>
                         <div className="text-lg text-[#E7EDF5] mb-1">XSCore</div>
@@ -65,7 +65,7 @@ export function NetworkPage() {
                             </div>
                             <StatusChip
                                 label={health?.vault === 'unlocked' ? 'Unlocked' : 'Locked'}
-                                variant={health?.vault === 'unlocked' ? 'green' : 'pending'}
+                                variant={health?.vault === 'unlocked' ? 'success' : 'warning'}
                             />
                         </div>
                         <div className="text-lg text-[#E7EDF5] mb-1">Vault</div>

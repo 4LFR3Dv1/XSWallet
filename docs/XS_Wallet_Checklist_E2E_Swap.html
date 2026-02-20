@@ -208,6 +208,11 @@
 </head>
 
 <body>
+<!-- DOC-CURRENT-STATE -->
+<div style="margin:12px 16px;padding:10px 12px;border:1px solid #d97706;background:#fffbeb;color:#78350f;font:14px/1.4 sans-serif;">
+<strong>Estado atual do codigo (fonte canonica):</strong> consulte <code>docs/STATUS_ESPECIFICACAO_XS_WALLET.md</code>.
+Este documento pode conter conteudo de alvo/planejamento (spec/roadmap) alem do estado ja implementado.
+</div>
     <div class="cover">
         <h1>XS WALLET</h1>
         <div class="subtitle">Checklist Técnico: Fechamento do Pipeline de Swaps E2E</div>
@@ -440,6 +445,39 @@ docker compose -f test/regtest/docker-compose.yml up -d</code></pre>
         <pre><code>cd XSWallet/core
 go test ./...
 go test ./test/e2e -count=1</code></pre>
+
+        <h2>4.4 E2E Real Contínuo (Boltz Testnet, sem simulação)</h2>
+        <p>
+            Para fechamento real de execução terminal (chain + reverse) sem flags de simulação,
+            usar os testes de integração do watcher em modo <code>FULL_REAL</code>.
+        </p>
+        <pre><code>cd XSWallet/core
+
+# Chain (espera terminal real: completed/refunding)
+XS_BOLTZ_CHAIN_EXEC_INTEGRATION=1 \
+XS_BOLTZ_CHAIN_EXEC_FULL_REAL=1 \
+XS_BOLTZ_CHAIN_EXEC_EXPECT_TERMINAL=completed \
+XS_BOLTZ_API_URL=https://api.testnet.boltz.exchange \
+XS_BOLTZ_CHAIN_EXEC_WAIT_SECONDS=1800 \
+XS_BOLTZ_CHAIN_EXEC_POLL_SECONDS=10 \
+go test ./internal/watcher -run TestChainExecutionToWaitingProviderBroadcastIntegration -v -count=1
+
+# Reverse (espera terminal real: completed/refunding)
+XS_BOLTZ_REVERSE_EXEC_INTEGRATION=1 \
+XS_BOLTZ_REVERSE_EXEC_FULL_REAL=1 \
+XS_BOLTZ_REVERSE_EXEC_EXPECT_TERMINAL=completed \
+XS_BOLTZ_API_URL=https://api.testnet.boltz.exchange \
+XS_BOLTZ_REVERSE_EXEC_WAIT_SECONDS=1800 \
+XS_BOLTZ_REVERSE_EXEC_POLL_SECONDS=10 \
+go test ./internal/watcher -run TestReverseExecutionToWaitingProviderBroadcastIntegration -v -count=1
+
+# Runner sequencial chain + reverse
+./test/e2e/run_boltz_full_real_terminal.sh</code></pre>
+
+        <div class="note warning">
+            <strong>Pré-condição operacional:</strong> em modo real, o teste não usa trigger simulado.
+            É necessário funding/pagamento real em testnet para avançar de <code>swap.created</code>.
+        </div>
 
         <h2>4.3 Gate de Release Interno</h2>
         <table>

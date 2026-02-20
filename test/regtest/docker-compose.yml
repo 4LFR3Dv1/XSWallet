@@ -234,6 +234,8 @@ services:
     volumes:
       - boltz-data:/data
       - lnd-data:/lnd:ro
+    ports:
+      - "9001:9001"
     networks:
       - xs-network
 

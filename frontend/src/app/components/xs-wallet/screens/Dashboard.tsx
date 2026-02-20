@@ -11,12 +11,12 @@ import { useBalances, useSwaps } from '@/services/hooks';
 import { useVaultStore } from '@/services/store';
 
 // State to variant mapping
-const stateVariants: Record<string, 'btc' | 'liquid' | 'ln' | 'green' | 'error' | 'pending'> = {
-  'open': 'pending',
-  'locked': 'pending',
+const stateVariants: Record<string, 'btc' | 'liquid' | 'lightning' | 'success' | 'error' | 'warning'> = {
+  'open': 'warning',
+  'locked': 'warning',
   'commit_started': 'btc',
   'waiting': 'liquid',
-  'completed': 'green',
+  'completed': 'success',
   'failed': 'error',
   'canceled': 'error',
 };
@@ -119,7 +119,7 @@ export function Dashboard() {
                     </div>
                     <StatusChip
                       label={swap.state.replace(/_/g, ' ')}
-                      variant={stateVariants[swap.state.toLowerCase()] || 'pending'}
+                      variant={stateVariants[swap.state.toLowerCase()] || 'warning'}
                     />
                   </div>
                   <div className="flex items-center justify-between">

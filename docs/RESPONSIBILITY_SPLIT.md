@@ -23,3 +23,5 @@ Spec human doc: `docs/XS_Wallet_Especificacao_Tecnica_v2.html`.
 ## Current status
 - Implementacao parcial (submarine only, sem MuSig2/claim/refund).
 - Provider boltz-backend incluido no repo.
+- Frontend opera com API Bridge HTTP e caminho Electron/IPC parcial.
+- NodeService para lifecycle/download de nodes ainda esta em modo stub no core.

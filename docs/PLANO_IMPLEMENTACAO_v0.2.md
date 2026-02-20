@@ -1,6 +1,17 @@
 # XS Wallet - Plano de Implementacao Final
 Spec: v0.2.0 (HTML) | Estimativa: 10 semanas | Decisoes: todas confirmadas
 
+## Checkpoint de execucao (codigo atual)
+- Fonte canonica do estado atual: `docs/STATUS_ESPECIFICACAO_XS_WALLET.md`.
+- Fase 1 (Core Fixes): concluida.
+- Fase 2 (Swap Protocol): parcial avancada (submarine com auto-lock + reconcile; chain/reverse com execucao ate `waiting_provider_broadcast`; pendente claim/refund final e fallback script-path).
+- Fase 3 (Adapters/Infra): parcial (elementsd implementado; LND parcial; Node Manager runtime pendente).
+- Fase 4 (Electron): parcial (main/preload/registry ativos; migracao completa do frontend para IPC pendente).
+- Fase 5 (Tx Management): pendente.
+- Fase 6 (Packaging): pendente.
+
+> Este documento descreve o plano alvo. Para status de implementacao, considerar sempre o checkpoint acima e o arquivo canonico de status.
+
 ## Decisoes confirmadas
 - Electron/IPC: sim, migrar (opcao A).
 - Node Manager infra: criar (GitHub Releases + manifest assinado).

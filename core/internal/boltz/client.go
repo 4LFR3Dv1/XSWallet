@@ -203,6 +203,13 @@ func (c *Client) GetReversePairs(ctx context.Context) (map[string]map[string]Pai
 	return result, err
 }
 
+// GetChainPairs retorna pares disponíveis para chain swap
+func (c *Client) GetChainPairs(ctx context.Context) (map[string]map[string]PairInfo, error) {
+	var result map[string]map[string]PairInfo
+	err := c.doRequest(ctx, "GET", "/v2/swap/chain", nil, &result)
+	return result, err
+}
+
 // =============================================================================
 // CREATE SWAPS
 // =============================================================================
@@ -221,6 +228,16 @@ func (c *Client) CreateSubmarine(ctx context.Context, req SubmarineRequest) (*Su
 func (c *Client) CreateReverse(ctx context.Context, req ReverseRequest) (*ReverseResponse, error) {
 	var result ReverseResponse
 	err := c.doRequest(ctx, "POST", "/v2/swap/reverse", req, &result)
+	if err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
+// CreateChain creates a chain swap (BTC <-> Liquid)
+func (c *Client) CreateChain(ctx context.Context, req ChainRequest) (*ChainResponse, error) {
+	var result ChainResponse
+	err := c.doRequest(ctx, "POST", "/v2/swap/chain", req, &result)
 	if err != nil {
 		return nil, err
 	}

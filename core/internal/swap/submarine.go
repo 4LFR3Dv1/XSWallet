@@ -3,6 +3,7 @@ package swap
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -35,9 +36,12 @@ func NewSubmarineOrchestrator(engine *Engine, database *db.DB, prov provider.Pro
 // CreateFromQuote creates a submarine swap from an accepted quote
 func (so *SubmarineOrchestrator) CreateFromQuote(ctx context.Context, quoteID string) (*Swap, error) {
 	// Get quote to validate it exists and is not expired
-	_, err := so.quotes.GetQuote(ctx, quoteID)
+	quote, err := so.quotes.GetQuote(ctx, quoteID)
 	if err != nil {
 		return nil, err
+	}
+	if quote.Kind != provider.SwapKindSubmarine {
+		return nil, fmt.Errorf("quote kind %s is not supported by submarine orchestrator", quote.Kind)
 	}
 
 	// Create swap in OPEN state
@@ -46,9 +50,8 @@ func (so *SubmarineOrchestrator) CreateFromQuote(ctx context.Context, quoteID st
 		return nil, err
 	}
 
-	// Store quote data in locked_intent (will be set on Lock)
-	// For now, just return the swap
-	return swap, nil
+	// Auto-lock immediately after creation so swap parameters become immutable.
+	return so.Lock(ctx, swap.ID, quoteID)
 }
 
 // Lock locks the swap parameters (makes them immutable)
@@ -66,25 +69,33 @@ func (so *SubmarineOrchestrator) Lock(ctx context.Context, swapID string, quoteI
 	}
 
 	// Create locked intent JSON
-	lockedIntent := fmt.Sprintf(`{
-		"quote_id": "%s",
-		"kind": "%s",
-		"amount_sat": %d,
-		"lockup_address": "%s",
-		"timeout_blocks": %d
-	}`, quote.QuoteID, quote.Kind, quote.AmountSat, quote.LockupAddress, quote.UserTimeoutBlocks)
+	lockedIntentPayload := map[string]interface{}{
+		"quote_id":       quote.QuoteID,
+		"kind":           string(quote.Kind),
+		"amount_sat":     quote.AmountSat,
+		"lockup_address": quote.LockupAddress,
+		"timeout_blocks": quote.UserTimeoutBlocks,
+	}
+	lockedIntentBytes, err := json.Marshal(lockedIntentPayload)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal locked intent: %w", err)
+	}
 
 	// Update swap with locked intent
-	_, err = so.db.ExecContext(ctx, `
+	result, err := so.db.ExecContext(ctx, `
 		UPDATE swaps 
 		SET locked_intent = ?, 
 		    lockup_address = ?,
 		    timeout_block_height = ?,
 		    invoice = ?
 		WHERE id = ?
-	`, lockedIntent, quote.LockupAddress, quote.UserTimeoutBlocks, quote.Invoice, swapID)
+	`, string(lockedIntentBytes), quote.LockupAddress, quote.UserTimeoutBlocks, quote.Invoice, swapID)
 	if err != nil {
 		return nil, err
+	}
+	affected, _ := result.RowsAffected()
+	if affected == 0 {
+		return nil, fmt.Errorf("failed to update swap %s before lock", swapID)
 	}
 
 	// Transition to LOCKED

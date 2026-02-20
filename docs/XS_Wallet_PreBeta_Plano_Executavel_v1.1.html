@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>XS Wallet - Plano Executável Pré-Beta v1.1</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+    :root {
+      --text: #1a1a1a;
+      --text-secondary: #4a4a4a;
+      --bg: #ffffff;
+      --border: #e5e5e5;
+      --accent: #2563eb;
+      --code-bg: #f5f5f5;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Inter', -apple-system, sans-serif;
+      font-size: 10pt;
+      line-height: 1.6;
+      color: var(--text);
+      background: var(--bg);
+      max-width: 210mm;
+      margin: 0 auto;
+      padding: 20mm;
+    }
+
+    h1 {
+      font-size: 20pt;
+      font-weight: 700;
+      margin: 24pt 0 12pt;
+      border-bottom: 2px solid var(--text);
+      padding-bottom: 6pt;
+    }
+
+    h2 {
+      font-size: 14pt;
+      font-weight: 600;
+      margin: 18pt 0 8pt;
+      color: var(--text);
+    }
+
+    h3 {
+      font-size: 11pt;
+      font-weight: 600;
+      margin: 12pt 0 6pt;
+    }
+
+    p { margin-bottom: 8pt; text-align: justify; }
+
+    ul, ol { margin: 8pt 0 12pt 18pt; }
+
+    li { margin-bottom: 5pt; }
+
+    .cover {
+      text-align: center;
+      page-break-after: always;
+      padding-top: 100pt;
+    }
+
+    .cover h1 {
+      font-size: 30pt;
+      border: none;
+      margin-bottom: 8pt;
+    }
+
+    .cover .subtitle {
+      font-size: 14pt;
+      color: var(--text-secondary);
+      margin-bottom: 40pt;
+    }
+
+    .cover .meta { margin-top: 50pt; }
+
+    .cover .meta table {
+      margin: 0 auto;
+      text-align: left;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12pt 0;
+      font-size: 9pt;
+    }
+
+    th, td {
+      border: 1px solid var(--border);
+      padding: 6pt 8pt;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th { background: #f0f0f0; font-weight: 600; }
+
+    code {
+      font-family: 'JetBrains Mono', monospace;
+      background: var(--code-bg);
+      padding: 1pt 4pt;
+      border-radius: 3pt;
+      font-size: 8.5pt;
+    }
+
+    pre {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 6pt;
+      padding: 10pt;
+      overflow-x: auto;
+      margin: 8pt 0 12pt;
+    }
+
+    pre code { background: none; padding: 0; }
+
+    .note {
+      border-left: 4px solid var(--accent);
+      background: #f8fafc;
+      padding: 8pt 10pt;
+      margin: 10pt 0;
+      font-size: 9pt;
+    }
+
+    .note.warning { border-left-color: var(--warning); background: #fffbeb; }
+    .note.danger { border-left-color: var(--danger); background: #fef2f2; }
+    .note.success { border-left-color: var(--success); background: #ecfdf5; }
+
+    .phase {
+      border: 1px solid var(--border);
+      border-radius: 8pt;
+      padding: 10pt;
+      margin: 10pt 0;
+    }
+  </style>
+</head>
+
+<body>
+<!-- DOC-CURRENT-STATE -->
+<div style="margin:12px 16px;padding:10px 12px;border:1px solid #d97706;background:#fffbeb;color:#78350f;font:14px/1.4 sans-serif;">
+<strong>Estado atual do codigo (fonte canonica):</strong> consulte <code>docs/STATUS_ESPECIFICACAO_XS_WALLET.md</code>.
+Este documento pode conter conteudo de alvo/planejamento (spec/roadmap) alem do estado ja implementado.
+</div>
+  <div class="cover">
+    <h1>XS WALLET</h1>
+    <div class="subtitle">Plano Executável Pré-Beta v1.1 (Comandos Reais do Repositório)</div>
+    <div class="meta">
+      <table>
+        <tr><th>Documento</th><td>Plano executável pré-beta (operacional)</td></tr>
+        <tr><th>Versão</th><td>v1.1</td></tr>
+        <tr><th>Projeto</th><td>XS Wallet v0.2.x</td></tr>
+        <tr><th>Data</th><td>19 Fevereiro 2026</td></tr>
+        <tr><th>Base</th><td>Electron + Frontend React/Vite + API Bridge + xscore</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <h1>1. Contexto de Execução</h1>
+  <ul>
+    <li><code>XSWallet/core</code> - serviço gRPC (<code>xscore</code>).</li>
+    <li><code>XSWallet/api-bridge</code> - bridge HTTP para gRPC.</li>
+    <li><code>XSWallet/frontend</code> - frontend React/Vite.</li>
+    <li><code>XSWallet</code> - shell Electron + scripts de desenvolvimento.</li>
+  </ul>
+
+  <h2>1.1 Comandos atuais do repo</h2>
+  <pre><code># frontend
+cd XSWallet/frontend
+npm run build
+
+# electron dev (root)
+cd XSWallet
+npm run electron:dev
+
+# api bridge
+cd XSWallet/api-bridge
+npm start
+
+# core
+cd XSWallet/core
+go run ./cmd/xscore --config ./config.local.mainnet.pruned.json --network=mainnet --port=9735
+
+# e2e core existentes
+cd XSWallet/core
+go test -v ./test/e2e/...</code></pre>
+
+  <h1>2. Fase 1 - Hardening Final (Execução Direta)</h1>
+
+  <div class="phase">
+    <h2>2.1 Contrato de ENV (bridge/electron/frontend)</h2>
+    <p>Implementar validação de env com fail-fast e sem defaults inseguros em produção.</p>
+
+    <h3>Arquivos sugeridos</h3>
+    <ul>
+      <li><code>XSWallet/api-bridge/config/env.js</code></li>
+      <li><code>XSWallet/.env.example</code></li>
+      <li><code>XSWallet/docs/ENV_MATRIX.md</code></li>
+    </ul>
+
+    <h3>Matriz mínima</h3>
+    <table>
+      <thead>
+        <tr><th>Variável</th><th>Dev</th><th>Prod</th><th>Regra</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>GRPC_HOST</code></td><td>Obrigatória</td><td>Obrigatória</td><td>Endpoint válido host:port</td></tr>
+        <tr><td><code>BITCOIN_RPC_URL</code></td><td>Obrigatória</td><td>Obrigatória</td><td>Sem placeholder</td></tr>
+        <tr><td><code>SESSION_TTL_SECONDS</code></td><td>Obrigatória</td><td>Obrigatória</td><td>&gt; 0</td></tr>
+        <tr><td><code>ALLOW_HTTP_FALLBACK</code></td><td>true</td><td>false</td><td>Fail em prod se true</td></tr>
+        <tr><td><code>ELECTRON_API_URL</code></td><td>Obrigatória</td><td>Obrigatória</td><td>URL HTTP válida</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Checklist</h3>
+    <ul>
+      <li>[ ] Bloquear boot com <code>troque_essa_senha</code>, <code>CHANGE_ME</code>, <code>dev</code> em produção.</li>
+      <li>[ ] Logar erro com nome da env ausente e encerrar processo.</li>
+    </ul>
+  </div>
+
+  <div class="phase">
+    <h2>2.2 Contrato de Sessão</h2>
+    <ul>
+      <li><code>unlock</code> deve retornar <code>session_id</code> real e frontend/electron devem usar esse token.</li>
+      <li>Qualquer <code>401/Unauthenticated</code> em chamada protegida => limpar sessão e redirecionar para <code>/unlock</code>.</li>
+      <li><code>lock</code> invalida sessão no backend e limpa token local.</li>
+    </ul>
+
+    <h3>Teste rápido (manual)</h3>
+    <pre><code># unlock válido
+curl -X POST http://127.0.0.1:3000/api/v1/wallet/unlock \
+  -H "Content-Type: application/json" \
+  -H "authorization: Bearer dev" \
+  -d '{"pin":"SEU_PIN"}'
+
+# chamada protegida com token inválido (espera erro auth)
+curl -sS http://127.0.0.1:3000/api/v1/swaps -H "authorization: Bearer invalid"</code></pre>
+  </div>
+
+  <div class="phase">
+    <h2>2.3 IPC Hardening</h2>
+    <ul>
+      <li>Whitelist de canais (já existente em <code>electron/ipc/channels.ts</code>) deve ser fonte única.</li>
+      <li>Todos os handlers mutáveis com validação + timeout + tratamento de erro sem sucesso fake.</li>
+      <li>Rate-limit para operações sensíveis (unlock/init/restore/send/swap.create).</li>
+    </ul>
+  </div>
+
+  <h1>3. Fase 2 - Restore Completo na UI</h1>
+
+  <h2>3.1 Estrutura sugerida</h2>
+  <ul>
+    <li><code>XSWallet/frontend/src/app/components/xs-wallet/screens/OnboardingRestore.tsx</code></li>
+    <li><code>XSWallet/frontend/src/services/api.ts</code> (<code>restoreVault</code>)</li>
+    <li><code>XSWallet/frontend/src/services/store.ts</code> (ação de restore)</li>
+  </ul>
+
+  <h2>3.2 Contrato de chamada</h2>
+  <pre><code>POST /api/v1/wallet/restore
+{
+  "mnemonic": "...",
+  "pin": "..."
+}</code></pre>
+
+  <h2>3.3 Estados obrigatórios</h2>
+  <ul>
+    <li><code>idle</code>, <code>validating</code>, <code>submitting</code>, <code>error</code>, <code>success</code></li>
+    <li>Mapear erros: <code>MNEMONIC_INVALID</code>, <code>VAULT_ALREADY_EXISTS</code>, <code>WEAK_PIN</code></li>
+  </ul>
+
+  <div class="note warning">
+    Se endpoint restore ainda não existir no backend, criar flag explícita de indisponibilidade e remover entrada de caminho crítico até implementação.
+  </div>
+
+  <h1>4. Fase 3 - E2E Ampla (base no que já existe)</h1>
+
+  <h2>4.1 Situação atual</h2>
+  <ul>
+    <li>Suite Go E2E disponível em <code>XSWallet/core/test/e2e</code>.</li>
+    <li>Infra regtest disponível em <code>XSWallet/test/regtest</code>.</li>
+  </ul>
+
+  <h2>4.2 Como rodar hoje</h2>
+  <pre><code># stack regtest
+cd XSWallet/test/regtest
+docker compose up -d
+
+# e2e core
+cd XSWallet/core
+go test -v ./test/e2e/...
+
+# teardown
+cd XSWallet/test/regtest
+docker compose down -v</code></pre>
+
+  <h2>4.3 Estrutura sugerida para ampliar</h2>
+  <ul>
+    <li><code>XSWallet/e2e/smoke/</code> (fluxos críticos curtos)</li>
+    <li><code>XSWallet/e2e/full/</code> (regressão completa)</li>
+    <li><code>XSWallet/scripts/ci/e2e-smoke.sh</code></li>
+    <li><code>XSWallet/scripts/ci/e2e-full.sh</code></li>
+    <li><code>XSWallet/artifacts/e2e/</code> (logs/screenshots/traces)</li>
+  </ul>
+
+  <h1>5. Fase 4 - Pipeline Final de Release</h1>
+
+  <h2>5.1 Pipeline alvo</h2>
+  <pre><code>lint -> unit -> build -> e2e-smoke -> e2e-full -> package -> sign -> release</code></pre>
+
+  <h2>5.2 Comandos-base do projeto</h2>
+  <pre><code># lint/test/build app shell
+cd XSWallet
+npm run lint
+npm run test
+npm run build
+
+# frontend build
+cd XSWallet/frontend
+npm run build
+
+# packaging electron
+cd XSWallet
+npm run package</code></pre>
+
+  <h2>5.3 Estrutura sugerida de release</h2>
+  <ul>
+    <li><code>XSWallet/scripts/ci/pipeline.sh</code></li>
+    <li><code>XSWallet/scripts/release/sign-macos.sh</code></li>
+    <li><code>XSWallet/scripts/release/sign-windows.ps1</code></li>
+    <li><code>XSWallet/release/checksums.txt</code></li>
+    <li><code>XSWallet/release/RELEASE_NOTES.md</code></li>
+  </ul>
+
+  <h1>6. PRs Cirúrgicos (ordem recomendada)</h1>
+  <ol>
+    <li>PR-01 Env hardening + fail-fast + matrix docs.</li>
+    <li>PR-02 Sessão/auth contract (401, lock/logout, token lifecycle).</li>
+    <li>PR-03 IPC hardening (schemas, timeouts, rate-limit, sem fallback fake).</li>
+    <li>PR-04 Restore UI end-to-end.</li>
+    <li>PR-05 E2E smoke (scripts e artefatos).</li>
+    <li>PR-06 E2E full + resiliência.</li>
+    <li>PR-07 Pipeline release final e assinatura.</li>
+  </ol>
+
+  <h1>7. Definition of Done (Pré-Beta)</h1>
+  <ul>
+    <li>Create/Restore/Unlock estáveis e reprodutíveis.</li>
+    <li>Sessão sem divergência entre frontend/electron/bridge/core.</li>
+    <li>E2E smoke em PR e full em main.</li>
+    <li>Pipeline de release reproduzível com rollback documentado.</li>
+  </ul>
+
+  <div class="note.success note"><strong>Próximo passo objetivo:</strong> executar PR-01 e PR-02 primeiro, pois desbloqueiam segurança + confiabilidade para as fases seguintes.</div>
+</body>
+
+</html>

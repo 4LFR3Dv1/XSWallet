@@ -1,0 +1,38 @@
+name: Release Gate - NodeManager Manifest
+
+on:
+  pull_request:
+    paths:
+      - 'core/config/nodemanager.manifest.json'
+      - 'core/config/nodemanager.manifest.schema.json'
+      - 'core/internal/server/**'
+      - '.github/workflows/release-gate-manifest.yml'
+  push:
+    branches:
+      - main
+      - master
+    paths:
+      - 'core/config/nodemanager.manifest.json'
+      - 'core/config/nodemanager.manifest.schema.json'
+      - 'core/internal/server/**'
+      - '.github/workflows/release-gate-manifest.yml'
+  workflow_dispatch:
+
+jobs:
+  release-gate-manifest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: core/go.mod
+          cache-dependency-path: core/go.sum
+
+      - name: Validate canonical NodeManager manifest
+        working-directory: core
+        run: go test ./internal/server -run TestCanonicalNodeManagerManifestSchema -count=1 -v

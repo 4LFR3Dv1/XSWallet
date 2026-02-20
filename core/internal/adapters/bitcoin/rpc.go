@@ -13,9 +13,9 @@ import (
 
 // Client is a Bitcoin Core JSON-RPC client
 type Client struct {
-	url      string
-	user     string
-	pass     string
+	url        string
+	user       string
+	pass       string
 	httpClient *http.Client
 }
 
@@ -67,10 +67,26 @@ type ScanUtxo struct {
 
 // ScanTxOutSetResult is the response from scantxoutset
 type ScanTxOutSetResult struct {
-	Success bool       `json:"success"`
-	Height  int64      `json:"height"`
-	TxOuts  int64      `json:"txouts"`
+	Success  bool       `json:"success"`
+	Height   int64      `json:"height"`
+	TxOuts   int64      `json:"txouts"`
 	Unspents []ScanUtxo `json:"unspents"`
+}
+
+// TxOutInfo represents an unspent output info from gettxout.
+type TxOutInfo struct {
+	ValueSat  int64
+	ScriptHex string
+}
+
+// BlockchainInfo represents getblockchaininfo response fields used by NodeService.
+type BlockchainInfo struct {
+	Chain                string  `json:"chain"`
+	Blocks               int64   `json:"blocks"`
+	Headers              int64   `json:"headers"`
+	InitialBlockDownload bool    `json:"initialblockdownload"`
+	VerificationProgress float64 `json:"verificationprogress"`
+	Connections          int64   `json:"connections"`
 }
 
 // rpcRequest represents a JSON-RPC request
@@ -158,6 +174,29 @@ func (c *Client) Height(ctx context.Context) (int64, error) {
 	return height, nil
 }
 
+// GetBlockchainInfo returns chain/sync status from bitcoind.
+func (c *Client) GetBlockchainInfo(ctx context.Context) (*BlockchainInfo, error) {
+	result, err := c.call(ctx, "getblockchaininfo")
+	if err != nil {
+		return nil, err
+	}
+	var info BlockchainInfo
+	if err := json.Unmarshal(result, &info); err != nil {
+		return nil, err
+	}
+	// getblockchaininfo does not include connections, read from getnetworkinfo.
+	netResult, netErr := c.call(ctx, "getnetworkinfo")
+	if netErr == nil {
+		var n struct {
+			Connections int64 `json:"connections"`
+		}
+		if json.Unmarshal(netResult, &n) == nil {
+			info.Connections = n.Connections
+		}
+	}
+	return &info, nil
+}
+
 // BroadcastTx broadcasts a raw transaction and returns the txid
 func (c *Client) BroadcastTx(ctx context.Context, rawHex string) (string, error) {
 	result, err := c.call(ctx, "sendrawtransaction", rawHex)
@@ -197,7 +236,7 @@ func (c *Client) EstimateFee(ctx context.Context, blocks int) (float64, error) {
 	}
 
 	var response struct {
-		FeeRate float64 `json:"feerate"` // BTC/kB
+		FeeRate float64  `json:"feerate"` // BTC/kB
 		Errors  []string `json:"errors"`
 	}
 	if err := json.Unmarshal(result, &response); err != nil {
@@ -246,6 +285,30 @@ func (c *Client) GetRawTransaction(ctx context.Context, txid string) (string, er
 	}
 
 	return hex, nil
+}
+
+// GetTxOut returns amount/script for a specific output if it is unspent.
+func (c *Client) GetTxOut(ctx context.Context, txid string, vout uint32) (*TxOutInfo, error) {
+	result, err := c.call(ctx, "gettxout", txid, vout, true)
+	if err != nil {
+		return nil, err
+	}
+	if string(result) == "null" {
+		return nil, fmt.Errorf("txout not available: %s:%d", txid, vout)
+	}
+	var resp struct {
+		Value        float64 `json:"value"`
+		ScriptPubKey struct {
+			Hex string `json:"hex"`
+		} `json:"scriptPubKey"`
+	}
+	if err := json.Unmarshal(result, &resp); err != nil {
+		return nil, err
+	}
+	return &TxOutInfo{
+		ValueSat:  int64(resp.Value * 100000000),
+		ScriptHex: resp.ScriptPubKey.Hex,
+	}, nil
 }
 
 // GetBlockHash returns the block hash for a given height

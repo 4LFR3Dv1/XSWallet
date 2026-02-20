@@ -83,9 +83,14 @@ let grpcHealthy = false;
 // Helper to create gRPC metadata from request header
 function createAuthMetadataFromReq(req) {
     const metadata = new grpc.Metadata();
-    const auth = req.headers['authorization'];
-    if (typeof auth === 'string' && auth.trim().startsWith('Bearer ')) {
-        metadata.add('authorization', auth);
+    const authHeader = req.headers['authorization'];
+    if (typeof authHeader === 'string' && authHeader.trim().startsWith('Bearer ')) {
+        metadata.add('authorization', authHeader);
+        return metadata;
+    }
+    const token = typeof req.query?.access_token === 'string' ? req.query.access_token.trim() : '';
+    if (token) {
+        metadata.add('authorization', `Bearer ${token}`);
     }
     return metadata;
 }
@@ -190,8 +195,10 @@ function handleGrpcError(err, res, requestId) {
 
 function requireAuthMetadata(req, res) {
     const metadata = createAuthMetadataFromReq(req);
-    const auth = req.headers['authorization'];
-    if (typeof auth !== 'string' || !auth.trim().startsWith('Bearer ')) {
+    const authHeader = req.headers['authorization'];
+    const hasHeader = typeof authHeader === 'string' && authHeader.trim().startsWith('Bearer ');
+    const hasQueryToken = typeof req.query?.access_token === 'string' && req.query.access_token.trim() !== '';
+    if (!hasHeader && !hasQueryToken) {
         errorResponse(res, 'GRPC_UNAUTHENTICATED', 'Missing or invalid Authorization header', {}, req.id);
         return null;
     }
@@ -206,17 +213,53 @@ function normalizeSwap(grpcSwap) {
     if (!grpcSwap || !grpcSwap.id) {
         throw new Error('invalid swap payload');
     }
+    const lockedIntent = grpcSwap.locked_intent || {};
+    const lockedKind = String(lockedIntent.kind || '').replace(/^SWAP_KIND_/, '').toLowerCase();
+    const grpcKind = String(grpcSwap.kind || '').replace(/^SWAP_KIND_/, '').toLowerCase();
+    const kind = grpcKind || lockedKind || 'submarine';
+
+    const rawFrom = lockedIntent.from_chain || grpcSwap.from_chain || '';
+    const rawTo = lockedIntent.to_chain || grpcSwap.to_chain || '';
+    const normChain = (value, fallback) => {
+        const upper = String(value || '').replace(/^CHAIN_/, '').toUpperCase();
+        if (upper === 'BTC') return 'btc';
+        if (upper === 'LIQUID' || upper === 'L-BTC') return 'liquid';
+        if (upper === 'LN') return 'ln';
+        return fallback;
+    };
+    let fromChain = normChain(rawFrom, '');
+    let toChain = normChain(rawTo, '');
+    if (!fromChain || !toChain) {
+        if (kind === 'reverse') {
+            fromChain = fromChain || 'ln';
+            toChain = toChain || 'btc';
+        } else if (kind === 'chain') {
+            fromChain = fromChain || 'btc';
+            toChain = toChain || 'liquid';
+        } else {
+            fromChain = fromChain || 'btc';
+            toChain = toChain || 'ln';
+        }
+    }
+
+    const amountSat = parseInt(
+        grpcSwap.amount_sat || grpcSwap.amount_sats || lockedIntent.amount_sat || lockedIntent.amount_sats || 0,
+        10
+    ) || 0;
+
     return {
         id: grpcSwap.id,
-        from_chain: grpcSwap.from_chain || 'L-BTC',
-        to_chain: grpcSwap.to_chain || 'LN',
-        amount_sats: parseInt(grpcSwap.amount_sat) || 0,
-        amount_btc: (parseInt(grpcSwap.amount_sat) || 0) / 100_000_000,
+        kind,
+        from_chain: fromChain,
+        to_chain: toChain,
+        amount_sats: amountSat,
+        amount_btc: amountSat / 100_000_000,
         state: normalizeState(grpcSwap.state),
         htlc_address: grpcSwap.lockup_address || null,
         payment_hash: grpcSwap.payment_hash || null,
         preimage: grpcSwap.preimage || null,
         funded_txid: grpcSwap.lockup_txid || null,
+        error_message: grpcSwap.error_message || null,
         created_at: grpcSwap.created_at || new Date().toISOString(),
         updated_at: grpcSwap.updated_at || new Date().toISOString(),
     };
@@ -224,16 +267,79 @@ function normalizeSwap(grpcSwap) {
 
 // State normalization (gRPC states → Flask enum)
 function normalizeState(grpcState) {
+    const raw = String(grpcState || '').trim();
+    const direct = raw.toLowerCase();
+    if (direct && !direct.startsWith('state_') && !direct.startsWith('swap_state_')) {
+        return direct;
+    }
+
     const stateMap = {
-        'STATE_OPEN': 'PENDING_FUNDING',
-        'STATE_LOCKED': 'PENDING_FUNDING',
-        'STATE_COMMIT_STARTED': 'PENDING_FUNDING',
-        'STATE_WAITING': 'FUNDED',
-        'STATE_COMPLETED': 'COMPLETED',
-        'STATE_FAILED': 'REFUNDED',
-        'STATE_CANCELED': 'REFUNDED',
+        STATE_OPEN: 'open',
+        STATE_LOCKED: 'locked',
+        STATE_COMMIT_STARTED: 'commit_started',
+        STATE_WAITING: 'waiting',
+        STATE_WAITING_CLAIM_DETAILS: 'waiting_claim_details',
+        STATE_SIGNING_MUSIG2_PARTIAL: 'signing_musig2_partial',
+        STATE_SENT_PARTIAL_TO_PROVIDER: 'sent_partial_to_provider',
+        STATE_WAITING_PROVIDER_BROADCAST: 'waiting_provider_broadcast',
+        STATE_REFUND_COOP_WAITING: 'refund_coop_waiting',
+        STATE_FALLBACK_SCRIPT_READY: 'fallback_script_ready',
+        STATE_REFUNDING: 'refunding',
+        STATE_COMPLETED: 'completed',
+        STATE_FAILED: 'failed',
+        STATE_CANCELED: 'canceled',
+
+        SWAP_STATE_OPEN: 'open',
+        SWAP_STATE_LOCKED: 'locked',
+        SWAP_STATE_COMMIT_STARTED: 'commit_started',
+        SWAP_STATE_WAITING: 'waiting',
+        SWAP_STATE_WAITING_CLAIM_DETAILS: 'waiting_claim_details',
+        SWAP_STATE_SIGNING_MUSIG2_PARTIAL: 'signing_musig2_partial',
+        SWAP_STATE_SENT_PARTIAL_TO_PROVIDER: 'sent_partial_to_provider',
+        SWAP_STATE_WAITING_PROVIDER_BROADCAST: 'waiting_provider_broadcast',
+        SWAP_STATE_REFUND_COOP_WAITING: 'refund_coop_waiting',
+        SWAP_STATE_FALLBACK_SCRIPT_READY: 'fallback_script_ready',
+        SWAP_STATE_REFUNDING: 'refunding',
+        SWAP_STATE_COMPLETED: 'completed',
+        SWAP_STATE_FAILED: 'failed',
+        SWAP_STATE_CANCELED: 'canceled',
     };
-    return stateMap[grpcState] || 'PENDING_FUNDING';
+    return stateMap[raw] || 'open';
+}
+
+function toGrpcNodeType(nodeType) {
+    const map = {
+        bitcoind: 'NODE_TYPE_BITCOIND',
+        elementsd: 'NODE_TYPE_ELEMENTSD',
+        lnd: 'NODE_TYPE_LND',
+    };
+    return map[String(nodeType || '').toLowerCase()] || null;
+}
+
+function normalizeNodeState(state) {
+    const map = {
+        NODE_STATE_RUNNING: 'running',
+        NODE_STATE_SYNCING: 'syncing',
+        NODE_STATE_STARTING: 'starting',
+        NODE_STATE_STOPPING: 'stopping',
+        NODE_STATE_STOPPED: 'stopped',
+        NODE_STATE_ERROR: 'error',
+        NODE_STATE_NOT_INSTALLED: 'not_installed',
+    };
+    return map[state] || 'unknown';
+}
+
+function normalizeNodeStatus(status) {
+    if (!status) return null;
+    const nodeTypeRaw = String(status.node_type || '').replace('NODE_TYPE_', '').toLowerCase();
+    return {
+        node_type: nodeTypeRaw || 'unknown',
+        state: normalizeNodeState(status.state),
+        version: status.version || '',
+        peer_count: status.peer_count || 0,
+        uptime_seconds: status.uptime_seconds || 0,
+        error_message: status.error_message || '',
+    };
 }
 
 // ============================================================================
@@ -355,6 +461,82 @@ app.get('/api/v1/system/metrics', (req, res) => {
 
 app.get('/api/v1/events/recent', (req, res) => {
     res.json([]);
+});
+
+// ============================================================================
+// NODE ENDPOINTS (Real gRPC -> xscore NodeService)
+// ============================================================================
+
+app.get('/api/v1/nodes', (req, res) => {
+    const metadata = requireAuthMetadata(req, res);
+    if (!metadata) return;
+    const deadline = new Date(Date.now() + CONFIG.GRPC_DEADLINE_MS.list);
+
+    nodeClient.GetAllNodeStatuses({}, metadata, { deadline }, (err, response) => {
+        if (err) return handleGrpcError(err, res, req.id);
+
+        const nodes = [
+            normalizeNodeStatus(response.bitcoind),
+            normalizeNodeStatus(response.elementsd),
+            normalizeNodeStatus(response.lnd),
+        ].filter(Boolean);
+
+        res.json({ nodes });
+    });
+});
+
+app.post('/api/v1/nodes/:node_type/start', (req, res) => {
+    const metadata = requireAuthMetadata(req, res);
+    if (!metadata) return;
+    const grpcNodeType = toGrpcNodeType(req.params.node_type);
+    if (!grpcNodeType) {
+        return errorResponse(res, 'GRPC_INVALID_ARGUMENT', 'Invalid node_type', { node_type: req.params.node_type }, req.id);
+    }
+    const deadline = new Date(Date.now() + CONFIG.GRPC_DEADLINE_MS.create);
+
+    nodeClient.StartNode({
+        node_type: grpcNodeType,
+        network: 'NETWORK_REGTEST',
+    }, metadata, { deadline }, (err, response) => {
+        if (err) return handleGrpcError(err, res, req.id);
+        res.json({ success: true, node: normalizeNodeStatus(response) });
+    });
+});
+
+app.post('/api/v1/nodes/:node_type/stop', (req, res) => {
+    const metadata = requireAuthMetadata(req, res);
+    if (!metadata) return;
+    const grpcNodeType = toGrpcNodeType(req.params.node_type);
+    if (!grpcNodeType) {
+        return errorResponse(res, 'GRPC_INVALID_ARGUMENT', 'Invalid node_type', { node_type: req.params.node_type }, req.id);
+    }
+    const deadline = new Date(Date.now() + CONFIG.GRPC_DEADLINE_MS.create);
+    const graceful = typeof req.body?.graceful === 'boolean' ? req.body.graceful : true;
+
+    nodeClient.StopNode({
+        node_type: grpcNodeType,
+        graceful,
+    }, metadata, { deadline }, (err, response) => {
+        if (err) return handleGrpcError(err, res, req.id);
+        res.json({ success: true, node: normalizeNodeStatus(response) });
+    });
+});
+
+app.post('/api/v1/nodes/:node_type/restart', (req, res) => {
+    const metadata = requireAuthMetadata(req, res);
+    if (!metadata) return;
+    const grpcNodeType = toGrpcNodeType(req.params.node_type);
+    if (!grpcNodeType) {
+        return errorResponse(res, 'GRPC_INVALID_ARGUMENT', 'Invalid node_type', { node_type: req.params.node_type }, req.id);
+    }
+    const deadline = new Date(Date.now() + CONFIG.GRPC_DEADLINE_MS.create);
+
+    nodeClient.RestartNode({
+        node_type: grpcNodeType,
+    }, metadata, { deadline }, (err, response) => {
+        if (err) return handleGrpcError(err, res, req.id);
+        res.json({ success: true, node: normalizeNodeStatus(response) });
+    });
 });
 
 // ============================================================================
@@ -783,6 +965,151 @@ app.get('/api/v1/swaps/:id', (req, res) => {
 
         const swap = normalizeSwap(response.swap ?? response);
         res.json(swap);
+    });
+});
+
+// GET /api/v1/swaps/:id/events - Timeline de eventos de swap
+app.get('/api/v1/swaps/:id/events', (req, res) => {
+    const deadline = new Date(Date.now() + CONFIG.GRPC_DEADLINE_MS.list);
+    const metadata = requireAuthMetadata(req, res);
+    if (!metadata) return;
+
+    const afterSeq = parseInt(req.query.after_seq || req.query.afterSeq || 0, 10) || 0;
+    swapClient.GetSwapEvents({
+        swap_id: req.params.id,
+        after_seq: afterSeq,
+    }, metadata, { deadline }, (err, response) => {
+        if (err) return handleGrpcError(err, res, req.id);
+        const events = (response.events || []).map((ev) => ({
+            seq: Number(ev.seq || 0),
+            swap_id: ev.swap_id || req.params.id,
+            from_state: normalizeState(ev.from_state),
+            to_state: normalizeState(ev.to_state),
+            trigger: ev.trigger || '',
+            details_json: ev.details_json || '',
+            created_at: ev.timestamp || new Date().toISOString(),
+        }));
+        res.json(events);
+    });
+});
+
+// GET /api/v1/swaps/:id/events/stream - Native stream via SSE backed by gRPC WatchSwap
+app.get('/api/v1/swaps/:id/events/stream', (req, res) => {
+    const metadata = requireAuthMetadata(req, res);
+    if (!metadata) return;
+
+    const fromSeq = parseInt(req.query.from_seq || req.query.fromSeq || 0, 10) || 0;
+
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache, no-transform');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no');
+    res.flushHeaders?.();
+    res.write(`event: ready\ndata: ${JSON.stringify({ swap_id: req.params.id, from_seq: fromSeq })}\n\n`);
+
+    const stream = swapClient.WatchSwap({
+        swap_id: req.params.id,
+        from_seq: fromSeq,
+    }, metadata);
+
+    const heartbeat = setInterval(() => {
+        res.write(`event: ping\ndata: ${Date.now()}\n\n`);
+    }, 15000);
+
+    const cleanup = () => {
+        clearInterval(heartbeat);
+        if (!res.writableEnded) {
+            res.end();
+        }
+    };
+
+    stream.on('data', (ev) => {
+        const normalized = {
+            seq: Number(ev.seq || 0),
+            swap_id: ev.swap_id || req.params.id,
+            from_state: normalizeState(ev.from_state),
+            to_state: normalizeState(ev.to_state),
+            trigger: ev.trigger || '',
+            details_json: ev.details_json || '',
+            created_at: ev.timestamp || new Date().toISOString(),
+        };
+        res.write(`event: swap_event\ndata: ${JSON.stringify(normalized)}\n\n`);
+    });
+
+    stream.on('error', (err) => {
+        res.write(`event: error\ndata: ${JSON.stringify({ message: err?.details || err?.message || 'stream error' })}\n\n`);
+        cleanup();
+    });
+
+    stream.on('end', () => {
+        cleanup();
+    });
+
+    req.on('close', () => {
+        clearInterval(heartbeat);
+        try { stream.cancel(); } catch (_) { }
+    });
+});
+
+// GET /api/v1/swaps/events/stream - Native stream via SSE backed by gRPC WatchAllSwaps
+app.get('/api/v1/swaps/events/stream', (req, res) => {
+    const metadata = requireAuthMetadata(req, res);
+    if (!metadata) return;
+
+    const fromSeq = parseInt(req.query.from_seq || req.query.fromSeq || 0, 10) || 0;
+    const filterStatesRaw = String(req.query.filter_states || req.query.filterStates || '').trim();
+    const filterStates = filterStatesRaw
+        ? filterStatesRaw.split(',').map((v) => v.trim()).filter(Boolean)
+        : [];
+
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache, no-transform');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no');
+    res.flushHeaders?.();
+    res.write(`event: ready\ndata: ${JSON.stringify({ from_seq: fromSeq, filter_states: filterStates })}\n\n`);
+
+    const stream = swapClient.WatchAllSwaps({
+        from_seq: fromSeq,
+        filter_states: filterStates,
+    }, metadata);
+
+    const heartbeat = setInterval(() => {
+        res.write(`event: ping\ndata: ${Date.now()}\n\n`);
+    }, 15000);
+
+    const cleanup = () => {
+        clearInterval(heartbeat);
+        if (!res.writableEnded) {
+            res.end();
+        }
+    };
+
+    stream.on('data', (ev) => {
+        const normalized = {
+            seq: Number(ev.seq || 0),
+            swap_id: ev.swap_id || '',
+            from_state: normalizeState(ev.from_state),
+            to_state: normalizeState(ev.to_state),
+            trigger: ev.trigger || '',
+            details_json: ev.details_json || '',
+            created_at: ev.timestamp || new Date().toISOString(),
+        };
+        res.write(`event: swap_event\ndata: ${JSON.stringify(normalized)}\n\n`);
+    });
+
+    stream.on('error', (err) => {
+        res.write(`event: error\ndata: ${JSON.stringify({ message: err?.details || err?.message || 'stream error' })}\n\n`);
+        cleanup();
+    });
+
+    stream.on('end', () => {
+        cleanup();
+    });
+
+    req.on('close', () => {
+        clearInterval(heartbeat);
+        try { stream.cancel(); } catch (_) { }
     });
 });
 

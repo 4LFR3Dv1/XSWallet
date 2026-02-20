@@ -4,6 +4,7 @@ package swap
 
 import (
 	"context"
+	"strings"
 )
 
 // Facts represents the objective state collected from external sources
@@ -20,13 +21,13 @@ type Facts struct {
 	ProviderStatus string // "pending", "paid", "completed", "expired", "failed"
 
 	// Timeouts
-	TimeoutBlock        int64
-	TimeoutApproaching  bool // Less than 10 blocks
-	TimeoutReached      bool
+	TimeoutBlock       int64
+	TimeoutApproaching bool // Less than 10 blocks
+	TimeoutReached     bool
 
 	// Claim/refund status
-	ClaimSeen   bool
-	RefundSeen  bool
+	ClaimSeen  bool
+	RefundSeen bool
 }
 
 // Action represents the next action to take
@@ -68,12 +69,14 @@ func ComputeFacts(ctx context.Context, swap *Swap, height int64, lockupTx interf
 		}
 	}
 
-	// Map provider status
-	switch providerStatus {
-	case "completed", "swap.completed":
+	// Map provider status with conservative evidence:
+	// - ClaimSeen only on explicit terminal success signals.
+	// - RefundSeen must come from objective on-chain evidence (watcher/chain adapter),
+	//   not from provider status strings.
+	status := strings.ToLower(strings.TrimSpace(providerStatus))
+	switch status {
+	case "completed", "swap.completed", "transaction.claimed", "invoice.settled":
 		facts.ClaimSeen = true
-	case "failed", "swap.failed", "expired", "swap.expired":
-		facts.RefundSeen = true
 	}
 
 	return facts

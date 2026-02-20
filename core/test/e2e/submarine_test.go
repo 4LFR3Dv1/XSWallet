@@ -81,22 +81,11 @@ func TestSubmarineE2E(t *testing.T) {
 	}
 	t.Logf("Swap ID: %s, State: %s", swp.ID, swp.State)
 
-	if swp.State != swap.StateOpen {
-		t.Fatalf("Expected state OPEN, got %s", swp.State)
-	}
-
-	// Step 3: Lock swap
-	swp, err = submarine.Lock(ctx, swp.ID, quote.QuoteID)
-	if err != nil {
-		t.Fatalf("Failed to lock swap: %v", err)
-	}
-	t.Logf("Swap locked, State: %s", swp.State)
-
 	if swp.State != swap.StateLocked {
-		t.Fatalf("Expected state LOCKED, got %s", swp.State)
+		t.Fatalf("Expected state LOCKED after auto-lock, got %s", swp.State)
 	}
 
-	// Step 4: Commit swap (this will fail without real UTXOs in regtest)
+	// Step 3: Commit swap (this will fail without real UTXOs in regtest)
 	// For now, we test that the flow is correct
 	t.Logf("Commit step would require funded wallet in regtest")
 

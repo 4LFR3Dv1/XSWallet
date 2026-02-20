@@ -8,14 +8,23 @@ import { useVaultStore } from '@/services/store';
 
 export function UnlockScreen() {
   const navigate = useNavigate();
-  const { unlock } = useVaultStore();
+  const { unlock, checkStatus, status } = useVaultStore();
   const [pin, setPin] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [cooldown, setCooldown] = useState(0);
-  const [attempts, setAttempts] = useState(0);
 
   // Cooldown timer
+  React.useEffect(() => {
+    void checkStatus();
+  }, [checkStatus]);
+
+  React.useEffect(() => {
+    if (status === 'not_initialized') {
+      navigate('/onboarding');
+    }
+  }, [status, navigate]);
+
   React.useEffect(() => {
     if (cooldown > 0) {
       const timer = setTimeout(() => setCooldown(cooldown - 1), 1000);
@@ -24,28 +33,36 @@ export function UnlockScreen() {
   }, [cooldown]);
 
   const handleUnlock = async () => {
-    if (pin.length !== 6 || loading || cooldown > 0) return;
+    if (pin.length !== 8 || loading || cooldown > 0) return;
 
     setLoading(true);
     setError(null);
 
     try {
-      const success = await unlock(pin);
-      if (success) {
+      const result = await unlock(pin);
+      if (result.success) {
         navigate('/');
       } else {
-        const newAttempts = attempts + 1;
-        setAttempts(newAttempts);
-        setError(`Incorrect PIN (${10 - newAttempts} attempts remaining)`);
+        const remaining = result.remaining_attempts;
+        if (typeof remaining === 'number') {
+          setError(`Incorrect PIN (${remaining} attempts remaining)`);
+        } else {
+          setError(result.error_message || 'Incorrect PIN');
+        }
         setPin('');
 
         // Exponential backoff
-        if (newAttempts >= 3) {
-          setCooldown(Math.min(60 * newAttempts, 300));
+        if (typeof remaining === 'number' && remaining <= 7) {
+          setCooldown(Math.min(30 * (10 - remaining), 300));
         }
       }
-    } catch (e) {
-      setError('Failed to connect to wallet service');
+    } catch (e: any) {
+      const message = String(e?.message || '').toLowerCase();
+      if (message.includes('not initialized')) {
+        navigate('/onboarding');
+        return;
+      }
+      setError(e?.message || 'Failed to connect to wallet service');
     } finally {
       setLoading(false);
     }
@@ -64,10 +81,10 @@ export function UnlockScreen() {
           <div className="space-y-6">
             {/* PIN Input */}
             <div className="space-y-4">
-              <label className="text-sm text-[#9AA7B5] block text-center">Enter PIN</label>
+              <label className="text-sm text-[#9AA7B5] block text-center">Enter 8-digit PIN</label>
               <div className="flex justify-center">
                 <InputOTP
-                  maxLength={6}
+                  maxLength={8}
                   value={pin}
                   onChange={(value) => {
                     setPin(value);
@@ -82,6 +99,8 @@ export function UnlockScreen() {
                     <InputOTPSlot index={3} className="w-12 h-12 bg-[#151B23] border-[#242C36] text-[#E7EDF5]" />
                     <InputOTPSlot index={4} className="w-12 h-12 bg-[#151B23] border-[#242C36] text-[#E7EDF5]" />
                     <InputOTPSlot index={5} className="w-12 h-12 bg-[#151B23] border-[#242C36] text-[#E7EDF5]" />
+                    <InputOTPSlot index={6} className="w-12 h-12 bg-[#151B23] border-[#242C36] text-[#E7EDF5]" />
+                    <InputOTPSlot index={7} className="w-12 h-12 bg-[#151B23] border-[#242C36] text-[#E7EDF5]" />
                   </InputOTPGroup>
                 </InputOTP>
               </div>
@@ -107,7 +126,7 @@ export function UnlockScreen() {
             <PrimaryButton
               fullWidth
               onClick={handleUnlock}
-              disabled={pin.length !== 6 || cooldown > 0 || loading}
+              disabled={pin.length !== 8 || cooldown > 0 || loading}
             >
               {loading ? (
                 <div className="flex items-center gap-2">
@@ -119,13 +138,20 @@ export function UnlockScreen() {
               )}
             </PrimaryButton>
 
-            {/* Restore Link */}
+            {/* Onboarding Links */}
             <div className="text-center pt-4 border-t border-[#242C36]">
+              <button
+                onClick={() => navigate('/onboarding')}
+                className="text-sm text-[#9AA7B5] hover:text-[#E7EDF5] transition-colors"
+              >
+                Create new wallet
+              </button>
+              <div className="text-xs text-[#4B5563] py-2">or</div>
               <button
                 onClick={() => navigate('/onboarding')}
                 className="text-sm text-[#6C7A89] hover:text-[#9AA7B5] transition-colors"
               >
-                Restore from seed
+                Restore from seed (coming soon)
               </button>
             </div>
           </div>

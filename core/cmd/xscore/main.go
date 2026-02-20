@@ -157,7 +157,7 @@ func main() {
 	swapEngine := swap.NewEngine(database, vaultInstance)
 
 	// Initialize watcher
-	watcherInstance := watcher.NewWatcher(database, btcClient, swapEngine)
+	watcherInstance := watcher.NewWatcher(database, btcClient, swapEngine, provider, vaultInstance, cfg.Network)
 
 	// Start watcher (includes ReconcileAllActiveSwaps on boot)
 	ctx := context.Background()
@@ -179,7 +179,7 @@ func main() {
 	)
 
 	// Register services
-	swapService := server.NewSwapService(database, cfg, swapEngine, provider)
+	swapService := server.NewSwapServiceWithSecrets(database, cfg, swapEngine, provider, vaultInstance)
 	walletService := server.NewWalletService(database, cfg, vaultInstance, btcClient, liquidClient)
 	nodeService := server.NewNodeService(cfg)
 

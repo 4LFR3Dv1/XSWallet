@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>XS Wallet - Backlog Executável (Electron + Node Manager)</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+        :root {
+            --text: #1a1a1a;
+            --text-secondary: #4a4a4a;
+            --bg: #ffffff;
+            --border: #e5e5e5;
+            --accent: #2563eb;
+            --code-bg: #f5f5f5;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            font-size: 10pt;
+            line-height: 1.6;
+            color: var(--text);
+            background: var(--bg);
+            max-width: 210mm;
+            margin: 0 auto;
+            padding: 20mm;
+        }
+
+        h1 {
+            font-size: 20pt;
+            font-weight: 700;
+            margin: 24pt 0 12pt;
+            border-bottom: 2px solid var(--text);
+            padding-bottom: 6pt;
+        }
+
+        h2 {
+            font-size: 14pt;
+            font-weight: 600;
+            margin: 18pt 0 8pt;
+            color: var(--text);
+        }
+
+        h3 {
+            font-size: 11pt;
+            font-weight: 600;
+            margin: 12pt 0 6pt;
+        }
+
+        p {
+            margin-bottom: 8pt;
+            text-align: justify;
+        }
+
+        ul,
+        ol {
+            margin: 8pt 0 12pt 18pt;
+        }
+
+        li {
+            margin-bottom: 5pt;
+        }
+
+        .cover {
+            text-align: center;
+            page-break-after: always;
+            padding-top: 100pt;
+        }
+
+        .cover h1 {
+            font-size: 32pt;
+            border: none;
+            margin-bottom: 8pt;
+        }
+
+        .cover .subtitle {
+            font-size: 14pt;
+            color: var(--text-secondary);
+            margin-bottom: 40pt;
+        }
+
+        .cover .meta {
+            margin-top: 60pt;
+        }
+
+        .cover .meta table {
+            margin: 0 auto;
+            text-align: left;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 12pt 0;
+            font-size: 9pt;
+        }
+
+        th,
+        td {
+            border: 1px solid var(--border);
+            padding: 6pt 8pt;
+            text-align: left;
+            vertical-align: top;
+        }
+
+        th {
+            background: #f0f0f0;
+            font-weight: 600;
+        }
+
+        code {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 8pt;
+            background: var(--code-bg);
+            padding: 2pt 4pt;
+            border-radius: 2pt;
+        }
+
+        .note {
+            background: #fef3c7;
+            border-left: 3px solid #f59e0b;
+            padding: 8pt 12pt;
+            margin: 12pt 0;
+            font-size: 9pt;
+        }
+
+        .note.success {
+            background: #d1fae5;
+            border-color: var(--success);
+        }
+
+        .note.danger {
+            background: #fee2e2;
+            border-color: var(--danger);
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 2pt 6pt;
+            border-radius: 3pt;
+            font-size: 8pt;
+            font-weight: 600;
+        }
+
+        .badge.pending {
+            background: #e5e5e5;
+            color: var(--text-secondary);
+        }
+
+        .page-break {
+            page-break-before: always;
+        }
+
+        @media print {
+            body {
+                padding: 15mm;
+            }
+
+            .page-break {
+                page-break-before: always;
+            }
+        }
+    </style>
+</head>
+
+<body>
+<!-- DOC-CURRENT-STATE -->
+<div style="margin:12px 16px;padding:10px 12px;border:1px solid #d97706;background:#fffbeb;color:#78350f;font:14px/1.4 sans-serif;">
+<strong>Estado atual do codigo (fonte canonica):</strong> consulte <code>docs/STATUS_ESPECIFICACAO_XS_WALLET.md</code>.
+Este documento pode conter conteudo de alvo/planejamento (spec/roadmap) alem do estado ja implementado.
+</div>
+    <div class="cover">
+        <h1>XS WALLET</h1>
+        <div class="subtitle">Backlog Executável (Jira / Linear / GitHub Projects)</div>
+        <p>Electron + Node Manager</p>
+
+        <div class="meta">
+            <table>
+                <tr>
+                    <th>Documento</th>
+                    <td>Backlog Executável</td>
+                </tr>
+                <tr>
+                    <th>Versão</th>
+                    <td>1.1.0</td>
+                </tr>
+                <tr>
+                    <th>Projeto</th>
+                    <td>XS Wallet v0.2.x</td>
+                </tr>
+                <tr>
+                    <th>Data</th>
+                    <td>18 Fevereiro 2026</td>
+                </tr>
+                <tr>
+                    <th>Escopo</th>
+                    <td>Electron, IPC seguro, Node Manager, Binários, E2E Desktop</td>
+                </tr>
+                <tr>
+                    <th>Status</th>
+                    <td><span class="badge pending">Pendente</span></td>
+                </tr>
+            </table>
+        </div>
+    </div>
+
+    <h1>Definition of Done Global</h1>
+    <ul>
+        <li>Logs com <code>traceId</code> em todas as operações críticas.</li>
+        <li>Erros normalizados: <code>code</code>, <code>message</code>, <code>details</code>, <code>traceId</code>.</li>
+        <li>Idempotência explícita em ações de lifecycle de node.</li>
+        <li>Estado <code>locked</code> bloqueia mutações sensíveis.</li>
+        <li>Streams com reconnect + dedup.</li>
+    </ul>
+
+    <h1>EPIC F0 — Foundations (2–3 dias)</h1>
+    <p><strong>Objetivo:</strong> amarrar contratos e criar o esqueleto Electron sem quebrar o fluxo atual.</p>
+
+    <h2>Story: Contrato HTTP → IPC → gRPC (matriz)</h2>
+    <h3>Tarefas</h3>
+    <ul>
+        <li>Inventariar rotas HTTP atuais (método, path, payload, response, erros).</li>
+        <li>Mapear cada rota para channel IPC (nome + schema + auth requirement).</li>
+        <li>Mapear calls renderer-safe vs privileged.</li>
+        <li>Definir padrão único de erro.</li>
+    </ul>
+    <h3>Aceite (DoD)</h3>
+    <ul>
+        <li>Matriz: HTTP route → IPC channel → gRPC method.</li>
+        <li>Schemas versionados (<code>contracts/v1/*</code>).</li>
+        <li>Lista de canais proibidos no renderer.</li>
+    </ul>
+
+    <h2>Story: Estrutura Electron inicial</h2>
+    <h3>Tarefas</h3>
+    <ul>
+        <li>Criar <code>electron/main.ts</code>, <code>electron/preload.ts</code>, <code>electron/ipc/</code>.</li>
+        <li>Script <code>npm run electron:dev</code> com hot reload básico.</li>
+        <li>Garantir render da UI atual.</li>
+    </ul>
+    <h3>Aceite</h3>
+    <ul>
+        <li>App abre em dev.</li>
+        <li><code>window.xs</code> exposto via preload (stub) sem quebrar build.</li>
+    </ul>
+
+    <h3>Inputs</h3>
+    <ul>
+        <li>Rotas atuais de <code>api-bridge</code> e uso em <code>frontend/src/services/api.ts</code>.</li>
+    </ul>
+    <h3>Outputs</h3>
+    <ul>
+        <li>Matriz de contratos + shell Electron inicial.</li>
+    </ul>
+    <h3>Kill criteria</h3>
+    <ul>
+        <li>Se build tooling consumir >1 dia sem app abrir, simplificar setup para mínimo viável.</li>
+    </ul>
+
+    <h1>EPIC F1 — Electron Shell Seguro (3–4 dias)</h1>
+    <p><strong>Objetivo:</strong> hardening + política de IPC com validação.</p>
+
+    <h2>Story: Hardening de BrowserWindow</h2>
+    <h3>Tarefas</h3>
+    <ul>
+        <li><code>contextIsolation=true</code>, <code>sandbox=true</code>, <code>nodeIntegration=false</code>.</li>
+        <li><code>enableRemoteModule=false</code>.</li>
+        <li>CSP ativa (sem <code>unsafe-eval</code> em prod).</li>
+        <li>Restringir navegação e abertura de novas janelas.</li>
+    </ul>
+    <h3>Aceite</h3>
+    <ul>
+        <li>Renderer sem acesso a <code>require</code>, <code>process</code>, <code>fs</code>.</li>
+        <li>Links externos via <code>shell.openExternal</code>.</li>
+    </ul>
+
+    <h2>Story: IPC whitelisted + validação</h2>
+    <h3>Tarefas</h3>
+    <ul>
+        <li>Registry único de canais.</li>
+        <li>Validação de schema + rate limit mínimo para canais críticos.</li>
+        <li>Normalização de erro + logging com traceId.</li>
+    </ul>
+    <h3>Aceite</h3>
+    <ul>
+        <li>Canais fora da whitelist são bloqueados.</li>
+        <li>Payload inválido retorna erro padronizado.</li>
+        <li>Logs com channel, traceId, durationMs e resultado.</li>
+    </ul>
+
+    <div class="note"><strong>Guardrail:</strong> separar canais <code>read-only</code> vs <code>mutating</code>.</div>
+
+    <h1>EPIC F2 — Migração Frontend HTTP → IPC (4–6 dias)</h1>
+    <p><strong>Objetivo:</strong> renderer fala apenas com <code>window.xs.invoke</code>.</p>
+
+    <h2>Story: Refactor do client</h2>
+    <h3>Tarefas</h3>
+    <ul>
+        <li>Trocar <code>frontend/src/services/api.ts</code> para <code>xsApi.ts</code>.</li>
+        <li>Fallback HTTP apenas com <code>DEBUG_HTTP=1</code>.</li>
+    </ul>
+    <h3>Aceite</h3>
+    <ul>
+        <li>Onboarding, unlock, balances e swap básico via IPC.</li>
+        <li><code>api-bridge</code> fora do caminho padrão.</li>
+        <li>Erros coerentes sem stack leak.</li>
+    </ul>
+
+    <h2>Story: Sessão e autenticação local</h2>
+    <h3>Tarefas</h3>
+    <ul>
+        <li>Definir prova de unlock no renderer.</li>
+        <li>Bloquear canais mutantes em estado locked.</li>
+    </ul>
+    <h3>Aceite</h3>
+    <ul>
+        <li>Operação crítica não executa quando locked.</li>
+        <li>Lock/unlock atualiza permissões imediatamente.</li>
+    </ul>
+
+    <h1>EPIC F3 — Node Manager Core (1–1.5 semana)</h1>
+    <p><strong>Objetivo:</strong> lifecycle real + observabilidade via core.</p>
+
+    <h2>Story: Lifecycle start/stop/restart</h2>
+    <h3>Tarefas</h3>
+    <ul>
+        <li>Modelo <code>NodeInstance</code> (type, pid, dataDir, binaryPath, ports).</li>
+        <li>Start com checagem de portas e dataDir.</li>
+        <li>Stop graceful + kill fallback.</li>
+        <li>Restart idempotente.</li>
+    </ul>
+    <h3>Aceite</h3>
+    <ul>
+        <li>Start/stop/restart sem terminal.</li>
+        <li>Estado com pid/uptime/lastExit reflete realidade.</li>
+    </ul>
+
+    <h2>Story: Health checks + sync progress</h2>
+    <h3>Tarefas</h3>
+    <ul>
+        <li>Bitcoin/Elements via <code>getblockchaininfo</code>.</li>
+        <li>LND via <code>GetInfo</code> + sync + peers.</li>
+        <li>Mapear estados NORMAL/DEGRADED/OFFLINE/STARTING/STOPPING.</li>
+    </ul>
+
+    <h2>Story: WatchLogs (stream)</h2>
+    <h3>Tarefas</h3>
+    <ul>
+        <li>Captura stdout/stderr ou tail de arquivos.</li>
+        <li>Backpressure + truncation + limite de linhas.</li>
+    </ul>
+
+    <h1>EPIC F4 — Binários + Verificação (1 semana)</h1>
+    <p><strong>Objetivo:</strong> garantir supply-chain mínimo seguro.</p>
+
+    <h2>Story: Manifest assinado</h2>
+    <h3>Tarefas</h3>
+    <ul>
+        <li>JSON canônico com version, os, arch, url, sha256, sigEd25519, createdAt.</li>
+        <li>Root public key embutida no app (rotacionável).</li>
+    </ul>
+    <h3>Aceite</h3>
+    <ul>
+        <li>Manifest/assinatura inválidos são recusados.</li>
+        <li>Logs explicam motivo sem vazar segredo.</li>
+    </ul>
+
+    <h2>Story: DownloadBinary + VerifyBinary + Install</h2>
+    <h3>Tarefas</h3>
+    <ul>
+        <li>Download com resume + hash streaming.</li>
+        <li>Install atômico: tmp → verify → move.</li>
+        <li>Permissões corretas de execução.</li>
+    </ul>
+
+    <div class="note success"><strong>Guardrail:</strong> não confiar em hash no mesmo canal do binário sem assinatura.</div>
+
+    <div class="page-break"></div>
+
+    <h1>EPIC F5 — Streams de Swap e Reconcile (4–5 dias)</h1>
+    <p><strong>Objetivo:</strong> swaps vivos + recovery pós-restart consistente.</p>
+
+    <h2>Story: WatchSwap / WatchAllSwaps</h2>
+    <h3>Tarefas</h3>
+    <ul>
+        <li>Evento canônico: <code>SwapObservedEvent { swapId, stage, evidence, timestamp }</code>.</li>
+        <li>Dedup por <code>eventId/hash</code>.</li>
+    </ul>
+
+    <h2>Story: Recovery pós-restart</h2>
+    <h3>Tarefas</h3>
+    <ul>
+        <li>Rehidratar swaps pendentes do storage.</li>
+        <li>Reconciliar com fontes externas no boot.</li>
+    </ul>
+
+    <h1>EPIC F6 — UI Node Manager (3–4 dias)</h1>
+    <p><strong>Objetivo:</strong> operar nodes sem terminal, com guardrails.</p>
+
+    <h2>Story: Tela status + ações</h2>
+    <ul>
+        <li>Cards por node: status, sync, peers, last error.</li>
+        <li>Start/stop/restart com confirmação.</li>
+        <li>Logs em stream.</li>
+    </ul>
+
+    <h2>Story: Guard rails</h2>
+    <ul>
+        <li>Matriz operação crítica → dependências mínimas.</li>
+        <li>Mensagens de bloqueio com ação corretiva.</li>
+    </ul>
+
+    <h1>EPIC F7 — Empacotamento Desktop (4–6 dias)</h1>
+    <p><strong>Objetivo:</strong> instalador + assinatura/notarização.</p>
+
+    <h2>Story: electron-builder config</h2>
+    <ul>
+        <li>Targets mac/win/linux (prioridade definida).</li>
+        <li>Bundle de preload + assets.</li>
+    </ul>
+
+    <h2>Story: Code signing / notarização</h2>
+    <ul>
+        <li>Pipeline separado para assinatura.</li>
+        <li>Documentar prereqs e secrets handling.</li>
+    </ul>
+
+    <h1>EPIC F8 — Testes E2E Desktop (1 semana)</h1>
+    <p><strong>Objetivo:</strong> fluxos críticos cobertos + falhas típicas simuladas.</p>
+
+    <h2>Story: E2E críticos</h2>
+    <ul>
+        <li>bootstrap nodes, vault/unlock, send BTC/Liquid, swap MVP, restart/recovery.</li>
+    </ul>
+
+    <h2>Story: Falhas</h2>
+    <ul>
+        <li>crash node durante operação, timeout RPC, binário inválido, reconexão de streams.</li>
+    </ul>
+
+    <h1>Contratos mínimos sugeridos (IPC)</h1>
+    <ul>
+        <li><code>wallet.getStatus</code></li>
+        <li><code>wallet.unlock</code></li>
+        <li><code>wallet.lock</code></li>
+        <li><code>wallet.getBalances</code></li>
+        <li><code>swap.create</code></li>
+        <li><code>swap.watchAll</code> (stream)</li>
+        <li><code>nodes.list</code></li>
+        <li><code>nodes.start</code></li>
+        <li><code>nodes.stop</code></li>
+        <li><code>nodes.restart</code></li>
+        <li><code>nodes.watchLogs</code> (stream)</li>
+        <li><code>binaries.ensureInstalled(nodeType, version?)</code></li>
+    </ul>
+    <div class="note"><strong>Regra:</strong> canais <code>nodes.*</code>, <code>binaries.*</code>, <code>swap.create</code> são privileged.</div>
+
+    <h1>Dependências e caminho crítico</h1>
+    <ul>
+        <li>F1 é pré-requisito de F2 para evitar dívida de segurança.</li>
+        <li>F3 desbloqueia F6 e fundamenta F5 real.</li>
+        <li>F4 reduz risco reputacional/supply-chain antes de auto-instalar nodes em produção.</li>
+        <li>F8 depende de traceId + erro padronizado desde F1.</li>
+    </ul>
+
+    <h1>Ajustes Operacionais Recomendados</h1>
+    <ul>
+        <li>Em cada fase: registrar Inputs, Outputs e Kill criteria.</li>
+        <li>Manter o DoD global obrigatório em todos os tickets.</li>
+    </ul>
+</body>
+
+</html>

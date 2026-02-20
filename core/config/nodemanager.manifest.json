@@ -1,0 +1,34 @@
+{
+  "manifest_version": "v1.0.0",
+  "network": "mainnet",
+  "generated_at": "2026-02-20T00:00:00Z",
+  "nodes": {
+    "bitcoind": {
+      "enabled": true,
+      "host": "127.0.0.1",
+      "port": 8332,
+      "data_dir": "/var/lib/xs-wallet/nodes/btc/mainnet",
+      "binary": "bitcoind",
+      "rpc_user": "xswallet",
+      "rpc_password": "REPLACE_ME"
+    },
+    "elementsd": {
+      "enabled": true,
+      "host": "127.0.0.1",
+      "port": 7041,
+      "data_dir": "/var/lib/xs-wallet/nodes/liquid/mainnet",
+      "binary": "elementsd",
+      "rpc_user": "xswallet",
+      "rpc_password": "REPLACE_ME"
+    },
+    "lnd": {
+      "enabled": true,
+      "host": "127.0.0.1",
+      "port": 10009,
+      "data_dir": "/var/lib/xs-wallet/nodes/lnd/mainnet",
+      "binary": "lnd",
+      "tls_cert": "/var/lib/xs-wallet/nodes/lnd/mainnet/tls.cert",
+      "macaroon": "/var/lib/xs-wallet/nodes/lnd/mainnet/data/chain/bitcoin/mainnet/admin.macaroon"
+    }
+  }
+}

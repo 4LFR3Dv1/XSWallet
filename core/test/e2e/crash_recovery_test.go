@@ -85,7 +85,7 @@ func TestCrashRecovery(t *testing.T) {
 
 	// Create new engine and watcher
 	engine = swap.NewEngine(database, e2eTestVault{})
-	watcherInstance := watcher.NewWatcher(database, btcClient, engine)
+	watcherInstance := watcher.NewWatcher(database, btcClient, engine, nil, nil, "regtest")
 
 	// Run reconciliation (this is what happens on boot)
 	err = watcherInstance.ReconcileAllActiveSwaps(ctx)

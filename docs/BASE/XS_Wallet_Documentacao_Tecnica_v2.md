@@ -14,6 +14,8 @@ colorlinks: true
 lang: pt-BR
 ---
 
+> Nota de consistência: este documento combina especificação e plano alvo. Para estado implementado no código atual, use `docs/STATUS_ESPECIFICACAO_XS_WALLET.md`.
+
 \newpage
 
 # Sumário Executivo

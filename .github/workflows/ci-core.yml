@@ -1,0 +1,40 @@
+name: CI - Core
+
+on:
+  pull_request:
+    paths:
+      - 'core/**'
+      - '.github/workflows/ci-core.yml'
+  push:
+    branches:
+      - main
+      - master
+    paths:
+      - 'core/**'
+      - '.github/workflows/ci-core.yml'
+  workflow_dispatch:
+
+jobs:
+  core-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    defaults:
+      run:
+        working-directory: core
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: core/go.mod
+          cache-dependency-path: core/go.sum
+
+      - name: Test internal/server
+        run: go test ./internal/server -count=1
+
+      - name: Test internal/watcher
+        run: go test ./internal/watcher -count=1

@@ -76,8 +76,8 @@ function AppRoutes() {
     <Routes>
       {/* Public Routes */}
       <Route path="/onboarding" element={<PublicRoute><OnboardingWelcome /></PublicRoute>} />
-      <Route path="/onboarding/mnemonic" element={<OnboardingMnemonic />} />
-      <Route path="/onboarding/confirm" element={<OnboardingConfirm />} />
+      <Route path="/onboarding/mnemonic" element={<PublicRoute><OnboardingMnemonic /></PublicRoute>} />
+      <Route path="/onboarding/confirm" element={<PublicRoute><OnboardingConfirm /></PublicRoute>} />
       <Route path="/unlock" element={<PublicRoute><UnlockScreen /></PublicRoute>} />
 
       {/* Protected Routes */}

@@ -8,6 +8,7 @@ import (
 	"crypto/sha256"
 	"database/sql"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -59,6 +60,7 @@ type Swap struct {
 	ClaimPubkeyHex  string
 	RefundPubkeyHex string
 	BoltzID         string
+	BoltzStatus     string
 	LockupTxid      string
 	LockupAmountSat string
 	ClaimTxid       string
@@ -237,14 +239,20 @@ func (e *Engine) Get(ctx context.Context, id string) (*Swap, error) {
 	err := e.db.QueryRowContext(ctx, `
 		SELECT id, kind, env, version, state, swap_key_index, 
 		       COALESCE(preimage_hash_hex, ''),
+		       COALESCE(claim_pubkey_hex, ''), COALESCE(refund_pubkey_hex, ''),
+		       COALESCE(boltz_id, ''), COALESCE(boltz_status, ''),
 		       COALESCE(lockup_txid, ''), COALESCE(lockup_amount_sat, ''),
+		       COALESCE(claim_txid, ''), COALESCE(refund_txid, ''),
 		       COALESCE(error_message, ''),
 		       created_at, updated_at
 		FROM swaps WHERE id = ?
 	`, id).Scan(
 		&swap.ID, &swap.Kind, &swap.Env, &swap.Version, &swap.State, &swap.SwapKeyIndex,
 		&swap.PreimageHashHex,
+		&swap.ClaimPubkeyHex, &swap.RefundPubkeyHex,
+		&swap.BoltzID, &swap.BoltzStatus,
 		&swap.LockupTxid, &swap.LockupAmountSat,
+		&swap.ClaimTxid, &swap.RefundTxid,
 		&swap.ErrorMessage,
 		&createdAt, &updatedAt,
 	)
@@ -327,20 +335,38 @@ func (e *Engine) columnExists(table, column string) (bool, error) {
 
 // logEvent registra evento de swap
 func (e *Engine) logEvent(ctx context.Context, swapID, fromState, toState, trigger string, details map[string]interface{}) error {
-	_, err := e.db.ExecContext(ctx, `
+	detailsJSON, err := marshalEventDetails(details)
+	if err != nil {
+		return err
+	}
+	_, err = e.db.ExecContext(ctx, `
 		INSERT INTO swap_events (swap_id, from_state, to_state, trigger, details)
 		VALUES (?, ?, ?, ?, ?)
-	`, swapID, fromState, toState, trigger, nil)
+	`, swapID, fromState, toState, trigger, detailsJSON)
 	return err
 }
 
 func (e *Engine) logEventTx(ctx context.Context, tx *sql.Tx, swapID, fromState, toState, trigger string, details map[string]interface{}) error {
-	// Simplificado - em produção serializar details para JSON
-	_, err := tx.ExecContext(ctx, `
+	detailsJSON, err := marshalEventDetails(details)
+	if err != nil {
+		return err
+	}
+	_, err = tx.ExecContext(ctx, `
 		INSERT INTO swap_events (swap_id, from_state, to_state, trigger, details)
 		VALUES (?, ?, ?, ?, ?)
-	`, swapID, fromState, toState, trigger, nil)
+	`, swapID, fromState, toState, trigger, detailsJSON)
 	return err
+}
+
+func marshalEventDetails(details map[string]interface{}) (interface{}, error) {
+	if len(details) == 0 {
+		return nil, nil
+	}
+	raw, err := json.Marshal(details)
+	if err != nil {
+		return nil, fmt.Errorf("marshal event details: %w", err)
+	}
+	return string(raw), nil
 }
 
 // CheckIdempotency verifica se operação já foi executada

@@ -1,0 +1,86 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://xs-wallet.local/schema/nodemanager.manifest.schema.json",
+  "title": "XS Wallet NodeManager Manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "manifest_version",
+    "network",
+    "nodes"
+  ],
+  "properties": {
+    "manifest_version": {
+      "type": "string",
+      "pattern": "^v?[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "network": {
+      "type": "string",
+      "enum": ["mainnet", "testnet", "regtest"]
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "nodes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["bitcoind", "elementsd", "lnd"],
+      "properties": {
+        "bitcoind": {
+          "$ref": "#/definitions/bitcoind_node"
+        },
+        "elementsd": {
+          "$ref": "#/definitions/elementsd_node"
+        },
+        "lnd": {
+          "$ref": "#/definitions/lnd_node"
+        }
+      }
+    }
+  },
+  "definitions": {
+    "bitcoind_node": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["enabled", "host", "port", "data_dir", "binary", "rpc_user", "rpc_password"],
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "host": { "type": "string", "minLength": 1 },
+        "port": { "type": "integer", "minimum": 1, "maximum": 65535 },
+        "data_dir": { "type": "string", "minLength": 1 },
+        "binary": { "const": "bitcoind" },
+        "rpc_user": { "type": "string" },
+        "rpc_password": { "type": "string" }
+      }
+    },
+    "elementsd_node": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["enabled", "host", "port", "data_dir", "binary", "rpc_user", "rpc_password"],
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "host": { "type": "string", "minLength": 1 },
+        "port": { "type": "integer", "minimum": 1, "maximum": 65535 },
+        "data_dir": { "type": "string", "minLength": 1 },
+        "binary": { "const": "elementsd" },
+        "rpc_user": { "type": "string" },
+        "rpc_password": { "type": "string" }
+      }
+    },
+    "lnd_node": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["enabled", "host", "port", "data_dir", "binary", "tls_cert", "macaroon"],
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "host": { "type": "string", "minLength": 1 },
+        "port": { "type": "integer", "minimum": 1, "maximum": 65535 },
+        "data_dir": { "type": "string", "minLength": 1 },
+        "binary": { "const": "lnd" },
+        "tls_cert": { "type": "string", "minLength": 1 },
+        "macaroon": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

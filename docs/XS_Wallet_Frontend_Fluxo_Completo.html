@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>XS Wallet - Plano Detalhado de Frontend (Fluxo Completo)</title>
+  <style>
+    :root {
+      --bg: #0b0d10;
+      --panel: #151b23;
+      --panel-2: #10151c;
+      --text: #e7edf5;
+      --muted: #9aa7b5;
+      --line: #242c36;
+      --ok: #10b981;
+      --warn: #f59e0b;
+      --danger: #ef4444;
+      --accent: #60a5fa;
+      --code: #0f1720;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: Inter, -apple-system, Segoe UI, Roboto, sans-serif;
+      line-height: 1.6;
+      color: var(--text);
+      background: linear-gradient(180deg, #090c11 0%, #0b0d10 100%);
+      padding: 28px;
+    }
+
+    .container {
+      max-width: 980px;
+      margin: 0 auto;
+    }
+
+    .cover {
+      border: 1px solid var(--line);
+      background: linear-gradient(135deg, #111722 0%, #0f141b 100%);
+      border-radius: 16px;
+      padding: 28px;
+      margin-bottom: 22px;
+    }
+
+    h1 {
+      font-size: 28px;
+      margin-bottom: 6px;
+      letter-spacing: 0.2px;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      margin-bottom: 14px;
+    }
+
+    .meta {
+      display: grid;
+      grid-template-columns: 160px 1fr;
+      gap: 8px 12px;
+      font-size: 14px;
+    }
+
+    .meta .k {
+      color: var(--muted);
+    }
+
+    section {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: var(--panel-2);
+      padding: 18px 20px;
+      margin-bottom: 14px;
+    }
+
+    h2 {
+      font-size: 20px;
+      margin-bottom: 10px;
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 8px;
+    }
+
+    h3 {
+      font-size: 16px;
+      margin: 12px 0 8px;
+      color: #cfd8e3;
+    }
+
+    p {
+      color: #d8e0ea;
+      margin-bottom: 8px;
+    }
+
+    ul,
+    ol {
+      margin: 8px 0 10px 22px;
+    }
+
+    li {
+      margin: 5px 0;
+    }
+
+    code {
+      background: var(--code);
+      color: #d9ecff;
+      border: 1px solid #223040;
+      border-radius: 6px;
+      padding: 1px 6px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 13px;
+    }
+
+    pre {
+      background: var(--code);
+      border: 1px solid #223040;
+      border-radius: 10px;
+      padding: 12px;
+      overflow-x: auto;
+      margin: 10px 0;
+    }
+
+    pre code {
+      border: none;
+      padding: 0;
+      background: transparent;
+    }
+
+    .note,
+    .ok,
+    .warn,
+    .danger {
+      border-radius: 10px;
+      padding: 10px 12px;
+      margin: 10px 0;
+      border: 1px solid;
+    }
+
+    .ok {
+      background: rgba(16, 185, 129, 0.08);
+      border-color: rgba(16, 185, 129, 0.35);
+    }
+
+    .warn {
+      background: rgba(245, 158, 11, 0.08);
+      border-color: rgba(245, 158, 11, 0.35);
+    }
+
+    .danger {
+      background: rgba(239, 68, 68, 0.08);
+      border-color: rgba(239, 68, 68, 0.35);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 8px;
+    }
+
+    th,
+    td {
+      border: 1px solid var(--line);
+      padding: 8px 10px;
+      text-align: left;
+      vertical-align: top;
+      font-size: 14px;
+    }
+
+    th {
+      color: #c8d6e5;
+      background: #111722;
+    }
+  </style>
+</head>
+
+<body>
+<!-- DOC-CURRENT-STATE -->
+<div style="margin:12px 16px;padding:10px 12px;border:1px solid #d97706;background:#fffbeb;color:#78350f;font:14px/1.4 sans-serif;">
+<strong>Estado atual do codigo (fonte canonica):</strong> consulte <code>docs/STATUS_ESPECIFICACAO_XS_WALLET.md</code>.
+Este documento pode conter conteudo de alvo/planejamento (spec/roadmap) alem do estado ja implementado.
+</div>
+  <div class="container">
+    <div class="cover">
+      <h1>XS Wallet - Frontend com Fluxo Completo</h1>
+      <p class="subtitle">Plano detalhado para alinhar o frontend ao nível atual do projeto (pré-beta / MVP técnico avançado).</p>
+      <div class="meta">
+        <div class="k">Documento</div>
+        <div>Plano detalhado de execução e validação do frontend</div>
+        <div class="k">Versão</div>
+        <div>1.0.0</div>
+        <div class="k">Data</div>
+        <div>19 Fevereiro 2026</div>
+        <div class="k">Escopo</div>
+        <div>Onboarding, unlock, rotas, camada API/IPC, build e testes de fluxo</div>
+      </div>
+    </div>
+
+    <section>
+      <h2>1. Objetivo</h2>
+      <p>Entregar um frontend que execute o fluxo completo de wallet sem gaps, sem telas sem saída e com comportamento consistente em Electron (IPC) e fallback HTTP.</p>
+      <div class="ok"><strong>Resultado esperado:</strong> usuário consegue criar carteira, confirmar mnemonic, desbloquear e navegar no app sem erros de integração.</div>
+    </section>
+
+    <section>
+      <h2>2. Estado Atual (Resumo)</h2>
+      <ul>
+        <li>Core e bridge estão operacionais.</li>
+        <li>Fluxo principal existe com suporte a HTTP e caminho parcial via Electron/IPC.</li>
+        <li>Build do frontend está funcional; scripts do root do monorepo ainda estão em transição.</li>
+      </ul>
+      <div class="warn"><strong>Risco:</strong> sem padronizar contratos de integração e cobertura de testes, regressões voltam rápido e bloqueiam entrega.</div>
+    </section>
+
+    <section>
+      <h2>3. Requisitos Funcionais do Fluxo Completo</h2>
+      <ol>
+        <li><strong>Estado not_initialized:</strong> direcionar para onboarding.</li>
+        <li><strong>Criação de carteira:</strong> PIN informado pelo usuário (mínimo backend), criação via API, exibição do mnemonic.</li>
+        <li><strong>Confirmação de backup:</strong> validação de palavras e só então conclusão do setup.</li>
+        <li><strong>Unlock:</strong> usar PIN real, mostrar erro real do backend e tentativas restantes.</li>
+        <li><strong>Estado unlocked:</strong> entrar no dashboard, sem redirecionamento para unlock.</li>
+        <li><strong>Restore:</strong> implementar de verdade ou desabilitar explicitamente (sem dead-end).</li>
+      </ol>
+    </section>
+
+    <section>
+      <h2>4. Plano Técnico de Implementação</h2>
+
+      <h3>4.1 Base de build</h3>
+      <ul>
+        <li>Manter <code>frontend</code> com build de produção verde e sem regressão de tipos.</li>
+        <li>Separar claramente scripts de root e scripts de <code>frontend</code>/<code>electron</code>.</li>
+        <li>Validar com <code>npm --prefix frontend run build</code>.</li>
+      </ul>
+
+      <h3>4.2 Onboarding sem PIN hardcoded</h3>
+      <ul>
+        <li>Adicionar campos: PIN e confirmação no <code>OnboardingWelcome</code>.</li>
+        <li>Validar mínimo de 8 caracteres.</li>
+        <li>Enviar <code>initVault(pin)</code> com input do usuário.</li>
+        <li>Tratar erro de <code>already exists</code> redirecionando para <code>/unlock</code>.</li>
+      </ul>
+
+      <h3>4.3 Regras de roteamento consistentes</h3>
+      <ul>
+        <li><code>status === unlocked</code> sempre vai para <code>/</code>.</li>
+        <li><code>status === locked</code> vai para <code>/unlock</code>.</li>
+        <li><code>status === not_initialized</code> vai para <code>/onboarding</code>.</li>
+      </ul>
+
+      <h3>4.4 Camada API/IPC padronizada</h3>
+      <ul>
+        <li>Criar helper único para transporte: <code>tryIPCThenHTTP()</code>.</li>
+        <li>Padronizar parse de erro backend em todas as chamadas.</li>
+        <li>Aplicar o padrão em wallet, swaps, nodes e health.</li>
+      </ul>
+
+      <h3>4.5 Restore wallet</h3>
+      <ul>
+        <li>Se endpoint não existir: botão com rótulo "Indisponível nesta versão".</li>
+        <li>Se endpoint existir: implementar formulário de mnemonic + PIN.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>5. Contrato de Estados (Frontend)</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Estado do Vault</th>
+            <th>Rota alvo</th>
+            <th>Ação de UI</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>not_initialized</code></td>
+            <td><code>/onboarding</code></td>
+            <td>Exibir criação/restauração</td>
+          </tr>
+          <tr>
+            <td><code>locked</code> / <code>locked_out</code></td>
+            <td><code>/unlock</code></td>
+            <td>Exibir tela de PIN</td>
+          </tr>
+          <tr>
+            <td><code>unlocked</code></td>
+            <td><code>/</code></td>
+            <td>Exibir dashboard e rotas protegidas</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>6. Critérios de Aceite</h2>
+      <ol>
+        <li><code>npm run build</code> executa sem erro.</li>
+        <li>Em estado inicial, app abre diretamente onboarding.</li>
+        <li>Criação de wallet usa PIN do usuário e conclui setup.</li>
+        <li>Unlock aceita o PIN criado e entra no dashboard.</li>
+        <li>Mensagens de erro mostram causa real do backend.</li>
+        <li>Sem loop entre <code>/onboarding</code> e <code>/unlock</code>.</li>
+        <li>Fallback HTTP funciona quando IPC não está disponível.</li>
+      </ol>
+    </section>
+
+    <section>
+      <h2>7. Checklist de Execução</h2>
+      <ol>
+        <li>[ ] Manter build do <code>frontend</code> estável e sem regressão.</li>
+        <li>[ ] Remover PIN hardcoded e implementar input/validação de PIN.</li>
+        <li>[ ] Ajustar redirecionamentos por estado.</li>
+        <li>[ ] Padronizar API/IPC com helper único.</li>
+        <li>[ ] Tratar restore (implementar ou desabilitar).</li>
+        <li>[ ] Validar cenário completo no Electron.</li>
+        <li>[ ] Rodar smoke final e registrar evidências.</li>
+      </ol>
+    </section>
+
+    <section>
+      <h2>8. Testes de Fluxo (Smoke E2E Manual)</h2>
+      <pre><code># Pré-requisitos
+# 1) xscore em 127.0.0.1:9735
+# 2) api-bridge em 127.0.0.1:3000
+# 3) frontend/electron em dev
+
+# Verificar backend pronto
+curl http://127.0.0.1:3000/ready
+
+# Validar status do vault
+curl http://127.0.0.1:3000/api/v1/wallet/status</code></pre>
+      <ol>
+        <li>Com <code>not_initialized</code>, abrir app e confirmar onboarding automático.</li>
+        <li>Criar wallet com PIN definido pelo usuário.</li>
+        <li>Confirmar palavras do mnemonic.</li>
+        <li>Fechar/reabrir e fazer unlock com o mesmo PIN.</li>
+        <li>Navegar em dashboard, wallet, network e settings sem erro.</li>
+      </ol>
+    </section>
+
+    <section>
+      <h2>9. Riscos e Mitigações</h2>
+      <div class="danger"><strong>Risco 1:</strong> regressão de roteamento.<br />
+        <strong>Mitigação:</strong> tabela de estados + testes de navegação por estado.</div>
+      <div class="danger"><strong>Risco 2:</strong> divergência IPC vs HTTP.<br />
+        <strong>Mitigação:</strong> helper único de transporte e testes com IPC ligado/desligado.</div>
+      <div class="danger"><strong>Risco 3:</strong> erro genérico escondendo causa real.<br />
+        <strong>Mitigação:</strong> parse padrão de erro backend em toda a API.</div>
+    </section>
+
+    <section>
+      <h2>10. Definição de Pronto (Definition of Done)</h2>
+      <ul>
+        <li>Fluxo completo operando sem intervenção manual fora da UI.</li>
+        <li>Build local verde.</li>
+        <li>Sem PIN hardcoded no frontend.</li>
+        <li>Sem tela "coming soon" em caminho crítico.</li>
+        <li>Checklist da seção 7 completo.</li>
+      </ul>
+      <div class="ok"><strong>Status-alvo após execução:</strong> frontend alinhado ao nível atual do projeto (MVP técnico funcional estável, pronto para hardening pré-beta).</div>
+      <div class="ok"><strong>Resultado esperado:</strong> frontend consistente com o estágio pré-beta do produto e pronto para evolução de hardening.</div>
+    </section>
+  </div>
+</body>
+
+</html>

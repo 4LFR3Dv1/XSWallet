@@ -1,175 +1,209 @@
 # XS Wallet
 
-**Self-Custody Desktop Wallet** - Atomic Swaps entre BTC, Liquid e Lightning Network
+Carteira desktop self-custody com execução de atomic swaps entre BTC, Liquid e Lightning.
 
-[![Status](https://img.shields.io/badge/Status-Em%20Desenvolvimento-yellow)]()
-[![Spec](https://img.shields.io/badge/Spec-v0.2.0-blue)]()
-[![Go](https://img.shields.io/badge/Go-1.21+-00ADD8?logo=go)]()
+[![Status](https://img.shields.io/badge/Status-Pre--Beta-yellow)](docs/STATUS_ESPECIFICACAO_XS_WALLET.md)
+[![Spec](https://img.shields.io/badge/Spec-v0.2.0-blue)](docs/XS_Wallet_Especificacao_Tecnica_v2.html)
+[![Go](https://img.shields.io/badge/Go-1.24+-00ADD8?logo=go)](core/go.mod)
 
-## 📋 Visão Geral
+## Resumo
 
-XS Wallet é uma aplicação desktop self-custody com carteira on-chain (BTC + Liquid confidential) e atomic swaps usando Taproot e boltz-backend (self-hosted). Projetada com princípios de **Zero Trust** e **Crash Recovery**.
+O projeto está em **pre-beta / MVP técnico avançado**: núcleo de carteira e swaps com backend funcional para desenvolvimento, validação operacional e integração com provider real (Boltz testnet), ainda com hardening final pendente para produção.
 
-### Status Atual
+Principais capacidades atuais:
+- Carteira on-chain BTC + Liquid (confidential).
+- Vault com Argon2id + AES-256-GCM.
+- Engine de swaps com máquina de estados, CAS e idempotência.
+- Fluxos `submarine`, `reverse` e `chain` com execução watcher até caminhos avançados de claim/refund.
+- Integrações reais com Boltz testnet (incluindo testes de execução).
+- NodeService com lifecycle real parcial (`start/stop/restart/status/watch`) + supervisor/backoff/circuit-breaker.
+- Gate de manifest canônico (`manifest vs runtime`) para NodeManager.
 
-| Componente | Status |
-|------------|--------|
-| Go Core (xscore) | ✅ Implementado |
-| Wallet On-chain BTC (BIP84) | ✅ Implementado |
-| Wallet On-chain Liquid (confidential) | ✅ Implementado |
-| Boltz HTTP/WS Client | ✅ Production-Ready |
-| Status Normalization | ✅ Implementado |
-| Swap Engine (CAS) | ✅ Base Implementada |
-| Vault (Argon2id + AES-GCM) | ✅ Implementado |
-| Submarine Swap | ⚠️ Parcial (falta Auto-Lock) |
-| Reverse/Chain Swap | ⏳ Pendente |
-| MuSig2 | ⏳ Pendente |
-| LND Adapter | ⚠️ Base implementada (sem fluxo completo) |
-| elementsd Adapter | ✅ Implementado (JSON-RPC) |
-| Electron/IPC | ⏳ Pendente |
-| Node Manager | ⏳ Pendente |
+## Estado Atual (objetivo)
 
-## 🏗️ Arquitetura
+| Área | Estado |
+|---|---|
+| Core Go (`xscore`) | Funcional |
+| Wallet BTC/Liquid | Funcional |
+| Swap Engine + Reconcile | Funcional |
+| MuSig2 claim path (watcher) | Funcional para fluxo atual |
+| Refund script-path fallback | Funcional com builder local + fallback |
+| gRPC swap streams/events | Funcional |
+| Frontend Swap Center | Parcial avançado, alinhado a estados reais |
+| NodeService | Parcial real (download/verificação de binários ainda pendente) |
+| LND fluxo operacional completo | Pendente |
+| Release produção | Pendente (hardening final) |
 
-```
-┌─────────────────────────────────────────────────┐
-│              XS Wallet Desktop                  │
-├──────────────────┬──────────────────────────────┤
-│   Frontend UI    │     Go Core (xscore)         │
-│  ├─ React + Vite │     ├─ Wallet On-chain       │
-│  ├─ API Bridge   │     ├─ Swap Engine           │
-│  └─ HTTP (temp)  │     ├─ Vault + SQLite WAL    │
-│                  │     └─ gRPC Server           │
-├──────────────────┴──────────────────────────────┤
-│              RPC Adapters                        │
-│  ├─ bitcoind     ├─ elementsd                   │
-│  └─ LND          └─ boltz-backend               │
-└─────────────────────────────────────────────────┘
-```
+Fonte canônica de status: `docs/STATUS_ESPECIFICACAO_XS_WALLET.md`.
 
-Frontend atualmente comunica via HTTP (`api-bridge/`) como ponte temporária para o gRPC do `xscore`. A arquitetura alvo continua Electron + IPC.
+## Arquitetura
 
-## 📁 Estrutura do Projeto
-
-```
-XS WALLET/
-├── core/                  # Go Core (xscore)
-│   ├── cmd/xscore/        # Entry point
-│   ├── internal/
-│   │   ├── boltz/         # HTTP/WS client + status.go
-│   │   ├── swap/          # Engine, orchestrators
-│   │   ├── vault/         # Argon2id + AES-GCM
-│   │   └── db/            # SQLite WAL
-│   └── proto/             # Generated gRPC
-├── frontend/              # React + Vite
-├── api-bridge/            # HTTP bridge (dev/debug)
-├── boltz-backend/         # Swap orchestrator
-├── proto/                 # Proto definitions
-├── docs/                  # Especificação técnica
-└── test/                  # Regtest configs
+```text
+Frontend (React/Vite + Electron em migração)
+        |
+        | HTTP (api-bridge, caminho atual) / IPC (alvo)
+        v
+Go Core (xscore)
+  - Wallet + Vault
+  - Swap Engine + Watcher
+  - gRPC Services (Swap/Wallet/Node)
+  - SQLite WAL
+        |
+        +--> bitcoind (JSON-RPC)
+        +--> elementsd (JSON-RPC)
+        +--> lnd (gRPC, parcial)
+        +--> boltz backend/API (HTTP/WS)
 ```
 
-## 🚀 Quick Start
+## Estrutura do Repositório
 
-### 0. Nodes (regtest)
+```text
+core/              backend Go (xscore)
+frontend/          app React/Vite
+electron/          main/preload/ipc (migração)
+api-bridge/        ponte HTTP para frontend atual
+proto/             contratos proto fonte
+core/proto/        código gRPC gerado
+docs/              especificação, status e planos
+.github/workflows/ CI e release gates
+```
+
+## Pré-requisitos
+
+- Go 1.24+
+- Node.js 20+
+- npm
+- Docker (para ambiente regtest)
+- (Opcional mainnet/testnet) `bitcoind`, `elementsd`, `lnd` instalados no host
+
+## Execução Local
+
+### 1) Subir ambiente regtest
+
 ```bash
 docker compose -f test/regtest/docker-compose.yml up -d
 ```
-Para mainnet/testnet, rode `bitcoind` e `elementsd` e ajuste as credenciais no config JSON do `xscore`.
 
-### 0.1 Configuração (mainnet/testnet)
-Exemplo mínimo de `config.json` para on-chain (BTC + Liquid). Ajuste paths/credenciais conforme seu ambiente:
-```json
-{
-  "network": "mainnet",
-  "data_dir": "C:\\\\Users\\\\seu-usuario\\\\.xs-wallet",
-  "db_path": "C:\\\\Users\\\\seu-usuario\\\\.xs-wallet\\\\xs-wallet.db",
-  "bitcoind": {
-    "enabled": true,
-    "host": "127.0.0.1",
-    "port": 8332,
-    "user": "rpcuser",
-    "password": "rpcpass"
-  },
-  "elementsd": {
-    "enabled": true,
-    "host": "127.0.0.1",
-    "port": 7041,
-    "user": "elements",
-    "password": "elements_dev_pass_2026"
-  },
-  "lnd": {
-    "enabled": false
-  }
-}
-```
-Para testnet, ajuste `network` para `"testnet"` e a porta do `bitcoind` para `18332`.
-Se o JSON tiver `network`, ele sobrescreve o valor passado em `--network`.
+### 2) Rodar core
 
-### 1. Go Core
 ```bash
 cd core
 go build ./cmd/xscore
-./xscore.exe --network=regtest --port=9735
+go run ./cmd/xscore --network=regtest --port=9735
 ```
-Para mainnet/testnet com config JSON:
-```bash
-./xscore.exe --config C:\path\config.json --port=9735
-```
-Se preferir sem JSON, use apenas `--network` e ajuste o `data_dir` com `--datadir`.
 
-### 2. API Bridge (dev only)
+Com config explícita:
+
+```bash
+go run ./cmd/xscore --config ./config.local.mainnet.pruned.json --network=mainnet --port=9735
+```
+
+### 3) Rodar API bridge
+
 ```bash
 cd api-bridge
-npm install && npm start
+npm install
+npm start
 ```
-Ajuste `GRPC_HOST` se o `xscore` estiver em outro host/porta.
 
-### 3. Frontend
+### 4) Rodar frontend
+
 ```bash
 cd frontend
-npm install && npm run dev
+npm install
+npm run dev
 ```
 
-### 4. Teste on-chain via frontend (mainnet/testnet)
-1. Suba `bitcoind`, `elementsd`, `xscore`, `api-bridge` e `frontend`.
-2. Crie a carteira, salve o mnemônico e destrave com o PIN.
-3. Gere um endereço BTC e envie uma pequena quantia; aguarde confirmações.
-4. Gere um endereço Liquid (confidential) e envie L-BTC; aguarde confirmações.
-5. Verifique saldo e UTXOs na tela.
-6. Use o formulário de envio para testar `Send` em BTC e em Liquid; confira o TXID retornado.
+## Configuração NodeManager (manifest canônico)
 
-## 📅 Roadmap (10 semanas)
+Arquivos canônicos versionados:
+- `core/config/nodemanager.manifest.json`
+- `core/config/nodemanager.manifest.schema.json`
 
-| Fase | Semana | Entregas |
-|------|--------|----------|
-| 1. Core Fixes | 1-2 | QuoteSwap fix, schema unificado, preimage encrypted |
-| 2. Swap Protocol | 3-4 | Auto-Lock, Reverse, Chain, MuSig2 |
-| 3. Node Manager + LND | 5-6 | Node Manager, LND flows completos |
-| 4. Electron | 7-8 | Main process, IPC, frontend migration |
-| 5. Tx Management | 9 | RBF/CPFP |
-| 6. Packaging | 10 | Installers, code signing, E2E |
+Variáveis suportadas pelo `NodeService`:
+- `XS_NODEMANAGER_MANIFEST_PATH` (path do manifest)
+- `XS_NODEMANAGER_MANIFEST_REQUIRED` (`1|true|yes|on` para tornar obrigatório)
 
-## 📚 Documentação
+Com `required` ativo, divergência crítica de manifest bloqueia estado operacional READY e `StartNode`.
 
-- **Especificação Técnica**: [`docs/XS_Wallet_Especificacao_Tecnica_v2.html`](docs/XS_Wallet_Especificacao_Tecnica_v2.html)
-- **Status vs Spec**: [`docs/STATUS_ESPECIFICACAO_XS_WALLET.md`](docs/STATUS_ESPECIFICACAO_XS_WALLET.md)
-- **Plano de Implementação**: [`docs/PLANO_IMPLEMENTACAO_v0.2.md`](docs/PLANO_IMPLEMENTACAO_v0.2.md)
-- **Checklist E2E Swap Pipeline**: [`docs/XS_Wallet_Checklist_E2E_Swap.html`](docs/XS_Wallet_Checklist_E2E_Swap.html)
+## Testes
 
-## ⚠️ Notas Importantes
+### Backend core essencial
 
-> **Backup Obrigatório**: O mnemônico restaura apenas chaves. Swaps pendentes (reverse/chain) requerem backup do DB criptografado - a preimage R não é derivável do mnemônico.
+```bash
+cd core
+go test ./internal/server -count=1
+go test ./internal/watcher -count=1
+```
 
-## 🔧 Tecnologias
+### Gate de manifest canônico
 
-- **Backend**: Go 1.21+, gRPC, SQLite WAL
-- **Criptografia**: Argon2id (64MB/3iter), AES-256-GCM
-- **Nodes**: Bitcoin Core, Elements (JSON-RPC), LND (gRPC)
-- **Frontend**: React, Vite, Electron (em migração)
-- **Swap Provider**: boltz-backend (self-hosted)
+```bash
+cd core
+go test ./internal/server -run TestCanonicalNodeManagerManifestSchema -count=1 -v
+```
 
----
+### Integrações reais com Boltz testnet (opcional)
 
-*XS Wallet v0.2.0 - Janeiro 2026*  
-*Self-Custody • Zero Trust • Don't Trust, Verify*
+Exemplos:
+
+```bash
+cd core
+XS_BOLTZ_CHAIN_INTEGRATION=1 XS_BOLTZ_API_URL=https://api.testnet.boltz.exchange go test ./internal/boltz -run TestCreateChainIntegration -v
+XS_BOLTZ_REVERSE_INTEGRATION=1 XS_BOLTZ_API_URL=https://api.testnet.boltz.exchange go test ./internal/boltz -run TestCreateReverseIntegration -v
+```
+
+Para execução watcher full-flow, use os testes em `core/internal/watcher/*execution_integration_test.go` com as variáveis `XS_BOLTZ_*` correspondentes.
+
+## CI e Release Gates
+
+Workflows ativos:
+- `/.github/workflows/ci-core.yml`
+  - roda `go test ./internal/server -count=1`
+  - roda `go test ./internal/watcher -count=1`
+- `/.github/workflows/release-gate-manifest.yml`
+  - valida manifest canônico por schema/teste (`TestCanonicalNodeManagerManifestSchema`)
+
+Esses gates são bloqueadores para evolução de release backend.
+
+## Segurança e Operação
+
+- Vault: preimage nunca em plaintext persistente (criptografia em repouso).
+- RPC host policy: NodeService exige host local/loopback para operação segura.
+- Credenciais LND (tls/macaroon): validação de existência e permissões restritas.
+- Refund terminal: fechamento por evidência objetiva on-chain (`refund_txid` observado), não apenas status textual do provider.
+
+## Documentação Importante
+
+- Especificação técnica: `docs/XS_Wallet_Especificacao_Tecnica_v2.html`
+- Status vs implementação real: `docs/STATUS_ESPECIFICACAO_XS_WALLET.md`
+- Status executivo do projeto: `PROJECT_STATUS.md`
+- Pré-requisitos NodeManager real: `docs/XS_Wallet_PreRequisitos_NodeManager_Real.html`
+- Checklist E2E swap: `docs/XS_Wallet_Checklist_E2E_Swap.html`
+
+## Próximos Focos
+
+- Fechar execução E2E real terminal contínua sem simulação para chain e reverse.
+- Hardening final de NodeManager/LND para produção.
+- Concluir migração frontend para caminho principal Electron/IPC.
+- Fechar checklist final de release com runbook operacional.
+
+## Nota de Backup
+
+O mnemônico restaura chaves, mas recuperação operacional de swaps em andamento depende também do estado persistido (DB/vault/artefatos de execução). Planeje backup consistente de dados locais.
+
+## Comandos Rápidos de Release
+
+```bash
+# 1) Core gates
+cd core
+go test ./internal/server -count=1
+go test ./internal/watcher -count=1
+
+# 2) Gate de manifest canônico (schema + exemplo)
+go test ./internal/server -run TestCanonicalNodeManagerManifestSchema -count=1 -v
+
+# 3) (Opcional) integração real Boltz testnet
+XS_BOLTZ_CHAIN_INTEGRATION=1 XS_BOLTZ_API_URL=https://api.testnet.boltz.exchange go test ./internal/boltz -run TestCreateChainIntegration -v
+XS_BOLTZ_REVERSE_INTEGRATION=1 XS_BOLTZ_API_URL=https://api.testnet.boltz.exchange go test ./internal/boltz -run TestCreateReverseIntegration -v
+```

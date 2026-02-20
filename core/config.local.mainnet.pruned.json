@@ -1,0 +1,18 @@
+{
+  "network": "mainnet",
+  "data_dir": "/Users/renan/.xs-wallet",
+  "db_path": "/Users/renan/.xs-wallet/xs-wallet.db",
+  "bitcoind": {
+    "enabled": true,
+    "host": "127.0.0.1",
+    "port": 8332,
+    "user": "xsrpc",
+    "password": "troque_essa_senha"
+  },
+  "boltz": {
+    "api_url": "https://api.boltz.exchange",
+    "ws_url": "wss://api.boltz.exchange/v2/ws"
+  },
+  "elementsd": { "enabled": false },
+  "lnd": { "enabled": false }
+}

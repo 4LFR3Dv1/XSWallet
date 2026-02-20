@@ -21,13 +21,13 @@ type MockProvider struct {
 }
 
 type mockSwap struct {
-	ID            string
-	QuoteID       string
-	Status        string
-	LockupAddress string
-	LockupSeen    bool
+	ID              string
+	QuoteID         string
+	Status          string
+	LockupAddress   string
+	LockupSeen      bool
 	LockupConfirmed bool
-	TimeoutBlock  int
+	TimeoutBlock    int
 }
 
 // NewMockProvider creates a new mock provider
@@ -45,24 +45,25 @@ func (m *MockProvider) Quote(ctx context.Context, req provider.QuoteRequest) (*p
 
 	// Calculate mock fees
 	providerFee := int64(float64(req.AmountSat) * 0.001) // 0.1%
-	networkFee := int64(300) // Mock network fee
+	networkFee := int64(300)                             // Mock network fee
 
 	quote := &provider.Quote{
-		QuoteID:     quoteID,
-		Kind:        req.Kind,
-		FromChain:   req.FromChain,
-		ToChain:     req.ToChain,
-		AmountSat:   req.AmountSat,
-		ProviderFeeSat: providerFee,
-		NetworkFeeSat:  networkFee,
-		TotalFeeSat:    providerFee + networkFee,
-		FeePercent:     0.1,
-		LockupAddress:  generateMockAddress(req.FromChain),
-		ClaimAddress:   "",
-		Invoice:        req.Invoice,
+		QuoteID:               quoteID,
+		Kind:                  req.Kind,
+		FromChain:             req.FromChain,
+		ToChain:               req.ToChain,
+		AmountSat:             req.AmountSat,
+		Address:               req.Address,
+		ProviderFeeSat:        providerFee,
+		NetworkFeeSat:         networkFee,
+		TotalFeeSat:           providerFee + networkFee,
+		FeePercent:            0.1,
+		LockupAddress:         generateMockAddress(req.FromChain),
+		ClaimAddress:          "",
+		Invoice:               req.Invoice,
 		UserTimeoutBlocks:     144, // ~1 day
 		ProviderTimeoutBlocks: 72,  // ~12 hours
-		ExpiresAt:      time.Now().Add(5 * time.Minute),
+		ExpiresAt:             time.Now().Add(5 * time.Minute),
 	}
 
 	m.mu.Lock()
@@ -72,11 +73,12 @@ func (m *MockProvider) Quote(ctx context.Context, req provider.QuoteRequest) (*p
 	return quote, nil
 }
 
-// Create creates a swap from a quote
-func (m *MockProvider) Create(ctx context.Context, quoteID string) (*provider.CreateResponse, error) {
+// Create creates a swap from a quote/create intent
+func (m *MockProvider) Create(ctx context.Context, req provider.CreateRequest) (*provider.CreateResponse, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
+	quoteID := req.QuoteID
 	quote, ok := m.quotes[quoteID]
 	if !ok {
 		return nil, fmt.Errorf("quote not found: %s", quoteID)
@@ -105,10 +107,10 @@ func (m *MockProvider) Create(ctx context.Context, quoteID string) (*provider.Cr
 	})
 
 	return &provider.CreateResponse{
-		SwapID:          swapID,
-		BoltzID:         swapID,
-		LockupAddress:   quote.LockupAddress,
-		ExpectedAmount:  quote.AmountSat + quote.TotalFeeSat,
+		SwapID:             swapID,
+		BoltzID:            swapID,
+		LockupAddress:      quote.LockupAddress,
+		ExpectedAmount:     quote.AmountSat + quote.TotalFeeSat,
 		TimeoutBlockHeight: quote.UserTimeoutBlocks,
 	}, nil
 }
@@ -240,7 +242,7 @@ func generateID(prefix string) string {
 func generateMockAddress(chain provider.Chain) string {
 	bytes := make([]byte, 20)
 	rand.Read(bytes)
-	
+
 	switch chain {
 	case provider.ChainBTC:
 		return "bcrt1q" + hex.EncodeToString(bytes)[:32] // Regtest bech32

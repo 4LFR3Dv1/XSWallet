@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>XS Wallet - Plano de Execução (Itens 1 e 3)</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+    :root {
+      --text: #1a1a1a;
+      --text-secondary: #4a4a4a;
+      --bg: #ffffff;
+      --border: #e5e5e5;
+      --accent: #2563eb;
+      --code-bg: #f5f5f5;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Inter', -apple-system, sans-serif;
+      font-size: 10pt;
+      line-height: 1.6;
+      color: var(--text);
+      background: var(--bg);
+      max-width: 210mm;
+      margin: 0 auto;
+      padding: 20mm;
+    }
+
+    h1 {
+      font-size: 20pt;
+      font-weight: 700;
+      margin: 24pt 0 12pt;
+      border-bottom: 2px solid var(--text);
+      padding-bottom: 6pt;
+    }
+
+    h2 {
+      font-size: 14pt;
+      font-weight: 600;
+      margin: 18pt 0 8pt;
+    }
+
+    h3 {
+      font-size: 11pt;
+      font-weight: 600;
+      margin: 12pt 0 6pt;
+    }
+
+    p { margin-bottom: 8pt; text-align: justify; }
+    ul, ol { margin: 8pt 0 12pt 18pt; }
+    li { margin-bottom: 5pt; }
+
+    .cover {
+      text-align: center;
+      page-break-after: always;
+      padding-top: 100pt;
+    }
+
+    .cover h1 {
+      font-size: 30pt;
+      border: none;
+      margin-bottom: 8pt;
+    }
+
+    .cover .subtitle {
+      font-size: 14pt;
+      color: var(--text-secondary);
+      margin-bottom: 36pt;
+    }
+
+    .cover .meta table {
+      margin: 0 auto;
+      text-align: left;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12pt 0;
+      font-size: 9pt;
+    }
+
+    th, td {
+      border: 1px solid var(--border);
+      padding: 6pt 8pt;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th { background: #f0f0f0; font-weight: 600; }
+
+    code {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 8.5pt;
+      background: var(--code-bg);
+      padding: 2pt 4pt;
+      border-radius: 3pt;
+    }
+
+    pre {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 6pt;
+      padding: 10pt;
+      overflow-x: auto;
+      margin: 8pt 0 12pt;
+    }
+
+    pre code { background: none; padding: 0; }
+
+    .note {
+      border-left: 4px solid var(--accent);
+      background: #f8fafc;
+      padding: 8pt 10pt;
+      margin: 10pt 0;
+      font-size: 9pt;
+    }
+
+    .note.warning { border-left-color: var(--warning); background: #fffbeb; }
+    .note.success { border-left-color: var(--success); background: #ecfdf5; }
+
+    .badge {
+      display: inline-block;
+      padding: 2pt 6pt;
+      border-radius: 3pt;
+      font-size: 8pt;
+      font-weight: 600;
+    }
+
+    .badge.done { background: #d1fae5; color: var(--success); }
+    .badge.wip { background: #fef3c7; color: var(--warning); }
+    .badge.pending { background: #e5e5e5; color: var(--text-secondary); }
+  </style>
+</head>
+
+<body>
+  <div style="margin:12px 0;padding:10px 12px;border:1px solid #d97706;background:#fffbeb;color:#78350f;">
+    <strong>Fonte canônica de status:</strong> <code>docs/STATUS_ESPECIFICACAO_XS_WALLET.md</code>. Este plano descreve execução técnica dos próximos passos.
+  </div>
+
+  <div class="cover">
+    <h1>XS WALLET</h1>
+    <div class="subtitle">Plano de Execução - Itens 1 e 3</div>
+    <div class="meta">
+      <table>
+        <tr><th>Escopo</th><td>1) Refund script-path completo + 3) Stream nativo frontend</td></tr>
+        <tr><th>Data</th><td>20 Fevereiro 2026</td></tr>
+        <tr><th>Status</th><td>Execução incremental com Item 1 em consolidação avançada</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <h1>1. Objetivo</h1>
+  <p>Fechar os dois blocos prioritários do projeto com critérios objetivos de conclusão:</p>
+  <ul>
+    <li><strong>Item 1:</strong> refund script-path completo, com validação criptográfica e execução segura.</li>
+    <li><strong>Item 3:</strong> timeline/eventos de swap em tempo real no frontend via stream nativo.</li>
+  </ul>
+
+  <h1>2. Estado Atual (Resumo)</h1>
+  <table>
+    <thead>
+      <tr><th>Bloco</th><th>Status</th><th>Evidência no código</th><th>Gap restante</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Refund broadcast</td>
+        <td><span class="badge wip">Parcial avançado</span></td>
+        <td><code>core/internal/watcher/watcher.go</code> (broadcast + persistência + builder local preferencial)</td>
+        <td>Fechar evidência on-chain e cobertura de integração/restart para refund real</td>
+      </tr>
+      <tr>
+        <td>Validação script-path</td>
+        <td><span class="badge done">Concluído (etapa)</span></td>
+        <td>Validação de witness contra <code>refundLeaf</code> persistido</td>
+        <td>Expandir assertivas para cenários multi-input/multi-chain</td>
+      </tr>
+      <tr>
+        <td>Stream no frontend</td>
+        <td><span class="badge wip">Parcial avançado</span></td>
+        <td>SSE + <code>WatchSwap</code> + fallback polling</td>
+        <td><code>WatchAllSwaps</code> nativo e hardening de reconexão/backpressure</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h1>3. Backlog Executável</h1>
+
+  <h2>3.1 Item 1 - Refund Script-Path Completo</h2>
+  <h3>Fase A - Consolidar validação e artefatos</h3>
+  <ul>
+    <li>Manter validação de tx hex com witness/tapscript compatível com <code>locked_intent.*.swapTree.refundLeaf</code>.</li>
+    <li>Persistir artefatos em <code>locked_intent.refund</code> (estratégia, txid, raw hex, timestamp).</li>
+    <li>Negar broadcast quando validação falhar.</li>
+  </ul>
+  <h3>Fase B - Builder local da refund tx (BTC)</h3>
+  <ul>
+    <li>Construir tx de refund localmente para o caminho fallback (prioridade BTC) usando UTXO + refund leaf + control-block + destino canônico.</li>
+    <li>Assinar tapscript localmente e montar witness final sem depender de hex do provider como caminho principal.</li>
+    <li>Comparar/validar localmente o script path antes do <code>BroadcastTx</code> e manter provider hex apenas como fallback controlado.</li>
+  </ul>
+  <h3>Fase C - Integração e resilência</h3>
+  <ul>
+    <li>Teste de integração com restart entre <code>fallback_script_ready</code> e <code>refunding</code>.</li>
+    <li>Idempotência: reexecução não duplica broadcast nem quebra CAS/version.</li>
+  </ul>
+
+  <h2>3.2 Item 3 - Stream Nativo no Frontend</h2>
+  <h3>Fase A - Stream por swap</h3>
+  <ul>
+    <li>Endpoint nativo de stream para eventos de swap e consumo no hook de timeline.</li>
+    <li>Fallback automático para polling incremental quando stream cair.</li>
+  </ul>
+  <h3>Fase B - Stream global</h3>
+  <ul>
+    <li>Expor stream global (equivalente a <code>WatchAllSwaps</code>) para atualizar lista/histórico sem polling fixo.</li>
+    <li>Aplicar filtros de estado no cliente para reduzir ruído de UI.</li>
+  </ul>
+  <h3>Fase C - Hardening operacional</h3>
+  <ul>
+    <li>Backoff exponencial de reconexão, heartbeat e detecção de sessão expirada.</li>
+    <li>Métricas mínimas: eventos/s, reconnect count, lag de atualização.</li>
+  </ul>
+
+  <h1>4. Critérios de Aceite (Definition of Done)</h1>
+  <ol>
+    <li>Refund de fallback executa com segurança (script-path validado) e artefatos persistidos no <code>locked_intent</code>.</li>
+    <li>Watcher só faz broadcast quando a prova local de script-path é compatível com dados persistidos.</li>
+    <li>Frontend recebe eventos em tempo real por stream nativo para tela de swap (sem depender apenas de polling).</li>
+    <li>Queda de stream não quebra UX: fallback entra automático e reconecta.</li>
+    <li>Testes de integração passam para fluxo terminal sem simulação (quando saldo/testnet disponíveis).</li>
+  </ol>
+
+  <h1>5. Matriz de Testes</h1>
+  <table>
+    <thead>
+      <tr><th>Teste</th><th>Tipo</th><th>Esperado</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Validação witness/tapscript match</td>
+        <td>Unitário (watcher)</td>
+        <td>Passa quando <code>refundLeaf</code> esperado está no witness</td>
+      </tr>
+      <tr>
+        <td>Validação witness mismatch</td>
+        <td>Unitário (watcher)</td>
+        <td>Falha segura; sem broadcast</td>
+      </tr>
+      <tr>
+        <td>Fluxo fallback até <code>refunding</code></td>
+        <td>Integração (watcher)</td>
+        <td>Persistência de <code>refund_txid</code> e artefatos</td>
+      </tr>
+      <tr>
+        <td>Eventos em tempo real na timeline</td>
+        <td>Integração frontend/bridge</td>
+        <td>UI atualiza sem refresh manual</td>
+      </tr>
+      <tr>
+        <td>Queda de stream</td>
+        <td>Resiliência</td>
+        <td>Fallback polling ativa e recuperação automática</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h1>6. Comandos de Verificação</h1>
+  <pre><code># Core (watcher/swap/server)
+cd XSWallet/core
+GOCACHE=/tmp/go-build go test ./internal/watcher ./internal/swap ./internal/server -count=1
+
+# Frontend build
+cd XSWallet/frontend
+npm run build
+
+# API bridge sintaxe
+cd XSWallet/api-bridge
+node --check server.js</code></pre>
+
+  <h1>7. Sequência Recomendada de Execução</h1>
+  <ol>
+    <li>Consolidar testes de integração do Item 1 para restart/idempotência com refund local real.</li>
+    <li>Fechar evidência objetiva de refund on-chain (tx de refund observada/confirmada) sem depender só de status provider.</li>
+    <li>Fechar Fase B do Item 3 (stream global nativo para lista/histórico).</li>
+    <li>Aplicar hardening de reconexão/heartbeat e métricas básicas.</li>
+  </ol>
+
+  <div class="note success">
+    <strong>Próximo passo imediato recomendado:</strong> validar o builder local de refund em teste de integração com restart e promover o critério de conclusão por evidência on-chain (mempool/confirmação), mantendo fallback provider apenas para contingência.
+  </div>
+</body>
+
+</html>

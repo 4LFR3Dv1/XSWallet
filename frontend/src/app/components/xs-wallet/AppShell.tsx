@@ -75,7 +75,7 @@ export function AppShell({ children, activePage, vaultLocked = false }: AppShell
             variant={health?.services.xscore === 'connected' ? 'success' : 'error'}
           />
           <StatusChip
-            label={bitcoinInfo?.chain || 'regtest'}
+            label={bitcoinInfo?.chain || 'unknown'}
             variant="default"
           />
         </div>
