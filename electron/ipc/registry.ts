@@ -1,5 +1,5 @@
 import { IPC_CHANNELS, type IpcChannel } from "./channels";
-import { IpcAppError, errInvalidArgument, errUnimplemented } from "./errors";
+import { IpcAppError, errInvalidArgument, errUnauthenticated, errUnimplemented } from "./errors";
 
 type ValidationResult = { ok: true } | { ok: false; reason: string };
 type Validator = (payload: unknown) => ValidationResult;
@@ -36,8 +36,95 @@ const validateWalletUnlock: Validator = (payload) => {
     return { ok: false, reason: "payload must be an object" };
   }
   const pin = (payload as { pin?: unknown }).pin;
-  if (typeof pin !== "string" || pin.trim().length < 4) {
-    return { ok: false, reason: "pin must be a string with at least 4 chars" };
+  if (typeof pin !== "string" || pin.trim().length < 8) {
+    return { ok: false, reason: "pin must be a string with at least 8 chars" };
+  }
+  return { ok: true };
+};
+
+const validateWalletInit: Validator = (payload) => {
+  if (!payload || typeof payload !== "object") {
+    return { ok: false, reason: "payload must be an object" };
+  }
+  const { action, pin } = payload as { action?: unknown; pin?: unknown };
+  if (action !== "generate" && action !== "import") {
+    return { ok: false, reason: "action must be generate|import" };
+  }
+  if (typeof pin !== "string" || pin.trim().length < 8) {
+    return { ok: false, reason: "pin must be a string with at least 8 chars" };
+  }
+  return { ok: true };
+};
+
+const validateWalletGetNewAddress: Validator = (payload) => {
+  if (!payload || typeof payload !== "object") {
+    return { ok: false, reason: "payload must be an object" };
+  }
+  const chain = (payload as { chain?: unknown }).chain;
+  if (chain !== "btc" && chain !== "liquid") {
+    return { ok: false, reason: "chain must be btc|liquid" };
+  }
+  return { ok: true };
+};
+
+const validateWalletListAddresses: Validator = (payload) => {
+  if (!payload || typeof payload !== "object") {
+    return { ok: false, reason: "payload must be an object" };
+  }
+  const { chain, includeUsed } = payload as { chain?: unknown; includeUsed?: unknown };
+  if (chain !== "btc" && chain !== "liquid") {
+    return { ok: false, reason: "chain must be btc|liquid" };
+  }
+  if (includeUsed !== undefined && typeof includeUsed !== "boolean") {
+    return { ok: false, reason: "includeUsed must be a boolean when provided" };
+  }
+  return { ok: true };
+};
+
+const validateWalletListUtxos: Validator = (payload) => {
+  if (!payload || typeof payload !== "object") {
+    return { ok: false, reason: "payload must be an object" };
+  }
+  const { chain, includeReserved } = payload as { chain?: unknown; includeReserved?: unknown };
+  if (chain !== "btc" && chain !== "liquid") {
+    return { ok: false, reason: "chain must be btc|liquid" };
+  }
+  if (includeReserved !== undefined && typeof includeReserved !== "boolean") {
+    return { ok: false, reason: "includeReserved must be a boolean when provided" };
+  }
+  return { ok: true };
+};
+
+const validateWalletListTransactions: Validator = (payload) => {
+  if (!payload || typeof payload !== "object") {
+    return { ok: false, reason: "payload must be an object" };
+  }
+  const { chain, limit, offset } = payload as { chain?: unknown; limit?: unknown; offset?: unknown };
+  if (chain !== "btc" && chain !== "liquid") {
+    return { ok: false, reason: "chain must be btc|liquid" };
+  }
+  if (limit !== undefined && (typeof limit !== "number" || !Number.isFinite(limit) || limit < 1)) {
+    return { ok: false, reason: "limit must be a positive number when provided" };
+  }
+  if (offset !== undefined && (typeof offset !== "number" || !Number.isFinite(offset) || offset < 0)) {
+    return { ok: false, reason: "offset must be >= 0 when provided" };
+  }
+  return { ok: true };
+};
+
+const validateWalletSendOnchain: Validator = (payload) => {
+  if (!payload || typeof payload !== "object") {
+    return { ok: false, reason: "payload must be an object" };
+  }
+  const { chain, address, amount_sats } = payload as { chain?: unknown; address?: unknown; amount_sats?: unknown };
+  if (chain !== "btc" && chain !== "liquid") {
+    return { ok: false, reason: "chain must be btc|liquid" };
+  }
+  if (typeof address !== "string" || address.trim().length < 8) {
+    return { ok: false, reason: "address must be a non-empty string" };
+  }
+  if (typeof amount_sats !== "number" || !Number.isFinite(amount_sats) || amount_sats <= 0) {
+    return { ok: false, reason: "amount_sats must be a positive number" };
   }
   return { ok: true };
 };
@@ -128,6 +215,20 @@ const validateSwapCheck: Validator = (payload) => {
   return { ok: true };
 };
 
+const validateSwapGetEvents: Validator = (payload) => {
+  if (!payload || typeof payload !== "object") {
+    return { ok: false, reason: "payload must be an object" };
+  }
+  const { id, afterSeq } = payload as { id?: unknown; afterSeq?: unknown };
+  if (typeof id !== "string" || id.trim().length < 1) {
+    return { ok: false, reason: "id must be a non-empty string" };
+  }
+  if (afterSeq !== undefined && (typeof afterSeq !== "number" || !Number.isFinite(afterSeq) || afterSeq < 0)) {
+    return { ok: false, reason: "afterSeq must be >= 0 when provided" };
+  }
+  return { ok: true };
+};
+
 const validateSwapWatchAll: Validator = (payload) => {
   if (payload === undefined || payload === null) {
     return { ok: true };
@@ -179,6 +280,35 @@ export const IPC_CHANNEL_REGISTRY: readonly IpcChannelDefinition[] = [
     }
   },
   {
+    name: IPC_CHANNELS.walletInit,
+    access: "renderer_safe",
+    mode: "mutate",
+    requiresUnlocked: false,
+    validate: validateWalletInit,
+    handler: async (payload, ctx) => {
+      const request = payload as { action: "generate" | "import"; pin: string; mnemonic?: string };
+      if (request.action === "import") {
+        throw errUnimplemented("wallet import is not available yet", { channel: IPC_CHANNELS.walletInit });
+      }
+      const pin = request.pin.trim();
+      const response = await ctx.callApiBridge<{
+        success: boolean;
+        mnemonic?: string;
+        session_id?: string;
+      }>("/api/v1/wallet/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ word_count: 24, pin })
+      });
+
+      if (response.success) {
+        ctx.setVaultUnlocked(true);
+        ctx.setSessionToken(response.session_id ?? null);
+      }
+      return response;
+    }
+  },
+  {
     name: IPC_CHANNELS.walletUnlock,
     access: "renderer_safe",
     mode: "mutate",
@@ -202,9 +332,9 @@ export const IPC_CHANNEL_REGISTRY: readonly IpcChannelDefinition[] = [
         });
 
         if (!response.success) {
-          throw errInvalidArgument(response.error_message || "invalid pin", {
-            remainingAttempts: response.remaining_attempts
-          });
+          ctx.setVaultUnlocked(false);
+          ctx.setSessionToken(null);
+          return response;
         }
         ctx.setVaultUnlocked(true);
         ctx.setSessionToken(response.session_id ?? null);
@@ -249,13 +379,103 @@ export const IPC_CHANNEL_REGISTRY: readonly IpcChannelDefinition[] = [
           liquid: { confirmed: number; unconfirmed: number; pending_swap: number };
           ln: { balance: number; pending_open: number; pending_close: number };
         }>("/api/v1/wallet/balances");
-      } catch {
+      } catch (error) {
+        if (error instanceof IpcAppError && error.code === "UNAUTHENTICATED") {
+          ctx.setVaultUnlocked(false);
+          ctx.setSessionToken(null);
+          throw errUnauthenticated("session expired", { channel: IPC_CHANNELS.walletGetBalances });
+        }
         return {
           btc: { confirmed: 0, unconfirmed: 0, pending_swap: 0 },
           liquid: { confirmed: 0, unconfirmed: 0, pending_swap: 0 },
           ln: { balance: 0, pending_open: 0, pending_close: 0 }
         };
       }
+    }
+  },
+  {
+    name: IPC_CHANNELS.walletGetNewAddress,
+    access: "privileged",
+    mode: "mutate",
+    requiresUnlocked: true,
+    validate: validateWalletGetNewAddress,
+    handler: async (payload, ctx) => {
+      const chain = (payload as { chain: "btc" | "liquid" }).chain;
+      return ctx.callApiBridge<unknown>("/api/v1/wallet/derive", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chain: chain === "btc" ? "CHAIN_BTC" : "CHAIN_LIQUID" })
+      });
+    }
+  },
+  {
+    name: IPC_CHANNELS.walletListAddresses,
+    access: "privileged",
+    mode: "read",
+    requiresUnlocked: true,
+    validate: validateWalletListAddresses,
+    handler: async (payload, ctx) => {
+      const { chain, includeUsed } = payload as { chain: "btc" | "liquid"; includeUsed?: boolean };
+      return ctx.callApiBridge<unknown>(
+        `/api/v1/wallet/addresses?chain=${encodeURIComponent(chain)}&include_used=${includeUsed === false ? 0 : 1}`
+      );
+    }
+  },
+  {
+    name: IPC_CHANNELS.walletListUtxos,
+    access: "privileged",
+    mode: "read",
+    requiresUnlocked: true,
+    validate: validateWalletListUtxos,
+    handler: async (payload, ctx) => {
+      const { chain, includeReserved } = payload as { chain: "btc" | "liquid"; includeReserved?: boolean };
+      return ctx.callApiBridge<unknown>(
+        `/api/v1/wallet/utxos?chain=${encodeURIComponent(chain)}&include_reserved=${includeReserved === false ? 0 : 1}`
+      );
+    }
+  },
+  {
+    name: IPC_CHANNELS.walletListTransactions,
+    access: "privileged",
+    mode: "read",
+    requiresUnlocked: true,
+    validate: validateWalletListTransactions,
+    handler: async (payload, ctx) => {
+      const { chain, limit, offset } = payload as { chain: "btc" | "liquid"; limit?: number; offset?: number };
+      const resolvedLimit = typeof limit === "number" ? limit : 50;
+      const resolvedOffset = typeof offset === "number" ? offset : 0;
+      return ctx.callApiBridge<unknown>(
+        `/api/v1/wallet/transactions?chain=${encodeURIComponent(chain)}&limit=${resolvedLimit}&offset=${resolvedOffset}`
+      );
+    }
+  },
+  {
+    name: IPC_CHANNELS.walletSendOnchain,
+    access: "privileged",
+    mode: "mutate",
+    requiresUnlocked: true,
+    validate: validateWalletSendOnchain,
+    handler: async (payload, ctx) => {
+      const request = payload as {
+        chain: "btc" | "liquid";
+        address: string;
+        amount_sats: number;
+        fee_rate_sat_vb?: number;
+        subtract_fee?: boolean;
+        label?: string;
+      };
+      return ctx.callApiBridge<unknown>("/api/v1/wallet/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chain: request.chain === "btc" ? "CHAIN_BTC" : "CHAIN_LIQUID",
+          address: request.address,
+          amount_sat: request.amount_sats,
+          fee_rate_sat_vb: request.fee_rate_sat_vb,
+          subtract_fee: request.subtract_fee ?? false,
+          label: request.label ?? ""
+        })
+      });
     }
   },
   {
@@ -325,6 +545,18 @@ export const IPC_CHANNEL_REGISTRY: readonly IpcChannelDefinition[] = [
     handler: async (payload, ctx) => {
       const id = encodeURIComponent((payload as { id: string }).id);
       return ctx.callApiBridge<unknown>(`/api/v1/swaps/${id}`);
+    }
+  },
+  {
+    name: IPC_CHANNELS.swapGetEvents,
+    access: "privileged",
+    mode: "read",
+    requiresUnlocked: true,
+    validate: validateSwapGetEvents,
+    handler: async (payload, ctx) => {
+      const { id, afterSeq } = payload as { id: string; afterSeq?: number };
+      const from = typeof afterSeq === "number" ? afterSeq : 0;
+      return ctx.callApiBridge<unknown>(`/api/v1/swaps/${encodeURIComponent(id)}/events?after_seq=${from}`);
     }
   },
   {

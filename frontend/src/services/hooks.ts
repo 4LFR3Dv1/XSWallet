@@ -115,19 +115,100 @@ export function useBalances() {
 export function useNewAddress() {
     const [loading, setLoading] = useState(false);
     const [address, setAddress] = useState<api.AddressResponse | null>(null);
+    const [error, setError] = useState<string | null>(null);
 
     const generate = async (chain: 'btc' | 'liquid') => {
         setLoading(true);
+        setError(null);
         try {
             const data = await api.getNewAddress(chain);
             setAddress(data);
             return data;
+        } catch (e) {
+            const msg = e instanceof Error ? e.message : 'Unknown error';
+            setError(msg);
+            throw e;
         } finally {
             setLoading(false);
         }
     };
 
-    return { generate, loading, address };
+    return { generate, loading, address, error };
+}
+
+export function useAddressBook(chain: 'btc' | 'liquid') {
+    const [addresses, setAddresses] = useState<api.AddressInfo[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+
+    const refetch = useCallback(async () => {
+        setLoading(true);
+        try {
+            const data = await api.listAddresses(chain, true);
+            setAddresses(data);
+            setError(null);
+        } catch (e) {
+            setError(e instanceof Error ? e.message : 'Unknown error');
+        } finally {
+            setLoading(false);
+        }
+    }, [chain]);
+
+    useEffect(() => {
+        void refetch();
+    }, [refetch]);
+
+    return { addresses, loading, error, refetch };
+}
+
+export function useWalletUtxos(chain: 'btc' | 'liquid') {
+    const [utxos, setUtxos] = useState<api.WalletUtxo[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+
+    const refetch = useCallback(async () => {
+        setLoading(true);
+        try {
+            const data = await api.listUtxos(chain, true);
+            setUtxos(data);
+            setError(null);
+        } catch (e) {
+            setError(e instanceof Error ? e.message : 'Unknown error');
+        } finally {
+            setLoading(false);
+        }
+    }, [chain]);
+
+    useEffect(() => {
+        void refetch();
+    }, [refetch]);
+
+    return { utxos, loading, error, refetch };
+}
+
+export function useWalletTransactions(chain: 'btc' | 'liquid') {
+    const [transactions, setTransactions] = useState<api.WalletTransaction[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+
+    const refetch = useCallback(async () => {
+        setLoading(true);
+        try {
+            const data = await api.listTransactions(chain, 100, 0);
+            setTransactions(data);
+            setError(null);
+        } catch (e) {
+            setError(e instanceof Error ? e.message : 'Unknown error');
+        } finally {
+            setLoading(false);
+        }
+    }, [chain]);
+
+    useEffect(() => {
+        void refetch();
+    }, [refetch]);
+
+    return { transactions, loading, error, refetch };
 }
 
 export function useSendOnchain() {

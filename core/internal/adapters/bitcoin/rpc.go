@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
+	"sync"
 	"time"
 )
 
@@ -17,17 +19,16 @@ type Client struct {
 	user       string
 	pass       string
 	httpClient *http.Client
+	scanMu     sync.Mutex
 }
 
 // NewClient creates a new Bitcoin RPC client
 func NewClient(url, user, pass string) *Client {
 	return &Client{
-		url:  url,
-		user: user,
-		pass: pass,
-		httpClient: &http.Client{
-			Timeout: 30 * time.Second,
-		},
+		url:        url,
+		user:       user,
+		pass:       pass,
+		httpClient: &http.Client{},
 	}
 }
 
@@ -75,8 +76,9 @@ type ScanTxOutSetResult struct {
 
 // TxOutInfo represents an unspent output info from gettxout.
 type TxOutInfo struct {
-	ValueSat  int64
-	ScriptHex string
+	ValueSat       int64
+	ScriptHex      string
+	Confirmations  int64
 }
 
 // BlockchainInfo represents getblockchaininfo response fields used by NodeService.
@@ -297,7 +299,8 @@ func (c *Client) GetTxOut(ctx context.Context, txid string, vout uint32) (*TxOut
 		return nil, fmt.Errorf("txout not available: %s:%d", txid, vout)
 	}
 	var resp struct {
-		Value        float64 `json:"value"`
+		Value         float64 `json:"value"`
+		Confirmations int64   `json:"confirmations"`
 		ScriptPubKey struct {
 			Hex string `json:"hex"`
 		} `json:"scriptPubKey"`
@@ -306,8 +309,9 @@ func (c *Client) GetTxOut(ctx context.Context, txid string, vout uint32) (*TxOut
 		return nil, err
 	}
 	return &TxOutInfo{
-		ValueSat:  int64(resp.Value * 100000000),
-		ScriptHex: resp.ScriptPubKey.Hex,
+		ValueSat:      int64(resp.Value * 100000000),
+		ScriptHex:     resp.ScriptPubKey.Hex,
+		Confirmations: resp.Confirmations,
 	}, nil
 }
 
@@ -347,6 +351,12 @@ func (c *Client) ScanTxOutSet(ctx context.Context, addresses []string) (*ScanTxO
 		return &ScanTxOutSetResult{Success: true, Unspents: []ScanUtxo{}}, nil
 	}
 
+	// Bitcoin Core accepts only one scantxoutset at a time process-wide.
+	// Serialize calls at the RPC client boundary so all call sites (wallet service,
+	// watcher, etc.) obey this constraint.
+	c.scanMu.Lock()
+	defer c.scanMu.Unlock()
+
 	scanObjects := make([]string, 0, len(addresses))
 	for _, addr := range addresses {
 		scanObjects = append(scanObjects, fmt.Sprintf("addr(%s)", addr))
@@ -354,7 +364,25 @@ func (c *Client) ScanTxOutSet(ctx context.Context, addresses []string) (*ScanTxO
 
 	result, err := c.call(ctx, "scantxoutset", "start", scanObjects)
 	if err != nil {
-		return nil, err
+		// If another scan is in progress (often leftover from a cancelled request),
+		// abort it and retry once.
+		if isScanAlreadyInProgress(err) {
+			// Best-effort abort of the stale scan using a background context so we
+			// don't inherit an already-cancelled caller context.
+			cleanupCtx, cleanupCancel := context.WithTimeout(context.Background(), 10*time.Second)
+			_, _ = c.call(cleanupCtx, "scantxoutset", "abort")
+			cleanupCancel()
+
+			if waitErr := c.waitForNoActiveScan(ctx, 60*time.Second); waitErr != nil {
+				return nil, fmt.Errorf("%w (wait scan slot: %v)", err, waitErr)
+			}
+			result, err = c.call(ctx, "scantxoutset", "start", scanObjects)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			return nil, err
+		}
 	}
 
 	var resp ScanTxOutSetResult
@@ -363,4 +391,41 @@ func (c *Client) ScanTxOutSet(ctx context.Context, addresses []string) (*ScanTxO
 	}
 
 	return &resp, nil
+}
+
+func isScanAlreadyInProgress(err error) bool {
+	if err == nil {
+		return false
+	}
+	return strings.Contains(err.Error(), "RPC error -8: Scan already in progress")
+}
+
+func (c *Client) waitForNoActiveScan(ctx context.Context, maxWait time.Duration) error {
+	deadlineCtx, cancel := context.WithTimeout(ctx, maxWait)
+	defer cancel()
+
+	ticker := time.NewTicker(300 * time.Millisecond)
+	defer ticker.Stop()
+
+	for {
+		idle, err := c.scanIdle(deadlineCtx)
+		if err == nil && idle {
+			return nil
+		}
+		select {
+		case <-deadlineCtx.Done():
+			return deadlineCtx.Err()
+		case <-ticker.C:
+		}
+	}
+}
+
+func (c *Client) scanIdle(ctx context.Context) (bool, error) {
+	raw, err := c.call(ctx, "scantxoutset", "status")
+	if err != nil {
+		return false, err
+	}
+	trimmed := strings.TrimSpace(string(raw))
+	// Bitcoin Core returns null when there is no active scantxoutset.
+	return trimmed == "null", nil
 }

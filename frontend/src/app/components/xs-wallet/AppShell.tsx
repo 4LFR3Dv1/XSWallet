@@ -66,7 +66,7 @@ export function AppShell({ children, activePage, vaultLocked = false }: AppShell
             variant={vaultLocked ? 'warning' : 'success'}
           />
           <StatusChip
-            label={bitcoinInfo ? `BTC: ${bitcoinInfo.blocks.toLocaleString()}` : 'BTC: ...'}
+            label={bitcoinInfo ? `Block: ${bitcoinInfo.blocks.toLocaleString()}` : 'Block: ...'}
             variant="btc"
           />
           <StatusChip

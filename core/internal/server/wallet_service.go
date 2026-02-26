@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"log"
 	"math"
 	"strconv"
 	"strings"
@@ -36,6 +37,15 @@ type lndBalanceClient interface {
 	Close() error
 }
 
+// btcScanCache caches the result of scantxoutset so the UI gets instant responses.
+// The heavy scan runs in a background goroutine and refreshes periodically.
+type btcScanCache struct {
+	mu        sync.Mutex
+	result    *bitcoin.ScanTxOutSetResult
+	updatedAt time.Time
+	scanning  bool
+}
+
 // WalletService implements pb.WalletServiceServer
 type WalletService struct {
 	pb.UnimplementedWalletServiceServer
@@ -45,7 +55,7 @@ type WalletService struct {
 	btc       *bitcoin.Client
 	liquid    *liquid.Client
 	newLND    func(lnd.Config) (lndBalanceClient, error)
-	btcScanMu sync.Mutex
+	scanCache btcScanCache
 }
 
 // NewWalletService creates WalletService
@@ -430,8 +440,13 @@ func (s *WalletService) ListUtxos(ctx context.Context, req *pb.ListUtxosRequest)
 	switch chainKey {
 	case "btc":
 		addrList := make([]string, 0, len(addresses))
+		addressSet := make(map[string]struct{}, len(addresses)*2)
 		params := btcParamsFromConfig(s.cfg.Network)
 		for _, addr := range addresses {
+			addressSet[addr.Address] = struct{}{}
+			if addr.AddressPlain.Valid {
+				addressSet[addr.AddressPlain.String] = struct{}{}
+			}
 			if isValidBTCAddressForNetwork(addr.Address, params) {
 				addrList = append(addrList, addr.Address)
 			}
@@ -441,12 +456,40 @@ func (s *WalletService) ListUtxos(ctx context.Context, req *pb.ListUtxosRequest)
 			return &pb.ListUtxosResponse{Utxos: []*pb.Utxo{}}, nil
 		}
 
-		// Bitcoin Core accepts only one scantxoutset at a time.
-		s.btcScanMu.Lock()
-		scan, err := s.btc.ScanTxOutSet(ctx, addrList)
-		s.btcScanMu.Unlock()
-		if err != nil {
-			return nil, status.Errorf(codes.Internal, "scantxoutset failed: %v", err)
+		// Use cached scan result for instant response; trigger background refresh.
+		scan, scanRunning := s.getCachedScan(addrList)
+		if scan == nil {
+			// If a background scan is already running, do not pile up bounded
+			// synchronous scans on top of it. Return quickly and let cache fill.
+			if scanRunning {
+				fallback := s.recoverBTCUtxosFromKnownTransactions(ctx, params, addressSet, reservedMap, req.IncludeReserved)
+				if len(fallback) > 0 {
+					_ = s.recordReceiveTransactions(ctx, chainKey, fallback)
+					return &pb.ListUtxosResponse{Utxos: fallback}, nil
+				}
+				return &pb.ListUtxosResponse{Utxos: []*pb.Utxo{}}, nil
+			}
+
+			// First read after boot: try a bounded synchronous scan.
+			// If it is still slow (common on pruned/testnet), keep background scan
+			// and return quickly with empty set instead of failing the whole wallet call.
+			scanCtx, cancel := context.WithTimeout(ctx, 8*time.Second)
+			defer cancel()
+			result, scanErr := s.btc.ScanTxOutSet(scanCtx, addrList)
+			if scanErr != nil {
+				log.Printf("initial btc scantxoutset still running in background: %v", scanErr)
+				fallback := s.recoverBTCUtxosFromKnownTransactions(ctx, params, addressSet, reservedMap, req.IncludeReserved)
+				if len(fallback) > 0 {
+					_ = s.recordReceiveTransactions(ctx, chainKey, fallback)
+					return &pb.ListUtxosResponse{Utxos: fallback}, nil
+				}
+				return &pb.ListUtxosResponse{Utxos: []*pb.Utxo{}}, nil
+			}
+			s.scanCache.mu.Lock()
+			s.scanCache.result = result
+			s.scanCache.updatedAt = time.Now()
+			s.scanCache.mu.Unlock()
+			scan = result
 		}
 
 		var height int64
@@ -887,6 +930,106 @@ func (s *WalletService) loadUtxoReservations(ctx context.Context, chainKey strin
 	return reserved, nil
 }
 
+// recoverBTCUtxosFromKnownTransactions probes gettxout for recent incoming txids already
+// known in wallet_transactions. It is a fast fallback while global scantxoutset is warming up.
+func (s *WalletService) recoverBTCUtxosFromKnownTransactions(
+	ctx context.Context,
+	params *chaincfg.Params,
+	addressSet map[string]struct{},
+	reservedMap map[string]string,
+	includeReserved bool,
+) []*pb.Utxo {
+	txRows, err := s.db.QueryContext(ctx, `
+		SELECT txid
+		FROM wallet_transactions
+		WHERE chain = 'btc' AND direction = 'in'
+		ORDER BY updated_at DESC
+		LIMIT 50
+	`)
+	if err != nil {
+		return []*pb.Utxo{}
+	}
+	defer txRows.Close()
+
+	txids := make([]string, 0, 50)
+	seenTxids := make(map[string]struct{}, 50)
+	for txRows.Next() {
+		var txid string
+		if scanErr := txRows.Scan(&txid); scanErr != nil {
+			continue
+		}
+		txid = strings.TrimSpace(txid)
+		if txid == "" {
+			continue
+		}
+		if _, ok := seenTxids[txid]; ok {
+			continue
+		}
+		seenTxids[txid] = struct{}{}
+		txids = append(txids, txid)
+	}
+	if len(txids) == 0 {
+		return []*pb.Utxo{}
+	}
+
+	probeCtx, cancel := context.WithTimeout(ctx, 6*time.Second)
+	defer cancel()
+
+	const maxVoutProbe = 12
+	utxos := make([]*pb.Utxo, 0, 8)
+	seenOutpoints := make(map[string]struct{}, 16)
+
+	for _, txid := range txids {
+		for vout := uint32(0); vout <= maxVoutProbe; vout++ {
+			txout, getErr := s.btc.GetTxOut(probeCtx, txid, vout)
+			if getErr != nil || txout == nil {
+				continue
+			}
+			address, addrErr := scriptToAddress(txout.ScriptHex, params)
+			if addrErr != nil || address == "" {
+				continue
+			}
+			if _, ok := addressSet[address]; !ok {
+				continue
+			}
+
+			key := fmt.Sprintf("%s:%d", txid, vout)
+			if _, dup := seenOutpoints[key]; dup {
+				continue
+			}
+			seenOutpoints[key] = struct{}{}
+
+			reservation, reserved := reservedMap[key]
+			if reserved && !includeReserved {
+				continue
+			}
+
+			amountSat := uint64(0)
+			if txout.ValueSat > 0 {
+				amountSat = uint64(txout.ValueSat)
+			}
+
+			confirmations := int32(0)
+			if txout.Confirmations > 0 {
+				confirmations = int32(txout.Confirmations)
+			}
+
+			_ = s.markAddressUsed(ctx, "btc", address)
+			utxos = append(utxos, &pb.Utxo{
+				Txid:              txid,
+				Vout:              vout,
+				AmountSat:         amountSat,
+				Address:           address,
+				Confirmations:     confirmations,
+				Reserved:          reserved,
+				ReservedForSwapId: reservation,
+			})
+		}
+	}
+
+	return utxos
+}
+
 func (s *WalletService) recordReceiveTransactions(ctx context.Context, chainKey string, utxos []*pb.Utxo) error {
 	if len(utxos) == 0 {
 		return nil
@@ -954,6 +1097,65 @@ func (s *WalletService) sendBTC(ctx context.Context, seed []byte, destination st
 	})
 	if err != nil {
 		return "", 0, err
+	}
+	if len(utxosResp.Utxos) == 0 {
+		// Last-chance recovery for send flow: perform a dedicated scan with a larger timeout.
+		// This avoids false "no UTXOs available" when cache is still warming up.
+		addresses, addrErr := s.loadAddresses(ctx, "btc")
+		if addrErr != nil {
+			return "", 0, status.Errorf(codes.Internal, "failed to load addresses: %v", addrErr)
+		}
+		addrList := make([]string, 0, len(addresses))
+		for _, addr := range addresses {
+			if isValidBTCAddressForNetwork(addr.Address, params) {
+				addrList = append(addrList, addr.Address)
+			}
+		}
+
+		if len(addrList) > 0 {
+			scanCtx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+			defer cancel()
+			scan, scanErr := s.btc.ScanTxOutSet(scanCtx, addrList)
+			if scanErr == nil && scan != nil && scan.Success {
+				reservedMap, _ := s.loadUtxoReservations(ctx, "btc")
+				height := scan.Height
+				recovered := make([]*pb.Utxo, 0, len(scan.Unspents))
+				for _, u := range scan.Unspents {
+					key := fmt.Sprintf("%s:%d", u.TxID, u.Vout)
+					if _, reserved := reservedMap[key]; reserved {
+						continue
+					}
+
+					address := u.Address
+					if address == "" && u.ScriptPubKey != "" {
+						if derivedAddr, derr := scriptToAddress(u.ScriptPubKey, params); derr == nil {
+							address = derivedAddr
+						}
+					}
+					if address != "" {
+						_ = s.markAddressUsed(ctx, "btc", address)
+					}
+
+					confirmations := int32(0)
+					if u.Height > 0 && height >= u.Height {
+						confirmations = int32(height - u.Height + 1)
+					}
+					amountSats := uint64(math.Round(u.Amount * 100000000))
+					recovered = append(recovered, &pb.Utxo{
+						Txid:          u.TxID,
+						Vout:          u.Vout,
+						AmountSat:     amountSats,
+						Address:       address,
+						Confirmations: confirmations,
+					})
+				}
+
+				if len(recovered) > 0 {
+					_ = s.recordReceiveTransactions(ctx, "btc", recovered)
+					utxosResp = &pb.ListUtxosResponse{Utxos: recovered}
+				}
+			}
+		}
 	}
 	if len(utxosResp.Utxos) == 0 {
 		return "", 0, status.Error(codes.FailedPrecondition, "no UTXOs available")
@@ -1337,4 +1539,64 @@ func isAlreadyImported(err error) bool {
 	}
 	msg := err.Error()
 	return strings.Contains(msg, "already") || strings.Contains(msg, "exists")
+}
+
+// getCachedScan returns the last cached scantxoutset result (may be nil on first call)
+// and whether a background scan is running.
+// If the cache is empty or stale (>60s), it triggers a background refresh.
+func (s *WalletService) getCachedScan(addresses []string) (*bitcoin.ScanTxOutSetResult, bool) {
+	s.scanCache.mu.Lock()
+	cached := s.scanCache.result
+	stale := time.Since(s.scanCache.updatedAt) > 60*time.Second
+	scanning := s.scanCache.scanning
+	s.scanCache.mu.Unlock()
+
+	if cached == nil || stale {
+		if !scanning {
+			s.triggerBackgroundScan(addresses)
+			scanning = true
+		}
+	}
+
+	return cached, scanning
+}
+
+// triggerBackgroundScan runs scantxoutset in a background goroutine and updates the cache.
+func (s *WalletService) triggerBackgroundScan(addresses []string) {
+	s.scanCache.mu.Lock()
+	if s.scanCache.scanning {
+		s.scanCache.mu.Unlock()
+		return
+	}
+	s.scanCache.scanning = true
+	s.scanCache.mu.Unlock()
+
+	go func() {
+		defer func() {
+			s.scanCache.mu.Lock()
+			s.scanCache.scanning = false
+			s.scanCache.mu.Unlock()
+		}()
+
+		// Use a generous timeout independent of any gRPC request context.
+		// On pruned testnet nodes, scantxoutset can exceed 5 minutes.
+		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Minute)
+		defer cancel()
+
+		log.Printf("Background scantxoutset started (%d addresses)", len(addresses))
+		start := time.Now()
+
+		result, err := s.btc.ScanTxOutSet(ctx, addresses)
+		if err != nil {
+			log.Printf("Background scantxoutset failed after %v: %v", time.Since(start), err)
+			return
+		}
+
+		s.scanCache.mu.Lock()
+		s.scanCache.result = result
+		s.scanCache.updatedAt = time.Now()
+		s.scanCache.mu.Unlock()
+
+		log.Printf("Background scantxoutset completed in %v (%d unspents)", time.Since(start), len(result.Unspents))
+	}()
 }

@@ -9,8 +9,8 @@ import { IPC_CHANNEL_REGISTRY, type IpcChannelDefinition } from "./ipc/registry"
 
 const DEV_SERVER_URL = process.env.ELECTRON_RENDERER_URL ?? "http://127.0.0.1:5173";
 const DEV_API_URL = process.env.ELECTRON_API_URL ?? "http://localhost:3000";
-const DEV_API_AUTH_BEARER = process.env.ELECTRON_API_AUTH_BEARER ?? "dev";
 const IS_DEV = !app.isPackaged;
+const DEV_API_AUTH_BEARER = process.env.ELECTRON_API_AUTH_BEARER ?? (IS_DEV ? "dev" : "");
 const MUTATION_RATE_WINDOW_MS = 2000;
 const MUTATION_RATE_MAX_CALLS = 5;
 const SWAP_WATCH_POLL_INTERVAL_MS = 10000;
@@ -213,11 +213,20 @@ async function callApiBridge<T>(path: string, traceId: string, init?: RequestIni
   const response = await fetch(url, {
     ...init,
     headers,
-    signal: init?.signal ?? AbortSignal.timeout(3000)
+    signal: init?.signal ?? AbortSignal.timeout(120_000)
   });
 
   if (!response.ok) {
     const raw = await response.text();
+    if (response.status === 401) {
+      vaultUnlocked = false;
+      sessionToken = null;
+      throw errUnauthenticated("session expired", {
+        path,
+        status: response.status,
+        body: raw.slice(0, 400)
+      });
+    }
     throw errInvalidArgument(`api-bridge request failed: ${response.status}`, {
       path,
       status: response.status,

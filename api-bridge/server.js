@@ -20,7 +20,7 @@ const CONFIG = {
     GRPC_HOST: process.env.GRPC_HOST || 'localhost:9735',
     PORT: process.env.PORT || 3000,
     GRPC_DEADLINE_MS: {
-        list: 5000,    // 5s for list operations
+        list: 120000,  // 120s for list operations (scantxoutset can be slow on testnet/pruned)
         create: 15000, // 15s for create operations
         commit: 30000, // 30s for heavy operations
     },
@@ -387,6 +387,38 @@ function normalizeNodeStatus(status) {
     };
 }
 
+function toGrpcChain(chain) {
+    const v = String(chain || '').trim().toLowerCase();
+    if (v === 'btc' || v === 'chain_btc') return 'CHAIN_BTC';
+    if (v === 'liquid' || v === 'l-btc' || v === 'chain_liquid') return 'CHAIN_LIQUID';
+    if (v === 'ln' || v === 'lightning' || v === 'chain_ln') return 'CHAIN_LN';
+    return null;
+}
+
+function normalizeChain(chain) {
+    const v = String(chain || '').replace(/^CHAIN_/, '').toLowerCase();
+    if (v === 'btc') return 'btc';
+    if (v === 'liquid' || v === 'l-btc') return 'liquid';
+    if (v === 'ln' || v === 'lightning') return 'ln';
+    return v || 'unknown';
+}
+
+function normalizeProtoTimestamp(ts) {
+    if (!ts) return null;
+    if (typeof ts === 'string') return ts;
+    if (typeof ts === 'object') {
+        const secRaw = ts.seconds ?? ts._seconds;
+        const nsecRaw = ts.nanos ?? ts._nanos ?? 0;
+        const sec = Number(secRaw);
+        const nsec = Number(nsecRaw);
+        if (Number.isFinite(sec)) {
+            const ms = (sec * 1000) + Math.floor((Number.isFinite(nsec) ? nsec : 0) / 1_000_000);
+            return new Date(ms).toISOString();
+        }
+    }
+    return null;
+}
+
 // ============================================================================
 // HEALTH ENDPOINTS
 // ============================================================================
@@ -624,6 +656,7 @@ app.post('/api/v1/wallet/unlock', (req, res) => {
             success: response.success,
             session_id: response.session_id,
             error_message: response.error_message,
+            remaining_attempts: response.attempts_remaining ?? response.attemptsRemaining ?? response.remaining_attempts,
         });
     });
 });
@@ -680,6 +713,112 @@ app.post('/api/v1/wallet/derive', (req, res) => {
             chain: response.chain,
             derivation_path: response.derivation_path,
             label: response.label,
+        });
+    });
+});
+
+// List derived addresses
+app.get('/api/v1/wallet/addresses', (req, res) => {
+    const metadata = requireAuthMetadata(req, res);
+    if (!metadata) return;
+    const deadline = new Date(Date.now() + CONFIG.GRPC_DEADLINE_MS.list);
+    const chain = toGrpcChain(req.query.chain || 'btc');
+    if (!chain) {
+        return errorResponse(res, 'GRPC_INVALID_ARGUMENT', 'invalid chain', { chain: req.query.chain }, req.id);
+    }
+    const includeUsedRaw = String(req.query.include_used ?? req.query.includeUsed ?? '1').trim().toLowerCase();
+    const includeUsed = includeUsedRaw !== '0' && includeUsedRaw !== 'false';
+
+    walletClient.ListAddresses({
+        chain,
+        include_used: includeUsed,
+    }, metadata, { deadline }, (err, response) => {
+        if (err) return handleGrpcError(err, res, req.id);
+        const addresses = (response.addresses || []).map((a) => ({
+            address: a.address || '',
+            chain: normalizeChain(a.chain),
+            derivation_path: a.derivation_path || '',
+            label: a.label || '',
+            used: !!a.used,
+            balance_sat: Number(a.balance_sat || 0),
+        }));
+        res.json({ addresses });
+    });
+});
+
+// List UTXOs and reservation source metadata for Wallet Control Center
+app.get('/api/v1/wallet/utxos', (req, res) => {
+    const metadata = requireAuthMetadata(req, res);
+    if (!metadata) return;
+    const deadline = new Date(Date.now() + CONFIG.GRPC_DEADLINE_MS.list);
+    const chain = toGrpcChain(req.query.chain || 'btc');
+    if (!chain) {
+        return errorResponse(res, 'GRPC_INVALID_ARGUMENT', 'invalid chain', { chain: req.query.chain }, req.id);
+    }
+    const includeReservedRaw = String(req.query.include_reserved ?? req.query.includeReserved ?? '1').trim().toLowerCase();
+    const includeReserved = includeReservedRaw !== '0' && includeReservedRaw !== 'false';
+
+    walletClient.ListUtxos({
+        chain,
+        include_reserved: includeReserved,
+    }, metadata, { deadline }, (err, response) => {
+        if (err) return handleGrpcError(err, res, req.id);
+        const utxos = (response.utxos || []).map((u) => {
+            const swapId = u.reserved_for_swap_id || '';
+            const reservation = u.reserved ? {
+                swap_id: swapId || null,
+                reservation_type: swapId ? 'lockup' : 'unknown',
+                reserved_by: swapId ? 'swap_engine' : 'unknown',
+                reserved_at: null,
+                expires_at: null,
+            } : null;
+            return {
+                txid: u.txid || '',
+                vout: Number(u.vout || 0),
+                amount_sat: Number(u.amount_sat || 0),
+                address: u.address || '',
+                confirmations: Number(u.confirmations || 0),
+                reserved: !!u.reserved,
+                reserved_for_swap_id: swapId || null,
+                chain: normalizeChain(chain),
+                reservation,
+            };
+        });
+        res.json({ utxos });
+    });
+});
+
+// List wallet transactions (typed source for activity timeline)
+app.get('/api/v1/wallet/transactions', (req, res) => {
+    const metadata = requireAuthMetadata(req, res);
+    if (!metadata) return;
+    const deadline = new Date(Date.now() + CONFIG.GRPC_DEADLINE_MS.list);
+    const chain = toGrpcChain(req.query.chain || 'btc');
+    if (!chain) {
+        return errorResponse(res, 'GRPC_INVALID_ARGUMENT', 'invalid chain', { chain: req.query.chain }, req.id);
+    }
+    const limit = Number.parseInt(String(req.query.limit || 50), 10) || 50;
+    const offset = Number.parseInt(String(req.query.offset || 0), 10) || 0;
+
+    walletClient.ListTransactions({
+        chain,
+        limit,
+        offset,
+    }, metadata, { deadline }, (err, response) => {
+        if (err) return handleGrpcError(err, res, req.id);
+        const transactions = (response.transactions || []).map((t) => ({
+            txid: t.txid || '',
+            chain: normalizeChain(t.chain || chain),
+            amount_sat: Number(t.amount_sat || 0),
+            fee_sat: Number(t.fee_sat || 0),
+            confirmations: Number(t.confirmations || 0),
+            label: t.label || '',
+            swap_id: t.swap_id || null,
+            timestamp: normalizeProtoTimestamp(t.timestamp),
+        }));
+        res.json({
+            transactions,
+            total_count: Number(response.total_count || transactions.length),
         });
     });
 });

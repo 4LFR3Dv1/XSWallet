@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>XS Wallet - Relatório de Conformidade FE-BE</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+    :root {
+      --text: #1a1a1a;
+      --text-secondary: #4a4a4a;
+      --bg: #ffffff;
+      --border: #e5e5e5;
+      --accent: #2563eb;
+      --code-bg: #f5f5f5;
+      --ok-bg: #ecfdf5;
+      --ok-border: #10b981;
+      --warn-bg: #fffbeb;
+      --warn-border: #f59e0b;
+      --danger-bg: #fef2f2;
+      --danger-border: #ef4444;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, sans-serif;
+      font-size: 10pt;
+      line-height: 1.6;
+      color: var(--text);
+      background: var(--bg);
+      max-width: 210mm;
+      margin: 0 auto;
+      padding: 20mm;
+    }
+
+    h1 {
+      font-size: 20pt;
+      font-weight: 700;
+      margin: 24pt 0 12pt;
+      border-bottom: 2px solid var(--text);
+      padding-bottom: 6pt;
+    }
+
+    h2 {
+      font-size: 14pt;
+      font-weight: 600;
+      margin: 18pt 0 8pt;
+      color: var(--text);
+    }
+
+    h3 {
+      font-size: 11pt;
+      font-weight: 600;
+      margin: 12pt 0 6pt;
+    }
+
+    p {
+      margin-bottom: 8pt;
+      text-align: justify;
+    }
+
+    ul,
+    ol {
+      margin: 8pt 0 12pt 18pt;
+    }
+
+    li {
+      margin-bottom: 4pt;
+    }
+
+    .cover {
+      text-align: center;
+      page-break-after: always;
+      padding-top: 100pt;
+    }
+
+    .cover h1 {
+      font-size: 30pt;
+      border: none;
+      margin-bottom: 8pt;
+    }
+
+    .cover .subtitle {
+      font-size: 14pt;
+      color: var(--text-secondary);
+      margin-bottom: 36pt;
+    }
+
+    .cover .meta {
+      margin-top: 50pt;
+    }
+
+    .cover .meta table {
+      margin: 0 auto;
+      text-align: left;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12pt 0;
+      font-size: 9pt;
+    }
+
+    th,
+    td {
+      border: 1px solid var(--border);
+      padding: 6pt 8pt;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: #f0f0f0;
+      font-weight: 600;
+    }
+
+    .caption {
+      font-size: 9pt;
+      font-style: italic;
+      color: var(--text-secondary);
+      text-align: center;
+      margin: 4pt 0 16pt;
+    }
+
+    code {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 8.5pt;
+      background: var(--code-bg);
+      padding: 1pt 4pt;
+      border-radius: 3pt;
+    }
+
+    pre {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 6pt;
+      padding: 10pt;
+      overflow-x: auto;
+      margin: 8pt 0 12pt;
+    }
+
+    pre code {
+      background: none;
+      padding: 0;
+    }
+
+    .note {
+      border-left: 4px solid var(--accent);
+      background: #f8fafc;
+      padding: 8pt 10pt;
+      margin: 10pt 0;
+      font-size: 9pt;
+    }
+
+    .note.ok {
+      border-left-color: var(--ok-border);
+      background: var(--ok-bg);
+    }
+
+    .note.warn {
+      border-left-color: var(--warn-border);
+      background: var(--warn-bg);
+    }
+
+    .note.danger {
+      border-left-color: var(--danger-border);
+      background: var(--danger-bg);
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 2pt 6pt;
+      border-radius: 999px;
+      border: 1px solid;
+      font-size: 8pt;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .badge.ok {
+      border-color: var(--ok-border);
+      background: var(--ok-bg);
+      color: #047857;
+    }
+
+    .badge.warn {
+      border-color: var(--warn-border);
+      background: var(--warn-bg);
+      color: #b45309;
+    }
+
+    .badge.danger {
+      border-color: var(--danger-border);
+      background: var(--danger-bg);
+      color: #b91c1c;
+    }
+
+    .page-break {
+      page-break-before: always;
+    }
+  </style>
+</head>
+
+<body>
+  <!-- DOC-CURRENT-STATE -->
+  <div style="margin:12px 16px;padding:10px 12px;border:1px solid #d97706;background:#fffbeb;color:#78350f;font:14px/1.4 sans-serif;">
+    <strong>Estado atual do codigo (fonte canonica):</strong> consulte <code>docs/STATUS_ESPECIFICACAO_XS_WALLET.md</code>.
+    Este documento pode conter conteudo de alvo/planejamento (spec/roadmap) alem do estado ja implementado.
+  </div>
+
+  <div class="cover">
+    <h1>XS WALLET</h1>
+    <div class="subtitle">Relatório de Conformidade da Integração Frontend-Backend</div>
+    <p>Comparativo entre contratos descritos nos HTMLs de <code>docs/</code> e implementação atual no código.</p>
+    <div class="meta">
+      <table>
+        <tr>
+          <th>Documento</th>
+          <td>Relatório de Conformidade FE-BE</td>
+        </tr>
+        <tr>
+          <th>Versão</th>
+          <td>1.0.0</td>
+        </tr>
+        <tr>
+          <th>Data</th>
+          <td>26 Fevereiro 2026</td>
+        </tr>
+        <tr>
+          <th>Base de referência</th>
+          <td>Somente arquivos <code>.html</code> em <code>docs/</code></td>
+        </tr>
+        <tr>
+          <th>Escopo técnico</th>
+          <td><code>frontend/</code>, <code>electron/</code>, <code>api-bridge/</code>, <code>core/</code></td>
+        </tr>
+      </table>
+    </div>
+  </div>
+
+  <h1>1. Objetivo</h1>
+  <p>Este relatório mede o nível de conformidade entre o que está definido nos documentos HTML do projeto para integração frontend-backend e o comportamento implementado no código atual.</p>
+  <div class="note warn">
+    <strong>Importante:</strong> este relatório não usa os arquivos <code>.md</code> como base normativa, somente os HTMLs solicitados.
+  </div>
+
+  <h2>1.1 Legenda de status</h2>
+  <ul>
+    <li><span class="badge ok">Conforme</span> - comportamento implementado compatível com o contrato descrito.</li>
+    <li><span class="badge warn">Parcial</span> - parcialmente compatível; há gaps relevantes.</li>
+    <li><span class="badge danger">Não conforme</span> - desvio direto do contrato/objetivo descrito.</li>
+  </ul>
+
+  <div class="page-break"></div>
+
+  <h1>2. Matriz de Conformidade</h1>
+  <table>
+    <thead>
+      <tr>
+        <th>Item</th>
+        <th>Esperado nos HTMLs</th>
+        <th>Observado no código</th>
+        <th>Status</th>
+        <th>Prioridade</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Arquitetura padrão de integração</td>
+        <td>Frontend Electron via IPC/gRPC como caminho principal.<br><code>docs/XS_Wallet_Especificacao_Tecnica_v2.html:390-392, 421</code></td>
+        <td>Modelo híbrido: IPC parcial e HTTP direto em partes do frontend.</td>
+        <td><span class="badge warn">Parcial</span></td>
+        <td>P0</td>
+      </tr>
+      <tr>
+        <td>Fallback HTTP somente debug</td>
+        <td>Fallback HTTP apenas com flag explícita de debug.<br><code>docs/BACKLOG_ELECTRON_NODE_MANAGER.html:311</code></td>
+        <td>Há controle por flag, porém ainda existem chamadas HTTP fora da cobertura IPC principal.</td>
+        <td><span class="badge danger">Não conforme</span></td>
+        <td>P0</td>
+      </tr>
+      <tr>
+        <td><code>api-bridge</code> fora do caminho padrão</td>
+        <td>Renderer via IPC por padrão e bridge fora do caminho principal.<br><code>docs/BACKLOG_ELECTRON_NODE_MANAGER.html:315-317</code></td>
+        <td><code>api-bridge</code> permanece componente central em cenários reais de uso.</td>
+        <td><span class="badge danger">Não conforme</span></td>
+        <td>P0</td>
+      </tr>
+      <tr>
+        <td>Contrato de sessão (unlock/401/lock)</td>
+        <td>Unlock retorna sessão válida; 401 limpa sessão e força unlock; lock invalida sessão.<br><code>docs/XS_Wallet_PreBeta_Plano_Executavel_v1.1.html:228-233</code></td>
+        <td>Fluxo principal existe, mas com inconsistências de contrato e dependências de token dev em alguns caminhos.</td>
+        <td><span class="badge warn">Parcial</span></td>
+        <td>P0</td>
+      </tr>
+      <tr>
+        <td>Hardening do Electron</td>
+        <td><code>contextIsolation=true</code>, <code>sandbox=true</code>, <code>nodeIntegration=false</code>.<br><code>docs/XS_Wallet_Especificacao_Tecnica_v2.html:1339-1353</code></td>
+        <td>Configurações base de hardening aplicadas no processo principal.</td>
+        <td><span class="badge ok">Conforme</span></td>
+        <td>P1</td>
+      </tr>
+      <tr>
+        <td>Whitelist/validação/rate-limit IPC</td>
+        <td>Whitelist fechada, validação de payload e limitação para canais críticos.<br><code>docs/XS_Wallet_Especificacao_Tecnica_v2.html:1367-1384</code></td>
+        <td>Implementação existente com allowlist, validações e rate-limit em mutações.</td>
+        <td><span class="badge ok">Conforme</span></td>
+        <td>P1</td>
+      </tr>
+      <tr>
+        <td>Camada API/IPC padronizada</td>
+        <td>Padronização com helper único de transporte e erro.<br><code>docs/XS_Wallet_Frontend_Fluxo_Completo.html:254-259</code></td>
+        <td>Transporte ainda distribuído em múltiplos caminhos com regras não totalmente unificadas.</td>
+        <td><span class="badge warn">Parcial</span></td>
+        <td>P1</td>
+      </tr>
+      <tr>
+        <td>Restore wallet no fluxo</td>
+        <td>Implementar restore ou manter indisponibilidade explícita fora do caminho crítico.<br><code>docs/XS_Wallet_Frontend_Fluxo_Completo.html:261-265</code></td>
+        <td>Restore não está completo de ponta a ponta; presença parcial na UI.</td>
+        <td><span class="badge warn">Parcial</span></td>
+        <td>P2</td>
+      </tr>
+    </tbody>
+  </table>
+  <div class="caption">Tabela 2.1: Matriz de Conformidade HTML x Código (Integração FE-BE)</div>
+
+  <h2>2.1 Resumo quantitativo</h2>
+  <ul>
+    <li><strong>Conforme:</strong> 2 itens</li>
+    <li><strong>Parcial:</strong> 4 itens</li>
+    <li><strong>Não conforme:</strong> 2 itens</li>
+  </ul>
+
+  <div class="note danger">
+    <strong>Risco principal:</strong> divergência de comportamento entre caminho IPC e caminho HTTP para autenticação/sessão, com impacto direto em previsibilidade de runtime.
+  </div>
+
+  <div class="page-break"></div>
+
+  <h1>3. Ações Prioritárias</h1>
+  <h2>3.1 P0 (imediato)</h2>
+  <ol>
+    <li>Fechar caminho padrão em IPC para operações críticas de wallet/swap/session.</li>
+    <li>Manter HTTP somente sob flag de debug explícita, sem uso implícito em produção.</li>
+    <li>Consolidar contrato de sessão único entre frontend, electron, bridge e core.</li>
+  </ol>
+
+  <h2>3.2 P1 (curto prazo)</h2>
+  <ol>
+    <li>Unificar helper de transporte/erro para reduzir deriva de contrato.</li>
+    <li>Cobrir com testes de paridade IPC vs HTTP (modo debug) para evitar regressão.</li>
+  </ol>
+
+  <h2>3.3 P2 (planejado)</h2>
+  <ol>
+    <li>Fechar fluxo de restore de ponta a ponta, com contrato explícito de disponibilidade.</li>
+  </ol>
+
+  <div class="note ok">
+    <strong>Conclusão executiva:</strong> a documentação HTML descreve claramente a direção IPC-first; o código já possui base sólida de hardening e IPC, mas ainda com lacunas relevantes de migração e paridade de contrato.
+  </div>
+
+</body>
+
+</html>

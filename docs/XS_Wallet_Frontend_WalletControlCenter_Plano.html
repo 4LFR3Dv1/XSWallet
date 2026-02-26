@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>XS Wallet - Plano Frontend Wallet Control Center</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+    :root {
+      --text: #1a1a1a;
+      --text-secondary: #4a4a4a;
+      --bg: #ffffff;
+      --border: #e5e5e5;
+      --code-bg: #f5f5f5;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --accent: #2563eb;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0 auto;
+      padding: 20mm;
+      max-width: 210mm;
+      font-family: 'Inter', -apple-system, sans-serif;
+      font-size: 10pt;
+      line-height: 1.6;
+      color: var(--text);
+      background: var(--bg);
+    }
+
+    h1 {
+      font-size: 20pt;
+      font-weight: 700;
+      margin: 24pt 0 12pt;
+      border-bottom: 2px solid var(--text);
+      padding-bottom: 6pt;
+    }
+
+    h2 {
+      font-size: 14pt;
+      font-weight: 600;
+      margin: 18pt 0 8pt;
+    }
+
+    h3 {
+      font-size: 11pt;
+      font-weight: 600;
+      margin: 12pt 0 6pt;
+    }
+
+    p { margin-bottom: 8pt; }
+
+    ul, ol { margin: 8pt 0 12pt 18pt; }
+
+    li { margin-bottom: 5pt; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12pt 0;
+      font-size: 9pt;
+    }
+
+    th, td {
+      border: 1px solid var(--border);
+      padding: 6pt 8pt;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: #f0f0f0;
+      font-weight: 600;
+    }
+
+    code {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 8pt;
+      background: var(--code-bg);
+      padding: 2pt 4pt;
+      border-radius: 2pt;
+    }
+
+    pre {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 4pt;
+      padding: 12pt;
+      overflow-x: auto;
+      font-size: 8pt;
+      line-height: 1.45;
+      margin: 8pt 0 14pt;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 2pt 6pt;
+      border-radius: 999px;
+      font-size: 8pt;
+      font-weight: 600;
+      color: #fff;
+      margin-right: 4pt;
+    }
+
+    .ready { background: var(--accent); }
+    .ok { background: var(--success); }
+    .warn { background: var(--warning); }
+    .risk { background: var(--danger); }
+
+    .note {
+      border-left: 3px solid var(--warning);
+      background: #fffbeb;
+      color: #78350f;
+      padding: 8pt 10pt;
+      margin: 10pt 0;
+      font-size: 9pt;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>XS Wallet - Plano Frontend Wallet Control Center</h1>
+
+  <table>
+    <tr><th>Documento</th><td>Plano de implementação da página de controle completo da carteira</td></tr>
+    <tr><th>Escopo</th><td>Endereços, UTXOs, reservas de swap, histórico, export seguro e observabilidade operacional</td></tr>
+    <tr><th>Status alvo</th><td><span class="badge ready">Implementação sequencial</span> PR1 → PR4</td></tr>
+    <tr><th>Fonte canônica</th><td><code>docs/STATUS_ESPECIFICACAO_XS_WALLET.md</code></td></tr>
+  </table>
+
+  <h2>1. Objetivo</h2>
+  <p>Adicionar uma página de <strong>Wallet Control Center</strong> que torne a carteira autossuficiente para operação real, suporte e auditoria básica pelo usuário, sem depender de CLI.</p>
+
+  <h2>2. Problema atual</h2>
+  <ul>
+    <li>Fluxo de swaps avançado já existe, mas falta visão completa da carteira.</li>
+    <li>Usuário não visualiza claramente endereços derivados, UTXOs reservados e estado operacional completo.</li>
+    <li>Ausência de controles guiados para operações sensíveis (export de chave/backup).</li>
+  </ul>
+
+  <h2>3. Escopo funcional</h2>
+  <table>
+    <thead>
+      <tr><th>Bloco</th><th>Funcionalidades</th><th>Prioridade</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Address Control</td>
+        <td>Endereço atual por chain, lista de endereços derivados, path, status usado/não usado, copy/QR</td>
+        <td>P0</td>
+      </tr>
+      <tr>
+        <td>UTXO Control</td>
+        <td>Lista de UTXOs por chain, confirmações, valor, reservado por swap, lock reason</td>
+        <td>P0</td>
+      </tr>
+      <tr>
+        <td>Wallet Ops</td>
+        <td>Geração de novo endereço, refresh de saldos, visão consolidada BTC/Liquid/LN</td>
+        <td>P0</td>
+      </tr>
+      <tr>
+        <td>Security Control</td>
+        <td>Backup checklist, export protegido (PIN + confirmação), exibição controlada de xpub/zpub</td>
+        <td>P1</td>
+      </tr>
+      <tr>
+        <td>History & Traceability</td>
+        <td>Timeline de tx da wallet + vínculo tx ↔ swap quando aplicável</td>
+        <td>P1</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>3.1 Fonte da verdade por bloco</h2>
+  <table>
+    <thead>
+      <tr><th>Bloco</th><th>Fonte canônica</th><th>Observação</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Addresses</td>
+        <td>Derivação no core + bridge</td>
+        <td>Sem geração local no frontend.</td>
+      </tr>
+      <tr>
+        <td>UTXOs</td>
+        <td>Node/core (adapter + WalletService)</td>
+        <td>UI apenas renderiza estado observado.</td>
+      </tr>
+      <tr>
+        <td>Reservations</td>
+        <td>Swaps ativos + locks internos</td>
+        <td>Reserva deve apontar para origem objetiva.</td>
+      </tr>
+      <tr>
+        <td>History</td>
+        <td><code>wallet_transactions</code> + <code>swap_events</code></td>
+        <td>Correlação por <code>txid</code> e <code>swap_id</code>.</td>
+      </tr>
+      <tr>
+        <td>Health</td>
+        <td>NodeService + provider status</td>
+        <td>Evitar valor fake em estado degradado.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>4. Princípios de segurança</h2>
+  <ul>
+    <li><span class="badge risk">Regra fixa</span> nunca expor private key em texto por padrão.</li>
+    <li>Qualquer export sensível exige vault desbloqueado + confirmação dupla + mensagem de risco explícita.</li>
+    <li>Log de auditoria interno para ações sensíveis (<code>swap_events</code>/<code>wallet_events</code> quando disponível).</li>
+    <li>Sem fallback silencioso para dados críticos: mostrar estado degradado quando backend não estiver pronto.</li>
+  </ul>
+
+  <div class="note">
+    Export de private key/WIF deve ser <strong>feature flag</strong> desabilitada por padrão em builds de produção até revisão final de segurança.
+  </div>
+
+  <h2>5. Contrato de tela (estrutura)</h2>
+  <ol>
+    <li><strong>Resumo</strong>: saldo consolidado, health dos backends, último refresh.</li>
+    <li><strong>Addresses</strong>: BTC/Liquid/LN receive endpoints, derivation path, QR/copy, rotação.</li>
+    <li><strong>UTXOs & Reservations</strong>: tabela com valor, confirmações, reservado, swap_id.</li>
+    <li><strong>Security</strong>: backup status, xpub/zpub, export protegido.</li>
+    <li><strong>Activity</strong>: histórico wallet + correlação com swaps.</li>
+  </ol>
+
+  <h2>6. Plano por PR</h2>
+
+  <table>
+    <thead>
+      <tr><th>PR</th><th>Status</th><th>Entrega</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>PR1</td>
+        <td><span class="badge ready">Pendente</span></td>
+        <td>Wallet Control skeleton + resumo + bloco de endereços derivados (BTC/Liquid)</td>
+      </tr>
+      <tr>
+        <td>PR2</td>
+        <td><span class="badge ready">Pendente</span></td>
+        <td>Tabela de UTXOs/reservas e indicadores de lock por swap</td>
+      </tr>
+      <tr>
+        <td>PR3</td>
+        <td><span class="badge ready">Pendente</span></td>
+        <td>Security center (backup/xpub/export protegido) com guard rails</td>
+      </tr>
+      <tr>
+        <td>PR4</td>
+        <td><span class="badge ready">Pendente</span></td>
+        <td>Activity timeline + correlação tx/swaps + hardening UX final</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>PR1 - Base operacional</h3>
+  <ul>
+    <li>Nova tela <code>WalletControlPage</code> no frontend.</li>
+    <li>Cards de saldos BTC/Liquid/LN e estado de conectividade.</li>
+    <li>Painel de endereços com copy/QR e derivation path.</li>
+  </ul>
+
+  <h3>PR2 - UTXO/Reservation control</h3>
+  <ul>
+    <li>Tabela com colunas: <code>chain</code>, <code>txid:vout</code>, <code>amount</code>, <code>confirmations</code>, <code>reserved</code>, <code>swap_id</code>.</li>
+    <li>Incluir metadados de origem da reserva:
+      <code>reservation_type</code> (<code>lockup</code>/<code>fee</code>/<code>manual</code>/<code>unknown</code>),
+      <code>reserved_at</code>, <code>reserved_by</code> (<code>swap_engine</code>/<code>manual</code>/<code>recovery</code>) e
+      <code>expires_at</code> (quando houver TTL).</li>
+    <li>Filtros por chain/estado reservado.</li>
+    <li>Destaque de UTXO indisponível por swap ativo.</li>
+  </ul>
+
+  <h3>PR3 - Security center</h3>
+  <ul>
+    <li>Checklist de backup exibindo status operacional.</li>
+    <li>Separar explicitamente “xpub view” de “export”:
+      <code>masked view</code> padrão, <code>reveal temporário</code> opcional com timeout visual,
+      <code>copy</code> como ação separada com confirmação, e <code>export</code> em fluxo próprio.</li>
+    <li>Exibição de xpub/zpub com aviso de privacidade e trilha de auditoria de ações sensíveis.</li>
+    <li>Export protegido por PIN + confirmação dupla + cooldown + guard rails reforçados.</li>
+  </ul>
+
+  <h3>PR4 - Activity e hardening final</h3>
+  <ul>
+    <li>Timeline de transações wallet com tipagem de evento (não apenas lista):
+      <code>event_type</code> (<code>RECEIVE</code>/<code>SEND</code>/<code>SWAP_LOCK</code>/<code>SWAP_CLAIM</code>/<code>REFUND</code>/<code>RESERVATION_SET</code>/<code>RESERVATION_RELEASE</code>),
+      <code>status</code> (<code>pending</code>/<code>confirmed</code>/<code>failed</code>/<code>unknown</code>),
+      <code>chain</code>, <code>txid</code>, <code>swap_id?</code>, <code>timestamp</code>, <code>evidence_level</code> (<code>observed</code>/<code>inferred</code>).</li>
+    <li>Correlação com swaps quando houver <code>lockup_txid/claim_txid/refund_txid</code>.</li>
+    <li>Tratamento de estados degradados (RPC down, sync em andamento, vault locked).</li>
+  </ul>
+
+  <h2>7. Dependências de backend/API</h2>
+  <table>
+    <thead>
+      <tr><th>Capacidade</th><th>Endpoint atual</th><th>Ação</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Saldos por chain</td>
+        <td><code>/api/v1/wallet/balances</code></td>
+        <td>Reuso imediato</td>
+      </tr>
+      <tr>
+        <td>Novo endereço</td>
+        <td><code>/api/v1/wallet/derive</code></td>
+        <td>Reuso imediato</td>
+      </tr>
+      <tr>
+        <td>Lista de UTXOs detalhada</td>
+        <td>gRPC <code>ListUtxos</code> (bridge parcial)</td>
+        <td>Expor endpoint HTTP dedicado no bridge</td>
+      </tr>
+      <tr>
+        <td>Histórico wallet</td>
+        <td><code>wallet_transactions</code> (DB)</td>
+        <td>Adicionar endpoint e paginação</td>
+      </tr>
+      <tr>
+        <td>Export seguro</td>
+        <td>N/A</td>
+        <td>Definir contrato explícito + feature flag</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>8. Critérios de aceite</h2>
+  <ol>
+    <li>Usuário consegue operar recebimento BTC/Liquid sem sair da UI.</li>
+    <li>UTXOs reservados por swaps ficam claramente identificados.</li>
+    <li>Nenhuma ação sensível ocorre sem confirmação explícita.</li>
+    <li>Em falha de backend, UI mostra estado degradado com mensagem acionável (sem valores fake).</li>
+    <li>Tela suporta debug operacional mínimo de wallet + swap correlation.</li>
+  </ol>
+
+  <h2>9. Riscos e mitigação</h2>
+  <table>
+    <thead>
+      <tr><th>Risco</th><th>Impacto</th><th>Mitigação</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Exposição indevida de segredo</td>
+        <td>Crítico</td>
+        <td>Feature flag, confirmação dupla, sem plaintext por padrão</td>
+      </tr>
+      <tr>
+        <td>Dados inconsistentes entre módulos</td>
+        <td>Alto</td>
+        <td>Fonte única no core + normalização estrita no bridge</td>
+      </tr>
+      <tr>
+        <td>UI poluída para usuário não técnico</td>
+        <td>Médio</td>
+        <td>Modo simples por padrão + seção avançada expandível</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>10. Próximo passo recomendado</h2>
+  <p>Iniciar por <strong>PR1</strong> com design e contrato mínimo de dados, seguido de PR2 para fechar visão operacional de UTXOs/reservas.</p>
+
+</body>
+
+</html>
