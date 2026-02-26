@@ -1,93 +1,106 @@
 # XS Wallet
 
-Carteira desktop self-custody com execução de atomic swaps entre BTC, Liquid e Lightning.
+Desktop wallet self-custody com execução de swaps entre BTC, Liquid e Lightning, baseada em arquitetura modular (`frontend + electron + api-bridge + core`).
 
-[![Status](https://img.shields.io/badge/Status-Pre--Beta-yellow)](docs/STATUS_ESPECIFICACAO_XS_WALLET.md)
+[![Status](https://img.shields.io/badge/Status-Pre--Beta%20Technical-yellow)](docs/STATUS_ESPECIFICACAO_XS_WALLET.md)
 [![Spec](https://img.shields.io/badge/Spec-v0.2.0-blue)](docs/XS_Wallet_Especificacao_Tecnica_v2.html)
 [![Go](https://img.shields.io/badge/Go-1.24+-00ADD8?logo=go)](core/go.mod)
 
-## Resumo
+## 1) Executive Overview
 
-O projeto está em **pre-beta / MVP técnico avançado**: núcleo de carteira e swaps com backend funcional para desenvolvimento, validação operacional e integração com provider real (Boltz testnet), ainda com hardening final pendente para produção.
+O projeto está em **pré-beta técnico operacional**.
 
-Atualização de status em **2026-02-20**:
-- Runtime testnet único estabilizado (`xscore` + `api-bridge` + frontend) com foco em evitar conflitos de múltiplas instâncias.
-- Streams de swaps ativos no core (`GetSwapEvents`, `WatchSwap`, `WatchAllSwaps`) e consumidos pelo frontend via SSE com fallback por polling.
-- Erro histórico de reconexão em loop no SSE foi reduzido com evento custom `stream_error` no bridge.
-- Fluxos watcher `chain`/`reverse` avançam até `waiting_provider_broadcast` com assinatura MuSig2 parcial real.
+Estado validado em **2026-02-26**:
+- Caminho crítico de wallet/sessão/swap em **IPC-first**.
+- Contrato de sessão consolidado entre Frontend, Electron, Bridge e Core.
+- Fluxo wallet BTC on-chain validado ponta a ponta com transação real confirmada em testnet.
 
-Principais capacidades atuais:
-- Carteira on-chain BTC + Liquid (confidential).
-- Vault com Argon2id + AES-256-GCM.
-- Engine de swaps com máquina de estados, CAS e idempotência.
-- Fluxos `submarine`, `reverse` e `chain` com execução watcher até caminhos avançados de claim/refund.
-- Integrações reais com Boltz testnet (incluindo testes de execução).
-- NodeService com lifecycle real parcial (`start/stop/restart/status/watch`) + supervisor/backoff/circuit-breaker.
-- Gate de manifest canônico (`manifest vs runtime`) para NodeManager.
+Evidência operacional on-chain:
+- `txid`: `ec05410c116e30c7dd21ada4417fb48ad6f56242d5d4847b60772bab464a343b`
+- bloco: `000000002c0756d28eb8d1a7727dc2520912f3f16cf70541571f8ce471078d17`
+- altura: `4842408`
 
-## Estado Atual (objetivo)
+## 2) Production Status
 
-| Área | Estado |
-|---|---|
-| Core Go (`xscore`) | Funcional |
-| Wallet BTC/Liquid | Funcional |
-| Swap Engine + Reconcile | Funcional |
-| MuSig2 claim path (watcher) | Funcional para fluxo atual |
-| Refund script-path fallback | Funcional com builder local + fallback |
-| gRPC swap streams/events | Funcional |
-| Frontend Swap Center | Parcial avançado, alinhado a estados reais |
-| NodeService | Parcial real (download/verificação de binários ainda pendente) |
-| LND fluxo operacional completo | Pendente |
-| Release produção | Pendente (hardening final) |
+| Domínio | Estado | Observação |
+|---|---|---|
+| Core Go (`xscore`) | Funcional | Serviços wallet/swap/node ativos em testnet |
+| Wallet BTC/Liquid | Funcional | Derivação HD, UTXO, send on-chain |
+| Vault + PIN/session | Funcional | Argon2id + AES-256-GCM, sessão com invalidação explícita |
+| Transporte crítico FE→BE | Funcional | IPC-first; HTTP apenas em debug explícito |
+| Swap engine + watcher | Funcional (parcial avançado) | Fluxos principais ativos; hardening final em andamento |
+| NodeManager lifecycle | Parcial real | Download/verificação final ainda em evolução |
+| LND operação completa | Parcial | Dependente de setup/segredos e fluxo final |
+| Release produção | Pendente | Gates finais de hardening e operação |
 
 Fonte canônica de status: `docs/STATUS_ESPECIFICACAO_XS_WALLET.md`.
 
-## Arquitetura
+## 3) System Architecture
 
 ```text
-Frontend (React/Vite + Electron em migração)
-        |
-        | HTTP (api-bridge, caminho atual) / IPC (alvo)
-        v
-Go Core (xscore)
-  - Wallet + Vault
-  - Swap Engine + Watcher
-  - gRPC Services (Swap/Wallet/Node)
+Frontend (React/Vite)
+   |
+   | IPC (padrão para operações críticas)
+   v
+Electron Main (IPC Registry + Session Contract)
+   |
+   | HTTP local (bridge interno)
+   v
+API Bridge (REST local -> gRPC)
+   |
+   v
+Core Go (xscore)
+  - WalletService (vault, addresses, utxos, send)
+  - SwapService (quotes, swaps, events, watcher)
+  - NodeService (status/lifecycle)
   - SQLite WAL
-        |
-        +--> bitcoind (JSON-RPC)
-        +--> elementsd (JSON-RPC)
-        +--> lnd (gRPC, parcial)
-        +--> boltz backend/API (HTTP/WS)
+   |
+   +--> bitcoind (JSON-RPC)
+   +--> elementsd (JSON-RPC)
+   +--> lnd (gRPC)
+   +--> boltz backend/API (HTTP/WS)
 ```
 
-## Estrutura do Repositório
+## 4) Security Model
+
+- **Self-custody**: seed local sob vault criptografado.
+- **Vault**: Argon2id (KDF) + AES-256-GCM (at-rest).
+- **Session contract**: unlock gera sessão, 401/unauth limpa sessão em toda a cadeia.
+- **IPC-first policy**: operações críticas não dependem de HTTP em produção.
+- **Guard rails**: export de chave privada desabilitado por padrão.
+
+## 5) Repository Structure
 
 ```text
 core/              backend Go (xscore)
 frontend/          app React/Vite
-electron/          main/preload/ipc (migração)
-api-bridge/        ponte HTTP para frontend atual
+electron/          main/preload/ipc
+api-bridge/        ponte REST local -> gRPC
 proto/             contratos proto fonte
 core/proto/        código gRPC gerado
-docs/              especificação, status e planos
+docs/              especificação, status, planos e relatórios
 .github/workflows/ CI e release gates
+test/regtest/      laboratório regtest
 ```
 
-## Pré-requisitos
+## 6) Environment & Prerequisites
 
-- Go 1.24+
-- Node.js 20+
+Requisitos:
+- Go `1.24+`
+- Node.js `20+`
 - npm
-- `bitcoind` testnet no host (ou container equivalente) para execução real
-- (Opcional) `elementsd`, `lnd` instalados no host
-- Docker apenas para laboratório regtest
+- `bitcoind` testnet no host (ou equivalente)
+- opcional: `elementsd`, `lnd`
 
-## Execução Local
+Ambientes suportados:
+- `dev` (rápido)
+- `testnet` (validação real)
+- `regtest` (laboratório local)
+- `prod-like` (hardening/release)
 
-### Runtime testnet único (recomendado)
+## 7) Quickstart
 
-Para evitar conflito de portas/processos (múltiplos `xscore`/`api-bridge`), use o kit de runtime:
+### 7.1 Runtime testnet único (recomendado)
 
 ```bash
 cd XSWallet
@@ -95,19 +108,18 @@ scripts/runtime/start_testnet_runtime.sh
 scripts/runtime/health_testnet_runtime.sh
 ```
 
-Parar tudo:
+Parar runtime:
 
 ```bash
 cd XSWallet
 scripts/runtime/stop_testnet_runtime.sh
 ```
 
-Observações:
-- O runtime usa `bitcoind` em modo podado (`prune=550`) na porta `18332`.
-- É necessário ter o binário `bitcoind` instalado no host (`PATH`) ou adaptar o script para container.
-- Logs ficam em `XSWallet/.runtime/xscore.log` e `XSWallet/.runtime/api-bridge.log`.
+Logs:
+- `XSWallet/.runtime/xscore.log`
+- `XSWallet/.runtime/api-bridge.log`
 
-### Fluxo manual testnet (alternativa)
+### 7.2 Fluxo manual (alternativo)
 
 ```bash
 cd core
@@ -126,7 +138,7 @@ npm install
 npm run dev
 ```
 
-### Regtest (somente laboratório)
+### 7.3 Regtest (laboratório)
 
 ```bash
 docker compose -f test/regtest/docker-compose.yml up -d
@@ -134,21 +146,34 @@ cd core
 go run ./cmd/xscore --network=regtest --port=9735
 ```
 
-## Configuração NodeManager (manifest canônico)
+## 8) Configuration Matrix (essencial)
 
-Arquivos canônicos versionados:
-- `core/config/nodemanager.manifest.json`
-- `core/config/nodemanager.manifest.schema.json`
+| Variável | Camada | Obrigatória | Observação |
+|---|---|---|---|
+| `GRPC_HOST` | api-bridge | Sim | Endpoint do `xscore` |
+| `VITE_DEBUG_HTTP` | frontend | Não | Permite HTTP fallback apenas em debug |
+| `ELECTRON_API_URL` | electron | Sim (desktop) | URL local da bridge |
+| `ELECTRON_API_AUTH_BEARER` | electron | Condicional | Sem fallback implícito em produção |
+| `XS_NODEMANAGER_MANIFEST_PATH` | core | Condicional | Path do manifest canônico |
+| `XS_NODEMANAGER_MANIFEST_REQUIRED` | core | Condicional | `1|true|yes|on` para tornar obrigatório |
 
-Variáveis suportadas pelo `NodeService`:
-- `XS_NODEMANAGER_MANIFEST_PATH` (path do manifest)
-- `XS_NODEMANAGER_MANIFEST_REQUIRED` (`1|true|yes|on` para tornar obrigatório)
+## 9) Reliability & Failure Modes
 
-Com `required` ativo, divergência crítica de manifest bloqueia estado operacional READY e `StartNode`.
+Cenários conhecidos:
 
-## Testes
+1. `scantxoutset` lento/conflitante em nó pruned/testnet.
+2. Scan exclusivo já em execução (`Scan already in progress`).
+3. Timeout intermitente em descoberta de UTXO.
 
-### Backend core essencial
+Mitigações já no código:
+- cache de scan em background,
+- fallback para respostas rápidas em leitura,
+- recuperação adicional no fluxo de envio quando necessário,
+- reconciliação de sessão em erros de autenticação.
+
+## 10) Testing & Quality Gates
+
+### 10.1 Core backend
 
 ```bash
 cd core
@@ -156,16 +181,14 @@ go test ./internal/server -count=1
 go test ./internal/watcher -count=1
 ```
 
-### Gate de manifest canônico
+### 10.2 Manifest gate
 
 ```bash
 cd core
 go test ./internal/server -run TestCanonicalNodeManagerManifestSchema -count=1 -v
 ```
 
-### Integrações reais com Boltz testnet (opcional)
-
-Exemplos:
+### 10.3 Boltz integration (opcional)
 
 ```bash
 cd core
@@ -173,57 +196,45 @@ XS_BOLTZ_CHAIN_INTEGRATION=1 XS_BOLTZ_API_URL=https://api.testnet.boltz.exchange
 XS_BOLTZ_REVERSE_INTEGRATION=1 XS_BOLTZ_API_URL=https://api.testnet.boltz.exchange go test ./internal/boltz -run TestCreateReverseIntegration -v
 ```
 
-Para execução watcher full-flow, use os testes em `core/internal/watcher/*execution_integration_test.go` com as variáveis `XS_BOLTZ_*` correspondentes.
-
-## CI e Release Gates
+## 11) CI / Release Process
 
 Workflows ativos:
-- `/.github/workflows/ci-core.yml`
-  - roda `go test ./internal/server -count=1`
-  - roda `go test ./internal/watcher -count=1`
-- `/.github/workflows/release-gate-manifest.yml`
-  - valida manifest canônico por schema/teste (`TestCanonicalNodeManagerManifestSchema`)
+- `.github/workflows/ci-core.yml`
+- `.github/workflows/release-gate-manifest.yml`
 
-Esses gates são bloqueadores para evolução de release backend.
+Gates mínimos de release backend:
+1. testes `server` e `watcher` verdes,
+2. schema/manifest canônico validado,
+3. sem regressão de contrato crítico IPC/session.
 
-## Segurança e Operação
+## 12) Observability
 
-- Vault: preimage nunca em plaintext persistente (criptografia em repouso).
-- RPC host policy: NodeService exige host local/loopback para operação segura.
-- Credenciais LND (tls/macaroon): validação de existência e permissões restritas.
-- Refund terminal: fechamento por evidência objetiva on-chain (`refund_txid` observado), não apenas status textual do provider.
+- Logs estruturados por request no bridge (latência, status, requestId).
+- Logs de gRPC no core para trilhas críticas.
+- Endpoints de saúde para diagnóstico operacional.
 
-## Documentação Importante
+## 13) Documentation Index
 
+- Status canônico: `docs/STATUS_ESPECIFICACAO_XS_WALLET.md`
 - Especificação técnica: `docs/XS_Wallet_Especificacao_Tecnica_v2.html`
-- Status vs implementação real: `docs/STATUS_ESPECIFICACAO_XS_WALLET.md`
-- Status executivo do projeto: `PROJECT_STATUS.md`
-- Pré-requisitos NodeManager real: `docs/XS_Wallet_PreRequisitos_NodeManager_Real.html`
-- Checklist E2E swap: `docs/XS_Wallet_Checklist_E2E_Swap.html`
+- Relatório FE-BE: `docs/RELATORIO_CONFORMIDADE_INTEGRACAO_FE_BE.html`
+- Estado geral atingido: `docs/XS_Wallet_Estado_Operacional_Atual.html`
+- Pré-beta plano executável: `docs/XS_Wallet_PreBeta_Plano_Executavel_v1.1.html`
+- Roadmap hardening/restore/e2e/release: `docs/XS_Wallet_Roadmap_PreBeta_Hardening_Restore_E2E_Release.html`
 
-## Próximos Focos
+## 14) Known Limitations
 
-- Fechar execução E2E real terminal contínua sem simulação para chain e reverse.
-- Hardening final de NodeManager/LND para produção (runbook/checklist final).
-- Concluir migração frontend para caminho principal Electron/IPC.
-- Fechar checklist final de release com runbook operacional.
+- Performance de scan depende do estado do nó BTC.
+- Algumas trilhas de NodeManager/LND ainda em consolidação.
+- Release production-grade depende de fechamento dos gates finais de pré-beta.
 
-## Nota de Backup
+## 15) Contributing & Change Discipline
 
-O mnemônico restaura chaves, mas recuperação operacional de swaps em andamento depende também do estado persistido (DB/vault/artefatos de execução). Planeje backup consistente de dados locais.
+- Não quebrar contrato crítico de sessão/transporte sem atualizar docs e testes.
+- Toda alteração em fluxo wallet/swap deve incluir evidência de validação.
+- Mudanças de estado de produto devem refletir em `docs/STATUS_ESPECIFICACAO_XS_WALLET.md`.
 
-## Comandos Rápidos de Release
+## 16) Operational Disclaimer
 
-```bash
-# 1) Core gates
-cd core
-go test ./internal/server -count=1
-go test ./internal/watcher -count=1
+XS Wallet é software de self-custody. Uso em produção exige hardening final, runbook operacional e procedimentos de backup/recuperação validados.
 
-# 2) Gate de manifest canônico (schema + exemplo)
-go test ./internal/server -run TestCanonicalNodeManagerManifestSchema -count=1 -v
-
-# 3) (Opcional) integração real Boltz testnet
-XS_BOLTZ_CHAIN_INTEGRATION=1 XS_BOLTZ_API_URL=https://api.testnet.boltz.exchange go test ./internal/boltz -run TestCreateChainIntegration -v
-XS_BOLTZ_REVERSE_INTEGRATION=1 XS_BOLTZ_API_URL=https://api.testnet.boltz.exchange go test ./internal/boltz -run TestCreateReverseIntegration -v
-```

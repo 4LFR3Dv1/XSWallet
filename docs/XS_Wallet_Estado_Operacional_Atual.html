@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>XS Wallet - Estado Geral Atingido do Projeto</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+    :root {
+      --text: #1a1a1a;
+      --text-secondary: #4a4a4a;
+      --bg: #ffffff;
+      --border: #e5e5e5;
+      --accent: #2563eb;
+      --code-bg: #f5f5f5;
+      --ok-bg: #ecfdf5;
+      --ok-border: #10b981;
+      --warn-bg: #fffbeb;
+      --warn-border: #f59e0b;
+      --risk-bg: #fef2f2;
+      --risk-border: #ef4444;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, sans-serif;
+      font-size: 10pt;
+      line-height: 1.6;
+      color: var(--text);
+      background: var(--bg);
+      max-width: 210mm;
+      margin: 0 auto;
+      padding: 20mm;
+    }
+
+    h1 {
+      font-size: 20pt;
+      font-weight: 700;
+      margin: 24pt 0 12pt;
+      border-bottom: 2px solid var(--text);
+      padding-bottom: 6pt;
+    }
+
+    h2 {
+      font-size: 14pt;
+      font-weight: 600;
+      margin: 18pt 0 8pt;
+      color: var(--text);
+    }
+
+    h3 {
+      font-size: 11pt;
+      font-weight: 600;
+      margin: 12pt 0 6pt;
+    }
+
+    p {
+      margin-bottom: 8pt;
+      text-align: justify;
+    }
+
+    ul,
+    ol {
+      margin: 8pt 0 12pt 18pt;
+    }
+
+    li {
+      margin-bottom: 4pt;
+    }
+
+    .cover {
+      text-align: center;
+      page-break-after: always;
+      padding-top: 100pt;
+    }
+
+    .cover h1 {
+      font-size: 30pt;
+      border: none;
+      margin-bottom: 8pt;
+    }
+
+    .cover .subtitle {
+      font-size: 14pt;
+      color: var(--text-secondary);
+      margin-bottom: 36pt;
+    }
+
+    .cover .meta {
+      margin-top: 50pt;
+    }
+
+    .cover .meta table {
+      margin: 0 auto;
+      text-align: left;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12pt 0;
+      font-size: 9pt;
+    }
+
+    th,
+    td {
+      border: 1px solid var(--border);
+      padding: 6pt 8pt;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: #f0f0f0;
+      font-weight: 600;
+    }
+
+    code {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 8.5pt;
+      background: var(--code-bg);
+      padding: 1pt 4pt;
+      border-radius: 3pt;
+    }
+
+    pre {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 6pt;
+      padding: 10pt;
+      overflow-x: auto;
+      margin: 8pt 0 12pt;
+    }
+
+    pre code {
+      background: none;
+      padding: 0;
+    }
+
+    .note {
+      border-left: 4px solid var(--accent);
+      background: #f8fafc;
+      padding: 8pt 10pt;
+      margin: 10pt 0;
+      font-size: 9pt;
+    }
+
+    .note.ok {
+      border-left-color: var(--ok-border);
+      background: var(--ok-bg);
+    }
+
+    .note.warn {
+      border-left-color: var(--warn-border);
+      background: var(--warn-bg);
+    }
+
+    .note.risk {
+      border-left-color: var(--risk-border);
+      background: var(--risk-bg);
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 2pt 6pt;
+      border-radius: 999px;
+      border: 1px solid;
+      font-size: 8pt;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .badge.ok {
+      border-color: var(--ok-border);
+      background: var(--ok-bg);
+      color: #047857;
+    }
+
+    .badge.warn {
+      border-color: var(--warn-border);
+      background: var(--warn-bg);
+      color: #b45309;
+    }
+
+    .badge.risk {
+      border-color: var(--risk-border);
+      background: var(--risk-bg);
+      color: #b91c1c;
+    }
+
+    .phase {
+      border: 1px solid var(--border);
+      border-radius: 8pt;
+      padding: 10pt;
+      margin: 10pt 0;
+    }
+
+    .page-break {
+      page-break-before: always;
+    }
+  </style>
+</head>
+
+<body>
+  <!-- DOC-CURRENT-STATE -->
+  <div style="margin:12px 16px;padding:10px 12px;border:1px solid #d97706;background:#fffbeb;color:#78350f;font:14px/1.4 sans-serif;">
+    <strong>Estado atual do codigo (fonte canonica):</strong> consulte <code>docs/STATUS_ESPECIFICACAO_XS_WALLET.md</code>.
+    Este documento resume o estado geral atingido e o nível de maturidade por trilha.
+  </div>
+
+  <div class="cover">
+    <h1>XS WALLET</h1>
+    <div class="subtitle">Estado Geral Atingido do Projeto (Arquitetura, Operação e Maturidade)</div>
+    <div class="meta">
+      <table>
+        <tr>
+          <th>Documento</th>
+          <td>Consolidação de estado geral atingido</td>
+        </tr>
+        <tr>
+          <th>Projeto</th>
+          <td>XSWallet</td>
+        </tr>
+        <tr>
+          <th>Data de referência</th>
+          <td>26 Fevereiro 2026</td>
+        </tr>
+        <tr>
+          <th>Escopo</th>
+          <td>Frontend + Electron + API Bridge + Core + Operação on-chain</td>
+        </tr>
+        <tr>
+          <th>Nível atual</th>
+          <td><span class="badge ok">Pré-Beta técnico operacional</span></td>
+        </tr>
+      </table>
+    </div>
+  </div>
+
+  <h1>1. Leitura Executiva</h1>
+  <p>O projeto atingiu um estado geral de operação integrada com cadeia crítica funcional entre interface, camada desktop e backend de carteira. O fluxo principal de wallet BTC (testnet) foi validado ponta a ponta com evidência real de controle on-chain: UTXO identificado, transação assinada pelo app, aceitação em mempool e confirmação em bloco.</p>
+  <p>Além do funcionamento operacional, houve avanço estrutural de arquitetura: IPC como caminho padrão para operações críticas, contrato de sessão consolidado entre camadas e mitigação para gargalos de descoberta de UTXO em nós pruned/testnet.</p>
+
+  <h2>1.1 Síntese de maturidade por trilha</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Trilha</th>
+        <th>Maturidade</th>
+        <th>Estado geral atingido</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Arquitetura de integração</td>
+        <td><span class="badge ok">Alta</span></td>
+        <td>Contrato FE/Electron/Bridge/Core estável no caminho crítico.</td>
+      </tr>
+      <tr>
+        <td>Wallet on-chain BTC</td>
+        <td><span class="badge ok">Alta</span></td>
+        <td>Receber/observar/gastar validado em ambiente real testnet.</td>
+      </tr>
+      <tr>
+        <td>Robustez operacional</td>
+        <td><span class="badge warn">Média-alta</span></td>
+        <td>Fallbacks implementados; ainda dependente de desempenho do nó para scans amplos.</td>
+      </tr>
+      <tr>
+        <td>Swap e observabilidade avançada</td>
+        <td><span class="badge warn">Média</span></td>
+        <td>Base funcional presente; trilhas de hardening/stream global seguem no roadmap.</td>
+      </tr>
+      <tr>
+        <td>Release e governança de entrega</td>
+        <td><span class="badge warn">Média</span></td>
+        <td>Estrutura documental madura; gates finais de pré-beta ainda em evolução.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h1>2. Estado Geral Atingido por Camada</h1>
+
+  <div class="phase">
+    <h2>2.1 Frontend (React/Vite)</h2>
+    <ul>
+      <li>Wallet Control Center operacional para endereços, UTXOs, reservas e histórico.</li>
+      <li>Serviços de API com contrato alinhado para IPC-first e fallback HTTP controlado.</li>
+      <li>Normalização de payload de saldo para evitar divergência entre transportes.</li>
+    </ul>
+  </div>
+
+  <div class="phase">
+    <h2>2.2 Electron (Main + IPC Registry)</h2>
+    <ul>
+      <li>Canal IPC consolidado para operações críticas de wallet/swap/session.</li>
+      <li>Validação de payload e controle de acesso por canal.</li>
+      <li>Tratamento explícito de sessão expirada em respostas <code>UNAUTHENTICATED/401</code>.</li>
+    </ul>
+  </div>
+
+  <div class="phase">
+    <h2>2.3 API Bridge</h2>
+    <ul>
+      <li>Contrato HTTP local estável para frontend/electron e tradução consistente para gRPC.</li>
+      <li>Respostas de unlock/status alinhadas com o fluxo real de sessão.</li>
+      <li>Observabilidade básica de requests com latência e códigos por endpoint.</li>
+    </ul>
+  </div>
+
+  <div class="phase">
+    <h2>2.4 Core (xscore / WalletService)</h2>
+    <ul>
+      <li>Derivação e persistência de endereços por chain em <code>wallet_addresses</code>.</li>
+      <li>Listagem de UTXOs com cache de scan e execução em background.</li>
+      <li>Fallbacks para reduzir impacto de timeout/lentidão de <code>scantxoutset</code>.</li>
+      <li>Fluxo de envio on-chain com seleção de UTXO, assinatura e broadcast.</li>
+    </ul>
+  </div>
+
+  <h1>3. Linha de Progresso do Projeto (Caminho dos Docs)</h1>
+  <table>
+    <thead>
+      <tr>
+        <th>Eixo documental</th>
+        <th>Objetivo original</th>
+        <th>Estado atingido</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Especificação técnica v2</td>
+        <td>Definir arquitetura e contratos de serviço</td>
+        <td><span class="badge ok">Materializado</span> em integração real entre camadas.</td>
+      </tr>
+      <tr>
+        <td>Planos de execução (itens e fases)</td>
+        <td>Converter backlog em entregas técnicas</td>
+        <td><span class="badge ok">Parcial avançado</span> com blocos críticos já absorvidos.</td>
+      </tr>
+      <tr>
+        <td>Hardening pré-beta</td>
+        <td>Fechar segurança/sessão/transporte</td>
+        <td><span class="badge ok">Avanço concreto</span> no P0 de IPC e sessão.</td>
+      </tr>
+      <tr>
+        <td>Evidência E2E real</td>
+        <td>Provar operação com dados de rede</td>
+        <td><span class="badge ok">Atingido</span> no fluxo wallet on-chain BTC.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h1>4. Evidências Técnicas de Estado Atingido</h1>
+  <h2>4.1 Ownership e controle on-chain</h2>
+  <ul>
+    <li>Endereço âncora derivado da wallet identificado localmente.</li>
+    <li>UTXO ativo confirmado on-chain por <code>scantxoutset</code> e <code>gettxout</code>.</li>
+    <li>Transação enviada pelo app: <code>ec05410c116e30c7dd21ada4417fb48ad6f56242d5d4847b60772bab464a343b</code>.</li>
+    <li>TX confirmada em bloco: <code>000000002c0756d28eb8d1a7727dc2520912f3f16cf70541571f8ce471078d17</code>, altura <code>4842408</code>, <code>2 confirmações</code>.</li>
+  </ul>
+
+  <h2>4.2 Qualidade de integração</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Aspecto</th>
+        <th>Critério</th>
+        <th>Resultado atual</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Transporte crítico</td>
+        <td>Sem fallback implícito de produção</td>
+        <td><span class="badge ok">Atendido</span></td>
+      </tr>
+      <tr>
+        <td>Sessão</td>
+        <td>Contrato único e limpeza em erro de auth</td>
+        <td><span class="badge ok">Atendido</span></td>
+      </tr>
+      <tr>
+        <td>Operação wallet</td>
+        <td>Fluxo receber + gastar com prova real</td>
+        <td><span class="badge ok">Atendido</span></td>
+      </tr>
+      <tr>
+        <td>Resiliência em nó lento</td>
+        <td>Não quebrar UX por timeout de scan</td>
+        <td><span class="badge warn">Mitigado</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="note ok">
+    O envio real com change output interno comprova consistência do modelo UTXO da wallet e controle de chave privada no app.
+  </div>
+
+  <h1>5. O que já pode ser considerado concluído</h1>
+  <ol>
+    <li>Integração funcional FE-BE no caminho oficial da aplicação desktop.</li>
+    <li>Contrato de sessão operacional para unlock/status/chamadas protegidas.</li>
+    <li>Wallet BTC testnet utilizável para operação on-chain real.</li>
+    <li>Correção de pontos críticos de indisponibilidade por timeout no fluxo de UTXO.</li>
+  </ol>
+
+  <h1>6. O que está em consolidação (não regressão, mas maturação)</h1>
+  <ul>
+    <li>Performance determinística de <code>scantxoutset</code> em cenários com maior volume/endereços.</li>
+    <li>Redução adicional de dependência de scan global para inicialização de estado.</li>
+    <li>Fechamento completo dos gates de pré-beta em trilhas de swap/release/restore UI.</li>
+  </ul>
+
+  <h1>7. Mapa de Riscos Remanescentes</h1>
+  <table>
+    <thead>
+      <tr>
+        <th>Risco</th>
+        <th>Impacto</th>
+        <th>Estado de mitigação</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Scan concorrente/exclusivo no bitcoind</td>
+        <td>Intermitência de descoberta de UTXO</td>
+        <td><span class="badge warn">Mitigado parcialmente</span></td>
+      </tr>
+      <tr>
+        <td>Nó pruned com latência variável</td>
+        <td>Resposta lenta em operações de varredura</td>
+        <td><span class="badge warn">Mitigado com fallback</span></td>
+      </tr>
+      <tr>
+        <td>Evolução de contratos entre camadas</td>
+        <td>Risco de drift FE/Electron/Bridge</td>
+        <td><span class="badge ok">Controlado via IPC registry + types</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h1>8. Gate de Estado Geral (Pré-Beta Técnico)</h1>
+  <table>
+    <thead>
+      <tr>
+        <th>Gate</th>
+        <th>Critério</th>
+        <th>Estado</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>G1 - Integração</td>
+        <td>Fluxo ponta a ponta estável entre camadas</td>
+        <td><span class="badge ok">Pass</span></td>
+      </tr>
+      <tr>
+        <td>G2 - Segurança de transporte/sessão</td>
+        <td>IPC-first + sessão coerente</td>
+        <td><span class="badge ok">Pass</span></td>
+      </tr>
+      <tr>
+        <td>G3 - Operação on-chain real</td>
+        <td>TX enviada, aceita e confirmada em bloco</td>
+        <td><span class="badge ok">Pass</span></td>
+      </tr>
+      <tr>
+        <td>G4 - Robustez em ambiente adverso</td>
+        <td>Comportamento previsível sob latência alta de node</td>
+        <td><span class="badge warn">Pass condicional</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h1>9. Próximo Estado-Alvo (continuidade natural)</h1>
+  <ol>
+    <li>Encapsular estratégia de UTXO discovery para reduzir dependência de scans amplos no caminho crítico.</li>
+    <li>Adicionar prova de controle por assinatura no app (sem gasto de UTXO) como ferramenta operacional.</li>
+    <li>Concluir gates restantes de pré-beta (swap stream global, restore UX completo e release hardening).</li>
+  </ol>
+
+  <div class="note warn">
+    Este documento descreve <strong>estado geral atingido</strong>. Para status canônico diário por item, manter referência em <code>docs/STATUS_ESPECIFICACAO_XS_WALLET.md</code>.
+  </div>
+
+  <h1>10. Referências no caminho documental</h1>
+  <ul>
+    <li><code>docs/STATUS_ESPECIFICACAO_XS_WALLET.md</code></li>
+    <li><code>docs/RELATORIO_CONFORMIDADE_INTEGRACAO_FE_BE.html</code></li>
+    <li><code>docs/XS_Wallet_PreBeta_Plano_Executavel_v1.1.html</code></li>
+    <li><code>docs/XS_Wallet_Plano_Execucao_Itens_1e3.html</code></li>
+    <li><code>docs/XS_Wallet_Roadmap_PreBeta_Hardening_Restore_E2E_Release.html</code></li>
+  </ul>
+</body>
+
+</html>
