@@ -87,6 +87,7 @@ function configureWindowSecurity(win: BrowserWindow): void {
 
 function createWindow(): BrowserWindow {
   const win = new BrowserWindow({
+    title: "Domini Wallet",
     width: 1360,
     height: 860,
     minWidth: 1024,

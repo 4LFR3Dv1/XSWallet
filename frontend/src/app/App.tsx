@@ -8,7 +8,6 @@ import { OnboardingMnemonic } from '@/app/components/xs-wallet/screens/Onboardin
 import { OnboardingConfirm } from '@/app/components/xs-wallet/screens/OnboardingConfirm';
 import { UnlockScreen } from '@/app/components/xs-wallet/screens/UnlockScreen';
 import { Dashboard } from '@/app/components/xs-wallet/screens/Dashboard';
-import { SwapCenter } from '@/app/components/xs-wallet/screens/SwapCenter';
 import { WalletPage } from '@/app/components/xs-wallet/screens/WalletPage';
 import { NetworkPage } from '@/app/components/xs-wallet/screens/NetworkPage';
 import { SettingsPage } from '@/app/components/xs-wallet/screens/SettingsPage';
@@ -82,7 +81,7 @@ function AppRoutes() {
 
       {/* Protected Routes */}
       <Route path="/" element={<AuthGuard><Dashboard /></AuthGuard>} />
-      <Route path="/swap" element={<AuthGuard><SwapCenter /></AuthGuard>} />
+      <Route path="/swap" element={<Navigate to="/" replace />} />
       <Route path="/wallet" element={<AuthGuard><WalletPage /></AuthGuard>} />
       <Route path="/network" element={<AuthGuard><NetworkPage /></AuthGuard>} />
       <Route path="/settings" element={<AuthGuard><SettingsPage /></AuthGuard>} />

@@ -140,18 +140,29 @@ export function useAddressBook(chain: 'btc' | 'liquid') {
     const [addresses, setAddresses] = useState<api.AddressInfo[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const requestSeqRef = useRef(0);
 
     const refetch = useCallback(async () => {
+        const requestSeq = ++requestSeqRef.current;
         setLoading(true);
         try {
             const data = await api.listAddresses(chain, true);
+            if (requestSeq !== requestSeqRef.current) return;
             setAddresses(data);
             setError(null);
         } catch (e) {
+            if (requestSeq !== requestSeqRef.current) return;
             setError(e instanceof Error ? e.message : 'Unknown error');
         } finally {
+            if (requestSeq !== requestSeqRef.current) return;
             setLoading(false);
         }
+    }, [chain]);
+
+    useEffect(() => {
+        // Clear previous chain state immediately to avoid cross-chain bleed while loading.
+        setAddresses([]);
+        setError(null);
     }, [chain]);
 
     useEffect(() => {
@@ -165,18 +176,28 @@ export function useWalletUtxos(chain: 'btc' | 'liquid') {
     const [utxos, setUtxos] = useState<api.WalletUtxo[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const requestSeqRef = useRef(0);
 
     const refetch = useCallback(async () => {
+        const requestSeq = ++requestSeqRef.current;
         setLoading(true);
         try {
             const data = await api.listUtxos(chain, true);
+            if (requestSeq !== requestSeqRef.current) return;
             setUtxos(data);
             setError(null);
         } catch (e) {
+            if (requestSeq !== requestSeqRef.current) return;
             setError(e instanceof Error ? e.message : 'Unknown error');
         } finally {
+            if (requestSeq !== requestSeqRef.current) return;
             setLoading(false);
         }
+    }, [chain]);
+
+    useEffect(() => {
+        setUtxos([]);
+        setError(null);
     }, [chain]);
 
     useEffect(() => {
@@ -190,18 +211,28 @@ export function useWalletTransactions(chain: 'btc' | 'liquid') {
     const [transactions, setTransactions] = useState<api.WalletTransaction[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const requestSeqRef = useRef(0);
 
     const refetch = useCallback(async () => {
+        const requestSeq = ++requestSeqRef.current;
         setLoading(true);
         try {
             const data = await api.listTransactions(chain, 100, 0);
+            if (requestSeq !== requestSeqRef.current) return;
             setTransactions(data);
             setError(null);
         } catch (e) {
+            if (requestSeq !== requestSeqRef.current) return;
             setError(e instanceof Error ? e.message : 'Unknown error');
         } finally {
+            if (requestSeq !== requestSeqRef.current) return;
             setLoading(false);
         }
+    }, [chain]);
+
+    useEffect(() => {
+        setTransactions([]);
+        setError(null);
     }, [chain]);
 
     useEffect(() => {

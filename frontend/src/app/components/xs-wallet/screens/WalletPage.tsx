@@ -164,9 +164,12 @@ export function WalletPage() {
             balance_sat: number;
         }>();
         for (const a of addresses) byAddress.set(a.address, a);
-        for (const a of optimisticAddresses) if (!byAddress.has(a.address)) byAddress.set(a.address, a);
+        for (const a of optimisticAddresses) {
+            if (String(a.chain).toLowerCase() !== activeChain) continue;
+            if (!byAddress.has(a.address)) byAddress.set(a.address, a);
+        }
         return Array.from(byAddress.values());
-    }, [addresses, optimisticAddresses]);
+    }, [addresses, optimisticAddresses, activeChain]);
     const identityAnchorAddress = combinedAddresses.length > 0 ? combinedAddresses[0] : null;
     const latestAddress = combinedAddresses.length > 0 ? combinedAddresses[combinedAddresses.length - 1] : null;
     const allAddressesLatestFirst = useMemo(() => [...combinedAddresses].reverse(), [combinedAddresses]);

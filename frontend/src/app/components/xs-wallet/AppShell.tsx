@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Home, Repeat, Wallet, Network, Settings, Lock, Unlock, CheckCircle } from 'lucide-react';
+import { Home, Wallet, Network, Settings, Lock, Unlock, CheckCircle } from 'lucide-react';
 import { SidebarItem } from './SidebarItem';
 import { StatusChip } from './StatusChip';
 import { useBitcoinInfo, useSystemHealth } from '@/services/hooks';
@@ -22,7 +22,6 @@ export function AppShell({ children, activePage, vaultLocked = false }: AppShell
 
   const navItems = [
     { id: 'home', path: '/', icon: Home, label: 'Home' },
-    { id: 'swap', path: '/swap', icon: Repeat, label: 'Swap' },
     { id: 'wallet', path: '/wallet', icon: Wallet, label: 'Wallet' },
     { id: 'network', path: '/network', icon: Network, label: 'Network' },
     { id: 'settings', path: '/settings', icon: Settings, label: 'Settings' },
@@ -34,7 +33,7 @@ export function AppShell({ children, activePage, vaultLocked = false }: AppShell
       <div className="w-60 border-r border-[#242C36] flex flex-col">
         {/* Logo */}
         <div className="px-6 py-6 border-b border-[#242C36]">
-          <h1 className="text-xl text-[#E7EDF5]">XS Wallet</h1>
+          <h1 className="text-xl text-[#E7EDF5]">Domini Wallet</h1>
           <p className="text-xs text-[#6C7A89] mt-1">Enterprise Terminal</p>
         </div>
 
@@ -54,6 +53,16 @@ export function AppShell({ children, activePage, vaultLocked = false }: AppShell
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col">
+        <div className="h-12 border-b border-[#242C36] px-6 flex items-center justify-end bg-[#0B0D10]">
+          <a
+            href="https://dominipay.com.br"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm text-[#00B4D8] hover:text-[#7DDCF0] transition-colors"
+          >
+            Dominipay
+          </a>
+        </div>
         <div className="flex-1 overflow-auto">
           {children}
         </div>

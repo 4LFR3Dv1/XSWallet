@@ -73,7 +73,7 @@ export function UnlockScreen() {
       <div className="w-full max-w-[440px]">
         {/* Logo */}
         <div className="text-center mb-12">
-          <h1 className="text-4xl text-[#E7EDF5] mb-2">XS Wallet</h1>
+          <h1 className="text-4xl text-[#E7EDF5] mb-2">Domini Wallet</h1>
           <p className="text-[#9AA7B5]">Enter PIN to unlock</p>
         </div>
 

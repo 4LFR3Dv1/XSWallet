@@ -12,7 +12,7 @@ export function DesignSystem() {
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-12">
-          <h1 className="text-4xl text-[#E7EDF5] mb-2">XS Wallet Design System</h1>
+          <h1 className="text-4xl text-[#E7EDF5] mb-2">Domini Wallet Design System</h1>
           <p className="text-[#9AA7B5]">Crypto Enterprise Terminal Components</p>
         </div>
 
