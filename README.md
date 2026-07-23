@@ -2,6 +2,8 @@
 
 Desktop wallet self-custody com execução de swaps entre BTC, Liquid e Lightning, baseada em arquitetura modular (`frontend + electron + api-bridge + core`).
 
+> **Public status — 2026-07-22:** this repository is a pre-beta engineering build, not a public release. The current frontend uses the working name **Domini** while the repository and technical documents use **XS Wallet**. Treat the product identity as unresolved until the owner selects a canonical name. Security properties below describe implemented controls; they are not an external audit.
+
 [![Status](https://img.shields.io/badge/Status-Pre--Beta%20Technical-yellow)](docs/STATUS_ESPECIFICACAO_XS_WALLET.md)
 [![Spec](https://img.shields.io/badge/Spec-v0.2.0-blue)](docs/XS_Wallet_Especificacao_Tecnica_v2.html)
 [![Go](https://img.shields.io/badge/Go-1.24+-00ADD8?logo=go)](core/go.mod)
@@ -20,7 +22,7 @@ Evidência operacional on-chain:
 - bloco: `000000002c0756d28eb8d1a7727dc2520912f3f16cf70541571f8ce471078d17`
 - altura: `4842408`
 
-## 2) Production Status
+## 2) Implementation Status
 
 | Domínio | Estado | Observação |
 |---|---|---|
@@ -226,7 +228,7 @@ Gates mínimos de release backend:
 
 - Performance de scan depende do estado do nó BTC.
 - Algumas trilhas de NodeManager/LND ainda em consolidação.
-- Release production-grade depende de fechamento dos gates finais de pré-beta.
+- A release pública depende do fechamento dos gates finais de pré-beta.
 
 ## 15) Contributing & Change Discipline
 

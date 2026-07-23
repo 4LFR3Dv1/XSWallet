@@ -1,6 +1,6 @@
 # BRLN-OS DevDash
 
-Enterprise-grade developer dashboard for blockchain development featuring atomic swaps, HD wallets, and multi-chain signatures.
+Experimental developer dashboard for blockchain development featuring atomic swaps, HD wallets, and multi-chain signatures.
 
 ## Features
 
