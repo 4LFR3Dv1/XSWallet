@@ -13,8 +13,9 @@ from reportlab.lib import colors
 from reportlab.pdfgen import canvas
 from reportlab.platypus.flowables import Flowable
 from datetime import datetime
+from pathlib import Path
 
-OUTPUT_FILE = r"c:\Users\windows10\Downloads\XS WALLET\docs\XS_Wallet_Documentacao_Tecnica.pdf"
+OUTPUT_FILE = str(Path(__file__).resolve().parent / "XS_Wallet_Documentacao_Tecnica.pdf")
 
 # Cores Web3 modernas (gradientes Bitcoin/Lightning)
 BITCOIN_ORANGE = colors.HexColor('#F7931A')

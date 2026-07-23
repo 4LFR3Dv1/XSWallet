@@ -1,6 +1,6 @@
 """
 XS Wallet - Technical Specification Document Generator
-Documento técnico denso, informativo, enterprise-grade
+Documento técnico denso e informativo
 Design focado em clareza e legibilidade, não estética
 """
 
@@ -14,8 +14,9 @@ from reportlab.lib import colors
 from reportlab.platypus.tableofcontents import TableOfContents
 from reportlab.pdfgen import canvas
 from datetime import datetime
+from pathlib import Path
 
-OUTPUT_FILE = r"c:\Users\windows10\Downloads\XS WALLET\docs\XS_Wallet_Technical_Specification.pdf"
+OUTPUT_FILE = str(Path(__file__).resolve().parent / "XS_Wallet_Technical_Specification.pdf")
 
 # Design System - Foco em legibilidade
 COLORS = {

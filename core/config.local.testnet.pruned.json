@@ -1,7 +1,7 @@
 {
   "network": "testnet",
-  "data_dir": "/Users/renan/.xs-wallet-testnet",
-  "db_path": "/Users/renan/.xs-wallet-testnet/xs-wallet.db",
+  "data_dir": "./.xs-wallet-testnet",
+  "db_path": "./.xs-wallet-testnet/xs-wallet.db",
   "bitcoind": {
     "enabled": true,
     "host": "127.0.0.1",

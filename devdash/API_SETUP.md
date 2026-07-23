@@ -5,7 +5,7 @@
 ### 1. Install Python Dependencies
 
 ```powershell
-cd C:\Users\windows10\Downloads\BRLN\devdash
+cd devdash
 pip install flask flask-cors mnemonic
 ```
 
@@ -30,7 +30,7 @@ Starting on http://localhost:2121
 In a **new terminal**:
 
 ```powershell
-cd C:\Users\windows10\Downloads\BRLN\devdash
+cd devdash
 npm run dev
 ```
 
@@ -72,7 +72,7 @@ npm run dev
 
 To use **real brln-swap-core** for HTLC creation:
 
-1. Ensure `brln-swap-core` is in `C:\Users\windows10\Downloads\BRLN\api\brln-swap-core`
+1. Ensure `brln-swap-core` is available at `api/brln-swap-core` relative to the repository root.
 2. Install dependencies:
    ```powershell
    pip install bitcoin ecdsa

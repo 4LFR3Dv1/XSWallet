@@ -244,8 +244,8 @@ rpcpassword=troque_essa_senha</code></pre>
 
     <h2>3.2 Subir bitcoind</h2>
     <pre><code>bitcoind \
-  -conf=/Users/renan/.xs-wallet/config/bitcoin.conf \
-  -datadir=/Users/renan/.xs-wallet/nodes/bitcoin</code></pre>
+  -conf=&lt;XS_WALLET_DATA_DIR&gt;/config/bitcoin.conf \
+  -datadir=&lt;XS_WALLET_DATA_DIR&gt;/nodes/bitcoin</code></pre>
 
     <div class="note">
         <strong>Nota:</strong> <code>prune=20000</code> significa alvo de ~20 GB para blocos retidos.
@@ -256,8 +256,8 @@ rpcpassword=troque_essa_senha</code></pre>
     <p>Criar: <code>XSWallet/core/config.local.mainnet.pruned.json</code></p>
     <pre><code>{
   "network": "mainnet",
-  "data_dir": "/Users/renan/.xs-wallet",
-  "db_path": "/Users/renan/.xs-wallet/xs-wallet.db",
+  "data_dir": "&lt;XS_WALLET_DATA_DIR&gt;",
+  "db_path": "&lt;XS_WALLET_DATA_DIR&gt;/xs-wallet.db",
   "bitcoind": {
     "enabled": true,
     "host": "127.0.0.1",
@@ -284,7 +284,7 @@ npm run electron:dev</code></pre>
 
     <h1>6. Validação Rápida</h1>
     <ol>
-        <li><code>bitcoin-cli -datadir=/Users/renan/.xs-wallet/nodes/bitcoin getblockchaininfo</code></li>
+        <li><code>bitcoin-cli -datadir=&lt;XS_WALLET_DATA_DIR&gt;/nodes/bitcoin getblockchaininfo</code></li>
         <li><code>curl http://127.0.0.1:3000/ready</code> deve retornar <code>status=ready</code></li>
         <li>Na UI: testar <code>wallet status</code>, <code>unlock</code> e <code>balances</code></li>
     </ol>

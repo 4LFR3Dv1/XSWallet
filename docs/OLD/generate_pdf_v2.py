@@ -1,7 +1,7 @@
 """
 XS Wallet - Technical Specification Document v2
 Atualizado com Go Core, boltz-backend self-hosted, e feedback CTO
-Design enterprise-grade focado em clareza e legibilidade
+Design focado em clareza e legibilidade
 """
 
 from reportlab.lib.pagesizes import A4
@@ -13,8 +13,9 @@ from reportlab.platypus import (SimpleDocTemplate, Paragraph, Spacer, PageBreak,
 from reportlab.lib import colors
 from reportlab.pdfgen import canvas
 from datetime import datetime
+from pathlib import Path
 
-OUTPUT_FILE = r"c:\Users\windows10\Downloads\XS WALLET\docs\XS_Wallet_Technical_Specification_v2.pdf"
+OUTPUT_FILE = str(Path(__file__).resolve().parent / "XS_Wallet_Technical_Specification_v2.pdf")
 
 # Design System - Foco em legibilidade
 COLORS = {
@@ -390,7 +391,7 @@ def create_pdf():
     story.append(Paragraph("3. Boltz Client Implementation", styles['H1']))
     
     story.append(Paragraph("""
-    The Boltz Client has been implemented with production-grade reliability standards. All 
+    The Boltz Client implements explicit reliability controls. All
     components are tested and ready for integration with boltz-backend.
     """, styles['Normal']))
     
